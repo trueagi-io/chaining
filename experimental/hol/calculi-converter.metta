@@ -451,6 +451,7 @@
                                                             (reduce (let $νx $y $νf))))
                                        ;; Base case
                                        (($f $g) ($f $g))))
+                                    ;; Recursive step
                                     (reduce ($νf $νg)))))))))))
 
 ;; Test reduce
