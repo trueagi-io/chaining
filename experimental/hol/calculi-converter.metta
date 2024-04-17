@@ -344,62 +344,170 @@
 ;; (= ((λ $x $f) $y) (let ($νx $νf) (sealed ($x) ($x $f)) (let $νx $y $νf)))
 
 ;; ;; Test lambda calculus reduction
+
+;; NEXT: add reduction test, all the ones from combinatory logic translated back to lambda
+
+;; !(reduce ((λ $f (λ $head (λ $x7 (($f $x7) ($head $x7))))) (λ $x1 (λ $y (λ $z ($x1 ($y $z)))))))
+
 ;; !(((λ $f378 (λ $g379 (λ $x380 (($f378 $x380) ($g379 $x380))))) (((λ $f448 (λ $g449 (λ $x450 (($f448 $x450) ($g449 $x450))))) ((λ $x470 (λ $y471 $x470)) (λ $f482 (λ $g483 (λ $x484 (($f482 $x484) ($g483 $x484))))))) (((λ $f543 (λ $g544 (λ $x545 (($f543 $x545) ($g544 $x545))))) ((λ $x564 (λ $y565 $x564)) (λ $x570 (λ $y571 $x570)))) (λ $x579 $x579)))) ((λ $x604 (λ $y605 $x604)) (λ $x610 $x610)))
 ;; ;; Should reduce to (λ $f (λ $x ($f $x)))
 
-;; Reduction rules for combinatory logic.  In the process, we
-;; introduce combinators 𝐌, 𝐍, 𝐓, 𝐖, 𝐁, 𝐂 and 𝐔.
-(= (𝐈 $x) $x)
-(= ((𝐊 $x) $y) $x)
-(= (((𝐒 $x) $y) $z) (($x $z) ($y $z)))
-(= (𝐌 $x) ($x $x))
-(= ((𝐍 $x) $y) $y)
-(= ((𝐓 $x) $y) ($y $x))
-(= ((𝐖 $x) $y) (($x $y) $y))
-(= (((𝐁 $x) $y) $z) ($x ($y $z)))
-(= (((𝐂 $x) $y) $z) (($x $z) $y))
-(= ((𝐔 $x) $y) ($y (($x $x) $y)))
-(= ((𝐒 𝐊) 𝐊) 𝐈)
-(= ((𝐒 𝐈) 𝐈) 𝐌)
-(= (𝐊 𝐈) 𝐍)
-(= ((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) 𝐓)
-(= ((𝐒 𝐒) 𝐍) 𝐖)
-(= ((𝐒 (𝐊 𝐒)) 𝐊) 𝐁)
-(= ((𝐒 (𝐁 𝐁 𝐒)) (𝐊 𝐊)) 𝐂)
-(= ((𝐁 (𝐒 𝐈)) (𝐒 𝐈 𝐈)) 𝐔)
+;; ;; Reduction rules for combinatory logic.  In the process, we
+;; ;; introduce combinators 𝐌, 𝐍, 𝐓, 𝐖, 𝐁, 𝐂 and 𝐔.
+;; (= (𝐈 $x) $x)
+;; (= ((𝐊 $x) $y) $x)
+;; (= (((𝐒 $x) $y) $z) (($x $z) ($y $z)))
+;; (= (𝐌 $x) ($x $x))
+;; (= ((𝐍 $x) $y) $y)
+;; (= ((𝐓 $x) $y) ($y $x))
+;; (= ((𝐖 $x) $y) (($x $y) $y))
+;; (= (((𝐁 $x) $y) $z) ($x ($y $z)))
+;; (= (((𝐂 $x) $y) $z) (($x $z) $y))
+;; (= ((𝐔 $x) $y) ($y (($x $x) $y)))
+;; (= ((𝐒 𝐊) 𝐊) 𝐈)
+;; (= ((𝐒 𝐈) 𝐈) 𝐌)
+;; (= (𝐊 𝐈) 𝐍)
+;; (= ((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) 𝐓)
+;; (= ((𝐒 𝐒) 𝐍) 𝐖)
+;; (= ((𝐒 (𝐊 𝐒)) 𝐊) 𝐁)
+;; (= ((𝐒 (𝐁 𝐁 𝐒)) (𝐊 𝐊)) 𝐂)
+;; (= ((𝐁 (𝐒 𝐈)) (𝐒 𝐈 𝐈)) 𝐔)
 
-;; Test combinatory logic reduction
+;; ;; Test combinatory logic reduction
+;; !(assertEqual
+;;   (𝐊 𝐈)                                 ; 0
+;;   𝐍)
+;; !(assertEqual
+;;   ((𝐒 (𝐊 𝐒)) 𝐊)
+;;   𝐁)
+;; !(assertEqual
+;;   ((𝐒 𝐒) (𝐊 𝐈))
+;;   𝐖)
+;; !(assertEqual
+;;   ((𝐒 𝐒) 𝐍)
+;;   𝐖)
+;; !(assertEqual
+;;   (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))                    ; Successor
+;;   (𝐒 𝐁))
+;; !(assertEqual
+;;   ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))            ; 1, as (Successor 0)
+;;   ((𝐒 𝐁) 𝐍))
+;; !(assertEqual
+;;   ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))) ; 2, as (Successor (Successor 0))
+;;   ((𝐒 𝐁) ((𝐒 𝐁) 𝐍)))
+;; !(assertEqual
+;;   (((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ; Plus
+;;   (𝐓 (𝐒 𝐁)))
+;; !(assertEqual
+;;   ((((𝐒 𝐈) (𝐊 (𝐒 𝐁))) 𝐍) 𝐍)             ; Apparently this is equivalent to (Plus 0 0)
+;;   𝐍)
+;; !(assertEqual
+;;   (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍)
+;;   𝐍)
+;; !(assertEqual
+;;   (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) (𝐊 𝐈)) (𝐊 𝐈)) ; 0, as (Plus 0 0)
+;;   𝐍)
+;; !(assertEqual
+;;   (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
+;;    ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))) ; 3, as (Plus 1 2)
+;;   ((𝐒 𝐁) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍))))
+
+;; Alternative to spontaneous reduction
+(: reduce (-> $a $a))
+(= (reduce $term)
+   (case (get-metatype $term)
+     ((Symbol $term)
+      (Grounded $term)
+      (Variable $term)
+      (Expression (case $term
+                    ((() ())
+                     ;; Application
+                     (($f $g) (let* (($νf (reduce $f))
+                                     ($νg (reduce $g)))
+                                (if (and (== $νf $f) (== $νg $g))
+                                    (case ($f $g)
+                                      ;; Combinatory logic
+                                      (((𝐈 $x) (reduce $x))
+                                       (((𝐊 $x) $y) (reduce $x))
+                                       ((((𝐒 $x) $y) $z) (reduce (($x $z) ($y $z))))
+                                       ((𝐌 $x) (reduce ($x $x)))
+                                       (((𝐍 $x) $y) (reduce $y))
+                                       (((𝐓 $x) $y) (reduce ($y $x)))
+                                       (((𝐖 $x) $y) (reduce (($x $y) $y)))
+                                       ((((𝐁 $x) $y) $z) (reduce ($x ($y $z))))
+                                       ((((𝐂 $x) $y) $z) (reduce (($x $z) $y)))
+                                       (((𝐔 $x) $y) (reduce ($y (($x $x) $y))))
+                                       ;; Combinatory logic base cases
+                                       (((𝐒 𝐊) 𝐊) 𝐈)
+                                       (((𝐒 𝐈) 𝐈) 𝐌)
+                                       ((𝐊 𝐈) 𝐍)
+                                       (((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) 𝐓)
+                                       (((𝐒 𝐒) 𝐍) 𝐖)
+                                       (((𝐒 (𝐊 𝐒)) 𝐊) 𝐁)
+                                       (((𝐒 (𝐁 𝐁 𝐒)) (𝐊 𝐊)) 𝐂)
+                                       (((𝐁 (𝐒 𝐈)) (𝐒 𝐈 𝐈)) 𝐔)
+                                       ;; Lambda calculus
+                                       (((λ $x $f) $y) (let ($νx $νf) (sealed ($x) ($x $f))
+                                                            (reduce (let $νx $y $νf))))
+                                       ;; Base case
+                                       (($f $g) ($f $g))))
+                                    (reduce ($νf $νg)))))))))))
+
+;; Test reduce
 !(assertEqual
-  (𝐊 𝐈)                                 ; 0
+  (reduce 𝐒)
+  𝐒)
+!(assertEqual
+  (reduce (𝐊 𝐈))                          ; 0
   𝐍)
 !(assertEqual
-  ((𝐒 (𝐊 𝐒)) 𝐊)
+  (reduce (𝐒 𝐒))
+  (𝐒 𝐒))
+!(assertEqual
+  (reduce ((𝐒 (𝐊 𝐒)) 𝐊))
   𝐁)
 !(assertEqual
-  ((𝐒 𝐒) (𝐊 𝐈))
+  (reduce ((𝐒 (𝐊 (𝐒 𝐈))) 𝐊))
+  𝐓)
+!(assertEqual
+  (reduce ((𝐒 𝐒) (𝐊 𝐈)))
   𝐖)
 !(assertEqual
-  ((𝐒 𝐒) 𝐍)
+  (reduce ((𝐒 𝐒) 𝐍))
   𝐖)
 !(assertEqual
-  (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))                    ; Successor
+  (reduce (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)))             ; Successor
   (𝐒 𝐁))
 !(assertEqual
-  ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))            ; 1, as (Successor 0)
+  (reduce ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))     ; 1, as (Successor 0)
   ((𝐒 𝐁) 𝐍))
 !(assertEqual
-  ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))) ; 2, as (Successor (Successor 0))
+  (reduce ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))) ; 2, as (Successor (Successor 0))
   ((𝐒 𝐁) ((𝐒 𝐁) 𝐍)))
 !(assertEqual
-  (((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ; Plus
+  (reduce (𝐓 (𝐒 𝐁))) ; Plus
   (𝐓 (𝐒 𝐁)))
 !(assertEqual
-  (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) (𝐊 𝐈)) (𝐊 𝐈)) ; 0, as (Plus 0 0)
+  (reduce (𝐓 (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)))) ; Plus
+  (𝐓 (𝐒 𝐁)))
+!(assertEqual
+  (reduce (((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)))) ; Plus
+  (𝐓 (𝐒 𝐁)))
+!(assertEqual
+  (reduce ((((𝐒 𝐈) (𝐊 (𝐒 𝐁))) 𝐍) 𝐍))    ; Apparently this is equivalent to (Plus 0 0)
   𝐍)
 !(assertEqual
-  (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
-   ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))) ; 3, as (Plus 1 2)
+  (reduce (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍))            ; 0, as (Plus 0 0)
+  𝐍)
+!(assertEqual
+  (reduce (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) (𝐊 𝐈)) (𝐊 𝐈))) ; 0, as (Plus 0 0)
+  𝐍)
+!(assertEqual
+  (reduce (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
+           ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))))) ; 3, as (Plus 1 2)
   ((𝐒 𝐁) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍))))
+
+;; NEXT: test reduce on lambda terms
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Combinatory logic to λ-calculus ;;
@@ -430,19 +538,15 @@
                         ((($f $g) ((cl2lc $f) (cl2lc $g)))
                          ($_ $term))))))))
 
-;; ;; Test cl2lc
+;; Test cl2lc
 ;; !(assertEqual
-;;   (=α (cl2lc 𝐍) (λ $x (λ $y $y)))
+;;   (=α (cl2lc 𝐍) (λ $x (λ $y $y)))       ; 0
 ;;   True)
-;; !(cl2lc 𝐒)
-;; !(cl2lc 𝐁)
-;; !($f $x)
-
-;; NEXT: get that fixed, see issue
-;; https://github.com/trueagi-io/hyperon-experimental/issues/642
-;;
-;; !(($f $x) ($g $x))
-
+;; !(reduce (cl2lc (𝐒 𝐁)))
+;; !(reduce ((λ $f (λ $head (λ $x7 (($f $x7) ($head $x7))))) (λ $x1 (λ $y (λ $z ($x1 ($y $z)))))))
+;; !(assertEqual
+;;   (=α (cl2lc (𝐒 𝐁)) (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
+;;   True)
 ;; !(λ $f (λ $g (λ $x (($f $x) ($g $x)))))
 ;; !(assertEqual
 ;; !(cl2lc (𝐒 𝐁))
