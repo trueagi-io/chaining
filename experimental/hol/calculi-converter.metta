@@ -375,6 +375,12 @@
   (λ $n (λ $f (λ $x ($f (($n $f) $x))))))
 ;; NEXT: re-enable assertEqual when duplicates are fixed.
 ;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
+!(assertEqual
+  ((λ $n (λ $f (λ $x (($n $x) ($f $x))))) ; 𝐒
+   (λ $y (λ $z (λ $w ($y ($z $w))))))     ; 𝐁
+  (λ $f (λ $x (λ $w ($x (($f $x) $w)))))) ; Successor
+;; NEXT: re-enable assertEqual when duplicates are fixed.
+;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
 ;; !(assertEqual
 !((λ $n (λ $f (λ $x ($f (($n $f) $x)))))
   (λ $f (λ $x $x))) ; 1, successor of 0
@@ -658,7 +664,13 @@
   (=α (cl2lc 𝐍) (λ $f (λ $x $x)))       ; 0
   True)
 !(assertEqual
-  (=α (cl2lc (𝐒 𝐁)) (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
+  (=α (cl2lc (𝐒 𝐁))
+      ((λ $n (λ $f (λ $x (($n $x) ($f $x))))) ; 𝐒
+       (λ $y (λ $z (λ $w ($y ($z $w)))))))    ; 𝐁
+  True)
+!(assertequal
+  (=α (cl2lc (𝐒 𝐁))
+      (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
   True)
 !(assertEqual
   (=α (cl2lc ((𝐒 𝐁) 𝐍))                       ; (Succ 0)
