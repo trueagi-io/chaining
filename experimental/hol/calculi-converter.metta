@@ -732,6 +732,8 @@
                                        ((lc2cl $f (+ 1 $cnt) L) (lc2cl $g (+ 1 $cnt) R)))))))))))
        (trace! (bas-nch (term $term) (cnt $cnt) (dir $dir)) $term)))
 
+;; NEXT: add tests on remaining individual combinators
+
 ;; Test lc2cl
 !(assertEqual
   (lc2cl $f)
