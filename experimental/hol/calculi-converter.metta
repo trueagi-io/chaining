@@ -150,23 +150,6 @@
 !(assertEqual (is-subterm-of A (C (B A))) True)
 !(assertEqual (is-subterm-of A (B (C D))) False)
 
-;; Return True iff the expression is a tuple of variables
-(: all-variables (-> Expression Bool))
-(= (all-variables $x) (if (== $x ())
-                             True
-                             (lazy-and (let $head (car-atom $x) (is-variable $head))
-                                  (let $tail (cdr-atom $x) (all-variables $tail)))))
-
-;; Return True iff the expression is a tuple of unique variables.
-;; Note that it only supports pairs and triples because that is all we
-;; need here.
-(: uniq-vars (-> Expression Bool))
-(= (uniq-vars ($x $y)) (lazy-and (all-variables ($x $y)) (not (== $x $y))))
-(= (uniq-vars ($x $y $z)) (lazy-and (all-variables ($x $y $z))
-                               (lazy-and (not (== $x $y))
-                                    (lazy-and (not (== $y $z))
-                                         (not (== $x $z))))))
-
 ;; Define α-Binding type, that represents a binding from a variable to
 ;; another variable.
 (: α-Binding Type)
