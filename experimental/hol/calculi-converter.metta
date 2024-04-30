@@ -524,7 +524,7 @@
      ((((($c $x) $y) $z) (if (== $c 𝐂) (Just (($x $z) $y)) Nothing))
       ($_ Nothing))))
 
-;; Reduce ((𝐔 $x) $y) ($y (($x $x) $y))
+;; Reduce ((𝐔 $x) $y) to ($y (($x $x) $y))
 (: 𝐔-reduce (-> $a (Maybe $a)))
 (= (𝐔-reduce $term)
    (case $term
