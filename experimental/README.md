@@ -6,6 +6,9 @@
 
 - [common](common): some reusable type and function definitions.
 
+- [converters](converters): functions to convert rule formats, such as
+  curried to uncurried, dependent types to functional.
+
 - [curried-chaining](curried-chaining): backward and forward chaining
   experiments using curried rules.
 
