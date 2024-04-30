@@ -626,7 +626,7 @@
                                                   ;; Abstraction
                                                   ((λ $x $f) (λ $x (reduce $f)))))))))))))))))))
 
-Test reduce on combinatory logic
+;; Test reduce on combinatory logic
 !(assertEqual
   (reduce 𝐒)
   𝐒)
@@ -688,13 +688,13 @@ Test reduce on combinatory logic
   (reduce $x)
   $x)
 !(assertEqual
-  !(reduce ($x $x))  ==> I  ; NEXT: debug
-($x $x))
+  (reduce ($x $x))
+  ($x $x))
 !(assertEqual
-  !(reduce ($f $x))                ; NEXT: debug
+  (reduce ($f $x))
   ($f $x))
 !(assertEqual
-  !(reduce (λ $x ($f $x)))
+  (reduce (λ $x ($f $x)))
   (λ $x ($f $x)))
 !(assertEqual
   (reduce ((λ $x $x) $y))
@@ -709,10 +709,22 @@ Test reduce on combinatory logic
   (reduce (λ $f (λ $x $x)))                       ; 0
   (λ $f (λ $x $x)))
 !(assertEqual
-  !(reduce (λ $f (λ $x ($f $x))))                  ; 1
+  (reduce (λ $f (λ $x ($f $x))))                  ; 1
   (λ $f (λ $x ($f $x))))
 !(assertEqual
-  (reduce (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
+  !(reduce (($n $f) $x)) ; Successor subsubsubsubterm
+  (($n $f) $x))
+!(assertEqual
+  !(reduce ($f (($n $f) $x))) ; Successor subsubsubterm
+  ($f (($n $f) $x)))
+!(assertEqual
+  !(reduce (λ $x ($f (($n $f) $x)))) ; Successor subsubterm
+  (λ $x ($f (($n $f) $x))))
+!(assertEqual
+  !(reduce (λ $f (λ $x ($f (($n $f) $x))))) ; Successor subterm
+  (λ $f (λ $x ($f (($n $f) $x)))))
+!(assertEqual
+  !(reduce (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
   (λ $n (λ $f (λ $x ($f (($n $f) $x))))))
 ;; NEXT: re-enable assertEqual when duplicates are fixed.
 ;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
@@ -771,7 +783,6 @@ Test reduce on combinatory logic
                          ($_ $term))))))))
 
 ;; Test cl2lc
-;; NEXT: make sure that spontaneous reduction is not impoverishing the comparison.
 !(assertEqual
   (=α (cl2lc 𝐍) (λ $f (λ $x $x)))       ; 0
   True)
@@ -781,25 +792,25 @@ Test reduce on combinatory logic
        (λ $y (λ $z (λ $w ($y ($z $w)))))))    ; 𝐁
   True)
 !(assertequal
-  (=α (cl2lc (𝐒 𝐁))
+  (=α (reduce (cl2lc (𝐒 𝐁)))
       (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
   True)
 !(assertEqual
-  (=α (cl2lc ((𝐒 𝐁) 𝐍))                       ; (Succ 0)
-      ((λ $n (λ $f (λ $x ($f (($n $f) $x))))) ; Successor
-       (λ $f (λ $x $x))))                     ; 0
+  (=α (reduce (cl2lc ((𝐒 𝐁) 𝐍)))                      ; (Succ 0)
+      (reduce ((λ $n (λ $f (λ $x ($f (($n $f) $x)))))  ; Successor
+               (λ $f (λ $x $x)))))                     ; 0
   True)
 !(assertEqual
-  (=α (cl2lc ((𝐒 𝐁) 𝐍))                 ; (Succ 0)
+  (=α (reduce (cl2lc ((𝐒 𝐁) 𝐍)))       ; (Succ 0)
       (λ $f (λ $x ($f $x))))            ; 1, as (Succ 0)
   True)
 !(assertEqual
-  (=α (cl2lc (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍))          ; (Plus 0 0)
-      (λ $f (λ $x $x)))                  ; 0
+  (=α (reduce (cl2lc (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍)))  ; (Plus 0 0)
+      (λ $f (λ $x $x)))                     ; 0
   True)
 !(assertEqual
-  (=α (cl2lc (((𝐓 (𝐒 𝐁)) ((𝐒 𝐁) 𝐍)) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍)))) ; (Plus 1 2)
-      (λ $f (λ $x ($f ($f ($f $x))))))                  ; 3
+  (=α (reduce (cl2lc (((𝐓 (𝐒 𝐁)) ((𝐒 𝐁) 𝐍)) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍))))) ; (Plus 1 2)
+      (λ $f (λ $x ($f ($f ($f $x))))))                              ; 3
   True)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -893,7 +904,7 @@ Test lc2cl
   (lc2cl (λ $x $x) 0 C)
   𝐈)
 !(assertEqual
-!(lc2cl (λ $x (λ $y $x)) 0 C)
+  (lc2cl (λ $x (λ $y $x)) 0 C)
   𝐊)
 !(assertEqual
   (lc2cl (λ $f (λ $g (λ $x (($f $x) ($g $x))))))
@@ -926,7 +937,6 @@ Test lc2cl
            (λ $f (λ $x $x)))                                  ; 0
           (λ $f (λ $x $x))))                                  ; 0
   (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍))
-  True)
 !(assertEqual
   (lc2cl (((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
            (λ $f (λ $x ($f $x))))                             ; 1
