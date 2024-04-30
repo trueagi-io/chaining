@@ -465,7 +465,7 @@
 (: 𝐈-reduce (-> $a (Maybe $a)))
 (= (𝐈-reduce $term)
    (case $term
-     ((($i $x) (if (== $i 𝐈) (Just $y) Nothing))
+     ((($i $x) (if (== $i 𝐈) (Just $x) Nothing))
       ($_ Nothing))))
 
 ;; Reduce ((𝐊 $x) $y) to $x
