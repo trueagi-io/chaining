@@ -1,4 +1,4 @@
-# hyperon-chaining
+# Chaining MeTTa Module
 
 MeTTa module that should eventually contain various flavors of
 backward and forward chaining, as well as converters between these
