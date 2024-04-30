@@ -150,23 +150,6 @@
 !(assertEqual (is-subterm-of A (C (B A))) True)
 !(assertEqual (is-subterm-of A (B (C D))) False)
 
-;; Return True iff the expression is a tuple of variables
-(: all-variables (-> Expression Bool))
-(= (all-variables $x) (if (== $x ())
-                             True
-                             (lazy-and (let $head (car-atom $x) (is-variable $head))
-                                  (let $tail (cdr-atom $x) (all-variables $tail)))))
-
-;; Return True iff the expression is a tuple of unique variables.
-;; Note that it only supports pairs and triples because that is all we
-;; need here.
-(: uniq-vars (-> Expression Bool))
-(= (uniq-vars ($x $y)) (lazy-and (all-variables ($x $y)) (not (== $x $y))))
-(= (uniq-vars ($x $y $z)) (lazy-and (all-variables ($x $y $z))
-                               (lazy-and (not (== $x $y))
-                                    (lazy-and (not (== $y $z))
-                                         (not (== $x $z))))))
-
 ;; Define α-Binding type, that represents a binding from a variable to
 ;; another variable.
 (: α-Binding Type)
@@ -340,66 +323,435 @@
 ;; Reduction rules ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; ;; Reduce lambda application
+;; Due to double-sided matching, combinatory logic and lambda calculus
+;; reduction rules cannot be emulated that easily.  Instead a reduce
+;; function is implemented instead.
+
+;; Reduce lambda application
+;; (: λ (-> Variable $a (-> $b $c))) ; Problemantic for =α (no idea why)
+;; (: λ (-> Variable Atom Atom)) ; Problematic for reduction
 ;; (= ((λ $x $f) $y) (let ($νx $νf) (sealed ($x) ($x $f)) (let $νx $y $νf)))
 
 ;; ;; Test lambda calculus reduction
-;; !(((λ $f378 (λ $g379 (λ $x380 (($f378 $x380) ($g379 $x380))))) (((λ $f448 (λ $g449 (λ $x450 (($f448 $x450) ($g449 $x450))))) ((λ $x470 (λ $y471 $x470)) (λ $f482 (λ $g483 (λ $x484 (($f482 $x484) ($g483 $x484))))))) (((λ $f543 (λ $g544 (λ $x545 (($f543 $x545) ($g544 $x545))))) ((λ $x564 (λ $y565 $x564)) (λ $x570 (λ $y571 $x570)))) (λ $x579 $x579)))) ((λ $x604 (λ $y605 $x604)) (λ $x610 $x610)))
-;; ;; Should reduce to (λ $f (λ $x ($f $x)))
+;; !(assertEqual
+;;   $x
+;;   $x)
+;; !(assertEqual
+;;   ($f $x)
+;;   ($f $x))
+;; !(assertEqual
+;;   (λ $x ($f $x))
+;;   (λ $x ($f $x)))
+;; !(assertEqual
+;;   ((λ $x $x) $y)
+;;   $y)
+;; !(assertEqual
+;;   ((λ $x $x) (λ $x $x))
+;;   (λ $x $x))
+;; !(assertEqual
+;;   ((λ $f (λ $x $x)) $g)
+;;   (λ $x $x))
+;; !(assertEqual
+;;   (λ $f (λ $x $x))                       ; 0
+;;   (λ $f (λ $x $x)))
+;; !(assertEqual
+;;   (λ $f (λ $x ($f $x)))                  ; 1
+;;   (λ $f (λ $x ($f $x))))
+;; !(assertEqual
+;;   (λ $n (λ $f (λ $x ($f (($n $f) $x))))) ; Successor
+;;   (λ $n (λ $f (λ $x ($f (($n $f) $x))))))
+;; ;; NEXT: re-enable assertEqual when duplicates are fixed.
+;; ;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
+;; !(assertEqual
+;;   ((λ $n (λ $f (λ $x (($n $x) ($f $x))))) ; 𝐒
+;;    (λ $y (λ $z (λ $w ($y ($z $w))))))     ; 𝐁
+;;   (λ $f (λ $x (λ $w ($x (($f $x) $w)))))) ; Successor
+;; ;; NEXT: re-enable assertEqual when duplicates are fixed.
+;; ;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
+;; ;; !(assertEqual
+;; !((λ $n (λ $f (λ $x ($f (($n $f) $x)))))
+;;   (λ $f (λ $x $x))) ; 1, successor of 0
+;; ;; (λ $f (λ $x ($f $x))))
+;; ;; !(assertEqual
+;; !((λ $n (λ $f (λ $x ($f (($n $f) $x)))))  ; Successor
+;;   ((λ $n (λ $f (λ $x ($f (($n $f) $x))))) ; Successor
+;;    (λ $f (λ $x $x))))                     ; 0
+;; ;; (λ $f (λ $x ($f ($f $x)))))            ; 2, the result of (Succ (Succ 0))
+;; !(assertEqual
+;;   (λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+;;   (λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))))
+;; ;; NEXT: re-enable assertEqual when duplicates are fixed.
+;; ;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
+;; ;; !(assertEqual
+;;  !((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+;;    (λ $f (λ $x $x)))                                  ; 0
+;;   ;; (λ $n (λ $f (λ $x (($n $f) $x)))))  ; (Plus 0)
+;; ;; !(assertEqual
+;;   !(((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+;;     (λ $f (λ $x $x)))                                  ; 0
+;;    (λ $f (λ $x $x)))                                   ; 0
+;; ;;   (λ $f (λ $x $x)))  ; 0, the result of (Plus 0 0)
+;; ;; !(assertEqual
+;;  !(((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+;;     (λ $f (λ $x ($f $x))))                             ; 1
+;;    (λ $f (λ $x ($f ($f $x)))))                         ; 2
+;; ;;   (λ $f (λ $x ($f ($f ($f $x))))))  ; 3, the result of (Plus 1 2)
 
 ;; Reduction rules for combinatory logic.  In the process, we
 ;; introduce combinators 𝐌, 𝐍, 𝐓, 𝐖, 𝐁, 𝐂 and 𝐔.
-(= (𝐈 $x) $x)
-(= ((𝐊 $x) $y) $x)
-(= (((𝐒 $x) $y) $z) (($x $z) ($y $z)))
-(= (𝐌 $x) ($x $x))
-(= ((𝐍 $x) $y) $y)
-(= ((𝐓 $x) $y) ($y $x))
-(= ((𝐖 $x) $y) (($x $y) $y))
-(= (((𝐁 $x) $y) $z) ($x ($y $z)))
-(= (((𝐂 $x) $y) $z) (($x $z) $y))
-(= ((𝐔 $x) $y) ($y (($x $x) $y)))
-(= ((𝐒 𝐊) 𝐊) 𝐈)
-(= ((𝐒 𝐈) 𝐈) 𝐌)
-(= (𝐊 𝐈) 𝐍)
-(= ((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) 𝐓)
-(= ((𝐒 𝐒) 𝐍) 𝐖)
-(= ((𝐒 (𝐊 𝐒)) 𝐊) 𝐁)
-(= ((𝐒 (𝐁 𝐁 𝐒)) (𝐊 𝐊)) 𝐂)
-(= ((𝐁 (𝐒 𝐈)) (𝐒 𝐈 𝐈)) 𝐔)
+;; (= (𝐈 $x) $x)
+;; (= ((𝐊 $x) $y) $x)
+;; (= (((𝐒 $x) $y) $z) (($x $z) ($y $z)))
+;; (= (𝐌 $x) ($x $x))
+;; (= ((𝐍 $x) $y) $y)
+;; (= ((𝐓 $x) $y) ($y $x))
+;; (= ((𝐖 $x) $y) (($x $y) $y))
+;; (= (((𝐁 $x) $y) $z) ($x ($y $z)))
+;; (= (((𝐂 $x) $y) $z) (($x $z) $y))
+;; (= ((𝐔 $x) $y) ($y (($x $x) $y)))
+;; (= ((𝐒 𝐊) 𝐊) 𝐈)
+;; (= ((𝐒 (𝐊 𝐊)) 𝐈) 𝐊)
+;; (= ((𝐒 𝐈) 𝐈) 𝐌)
+;; (= (𝐊 𝐈) 𝐍)
+;; (= ((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) 𝐓)
+;; (= ((𝐒 𝐒) 𝐍) 𝐖)
+;; (= ((𝐒 (𝐊 𝐒)) 𝐊) 𝐁)
+;; (= ((𝐒 (𝐁 𝐁 𝐒)) (𝐊 𝐊)) 𝐂)
+;; (= ((𝐁 (𝐒 𝐈)) (𝐒 𝐈 𝐈)) 𝐔)
 
-;; Test combinatory logic reduction
+;; ;; Test combinatory logic reduction
+;; !(assertEqual
+;;   (𝐊 𝐈)                                 ; 0
+;;   𝐍)
+;; !(assertEqual
+;;   ((𝐒 (𝐊 𝐊)) 𝐈)
+;;   𝐊)
+;; !(assertEqual
+;;   ((𝐒 (𝐊 𝐒)) 𝐊)
+;;   𝐁)
+;; !(assertEqual
+;;   ((𝐒 𝐒) (𝐊 𝐈))
+;;   𝐖)
+;; !(assertEqual
+;;   ((𝐒 𝐒) 𝐍)
+;;   𝐖)
+;; !(assertEqual
+;;   (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))                    ; Successor
+;;   (𝐒 𝐁))
+;; !(assertEqual
+;;   ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))            ; 1, as (Successor 0)
+;;   ((𝐒 𝐁) 𝐍))
+;; !(assertEqual
+;;   ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))) ; 2, as (Successor (Successor 0))
+;;   ((𝐒 𝐁) ((𝐒 𝐁) 𝐍)))
+;; !(assertEqual
+;;   (((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ; Plus
+;;   (𝐓 (𝐒 𝐁)))
+;; !(assertEqual
+;;   ((((𝐒 𝐈) (𝐊 (𝐒 𝐁))) 𝐍) 𝐍)             ; Apparently this is equivalent to (Plus 0 0)
+;;   𝐍)
+;; !(assertEqual
+;;   (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍)
+;;   𝐍)
+;; !(assertEqual
+;;   (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) (𝐊 𝐈)) (𝐊 𝐈)) ; 0, as (Plus 0 0)
+;;   𝐍)
+;; !(assertEqual
+;;   (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
+;;    ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))) ; 3, as (Plus 1 2)
+;;   ((𝐒 𝐁) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍))))
+
+;; Reduce (𝐈 $x) to $x
+(: 𝐈-reduce (-> $a (Maybe $a)))
+(= (𝐈-reduce $term)
+   (case $term
+     ((($i $x) (if (== $i 𝐈) (Just $x) Nothing))
+      ($_ Nothing))))
+
+;; Reduce ((𝐊 $x) $y) to $x
+(: 𝐊-reduce (-> $a (Maybe $a)))
+(= (𝐊-reduce $term)
+   (case $term
+     (((($k $x) $y) (if (== $k 𝐊) (Just $x) Nothing))
+      ($_ Nothing))))
+
+;; Reduce (((𝐒 $x) $y) $z) to (($x $z) ($y $z))
+(: 𝐒-reduce (-> $a (Maybe $a)))
+(= (𝐒-reduce $term)
+   (case $term
+     ((((($s $x) $y) $z) (if (== $s 𝐒) (Just (($x $z) ($y $z))) Nothing))
+      ($_ Nothing))))
+
+;; Reduce (𝐌 $x) to ($x $x)
+(: 𝐌-reduce (-> $a (Maybe $a)))
+(= (𝐌-reduce $term)
+   (case $term
+     ((($m $x) (if (== $m 𝐌) (Just ($x $x)) Nothing))
+      ($_ Nothing))))
+
+;; Reduce ((𝐍 $x) $y) to $y
+(: 𝐍-reduce (-> $a (Maybe $a)))
+(= (𝐍-reduce $term)
+   (case $term
+     (((($n $x) $y) (if (== $n 𝐍) (Just $y) Nothing))
+      ($_ Nothing))))
+
+;; Reduce ((𝐓 $x) $y) to ($y $x)
+(: 𝐓-reduce (-> $a (Maybe $a)))
+(= (𝐓-reduce $term)
+   (case $term
+     (((($t $x) $y) (if (== $t 𝐓) (Just ($y $x)) Nothing))
+      ($_ Nothing))))
+
+;; Reduce ((𝐖 $x) $y) to (($x $y) $y)
+(: 𝐖-reduce (-> $a (Maybe $a)))
+(= (𝐖-reduce $term)
+   (case $term
+     (((($w $x) $y) (if (== $w 𝐖) (Just (($x $y) $y)) Nothing))
+      ($_ Nothing))))
+
+;; Reduce (((𝐁 $x) $y) $z) to ($x ($y $z))
+(: 𝐁-reduce (-> $a (Maybe $a)))
+(= (𝐁-reduce $term)
+   (case $term
+     ((((($b $x) $y) $z) (if (== $b 𝐁) (Just ($x ($y $z))) Nothing))
+      ($_ Nothing))))
+
+;; Reduce (((𝐂 $x) $y) $z) to (($x $z) $y)
+(: 𝐂-reduce (-> $a (Maybe $a)))
+(= (𝐂-reduce $term)
+   (case $term
+     ((((($c $x) $y) $z) (if (== $c 𝐂) (Just (($x $z) $y)) Nothing))
+      ($_ Nothing))))
+
+;; Reduce ((𝐔 $x) $y) to ($y (($x $x) $y))
+(: 𝐔-reduce (-> $a (Maybe $a)))
+(= (𝐔-reduce $term)
+   (case $term
+     (((($u $x) $y) (if (== $u 𝐔) (Just ($y (($x $x) $y))) Nothing))
+      ($_ Nothing))))
+
+;; Reduce ((λ $x $y) $z) to (let ($νx $νy) (sealed ($x) ($x $y)) (reduce (let $νx $z $νy)))
+(: β-reduce (-> $a (Maybe $a)))
+(= (β-reduce $term)
+   (case $term
+     (((($l $x $y) $z) (if (== $l λ) (Just (let ($νx $νy) (sealed ($x) ($x $y))
+                                                (let $νx $z $νy))) Nothing))
+      ($_ Nothing))))
+
+;; Explicit reduction of combinatory logic and lambda calculus terms
+;; to work around the lack of one-sided matching in reduction
+(: reduce (-> $a $a))
+(= (reduce $term)
+   (case (get-metatype $term)
+     ((Symbol $term)
+      (Grounded $term)
+      (Variable $term)
+      (Expression
+       ;; Base cases
+       (if (== $term ())
+           ()
+           (if (== $term ((𝐒 𝐊) 𝐊))
+               𝐈
+               (if (== $term ((𝐒 (𝐊 𝐊)) 𝐈))
+                   𝐊
+                   (if (== $term ((𝐒 𝐈) 𝐈))
+                       𝐌
+                       (if (== $term (𝐊 𝐈))
+                           𝐍
+                           (if (== $term ((𝐒 (𝐊 (𝐒 𝐈))) 𝐊))
+                               𝐓
+                               (if (== $term ((𝐒 𝐒) 𝐍))
+                                   𝐖
+                                   (if (== $term ((𝐒 (𝐊 𝐒)) 𝐊))
+                                       𝐁
+                                       (if (== $term ((𝐒 (𝐁 𝐁 𝐒)) (𝐊 𝐊)))
+                                           𝐂
+                                           (if (== $term ((𝐁 (𝐒 𝐈)) (𝐒 𝐈 𝐈)))
+                                               𝐔
+                                               ;; Recursive steps
+                                               (case $term
+                                                 ;; Application
+                                                 ((($f $g) (let* (($νf (reduce $f))
+                                                                  ($νg (reduce $g)))
+                                                             (if (and (== $νf $f) (== $νg $g))
+                                                                 ;; $f and $g are already reduced,
+                                                                 ;; try to match them to an known reduction rule
+                                                                 (case (𝐈-reduce $term)
+                                                                   (((Just $r) $r)
+                                                                    (Nothing
+                                                                     (case (𝐊-reduce $term)
+                                                                       (((Just $r) $r)
+                                                                        (Nothing
+                                                                         (case (𝐒-reduce $term)
+                                                                           (((Just $r) (reduce $r))
+                                                                            (Nothing
+                                                                             (case (𝐌-reduce $term)
+                                                                               (((Just $r) (reduce $r))
+                                                                                (Nothing
+                                                                                 (case (𝐍-reduce $term)
+                                                                                   (((Just $r) $r)
+                                                                                    (Nothing
+                                                                                     (case (𝐓-reduce $term)
+                                                                                       (((Just $r) (reduce $r))
+                                                                                        (Nothing
+                                                                                         (case (𝐖-reduce $term)
+                                                                                           (((Just $r) (reduce $r))
+                                                                                            (Nothing
+                                                                                             (case (𝐁-reduce $term)
+                                                                                               (((Just $r) (reduce $r))
+                                                                                                (Nothing
+                                                                                                 (case (𝐂-reduce $term)
+                                                                                                   (((Just $r) (reduce $r))
+                                                                                                    (Nothing
+                                                                                                     (case (𝐔-reduce $term)
+                                                                                                       (((Just $r) (reduce $r))
+                                                                                                        (Nothing
+                                                                                                         (case (β-reduce $term)
+                                                                                                           (((Just $r) (reduce $r))
+                                                                                                            ;; No known reduction rule,
+                                                                                                            ;; Return as it is
+                                                                                                            (Nothing ($f $g))))
+                                                                                                         )))
+                                                                                                     )))
+                                                                                                 )))
+                                                                                             )))
+                                                                                         )))
+                                                                                     )))
+                                                                                 )))
+                                                                             )))
+                                                                         )))
+                                                                     )))
+                                                                 (reduce ($νf $νg)))))
+                                                  ;; Abstraction
+                                                  ((λ $x $f) (λ $x (reduce $f)))))))))))))))))))
+
+;; Test reduce on combinatory logic
 !(assertEqual
-  (𝐊 𝐈)                                 ; 0
+  (reduce 𝐒)
+  𝐒)
+!(assertEqual
+  (reduce ((𝐒 (𝐊 𝐊)) 𝐈))
+  𝐊)
+!(assertEqual
+  (reduce (𝐊 𝐈))                          ; 0
   𝐍)
 !(assertEqual
-  ((𝐒 (𝐊 𝐒)) 𝐊)
+  (reduce (𝐒 𝐒))
+  (𝐒 𝐒))
+!(assertEqual
+  (reduce ((𝐒 (𝐊 𝐒)) 𝐊))
   𝐁)
 !(assertEqual
-  ((𝐒 𝐒) (𝐊 𝐈))
+  (reduce ((𝐒 (𝐊 (𝐒 𝐈))) 𝐊))
+  𝐓)
+!(assertEqual
+  (reduce ((𝐒 𝐒) (𝐊 𝐈)))
   𝐖)
 !(assertEqual
-  ((𝐒 𝐒) 𝐍)
+  (reduce ((𝐒 𝐒) 𝐍))
   𝐖)
 !(assertEqual
-  (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))                    ; Successor
+  (reduce (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)))             ; Successor
   (𝐒 𝐁))
 !(assertEqual
-  ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))            ; 1, as (Successor 0)
+  (reduce ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))     ; 1, as (Successor 0)
   ((𝐒 𝐁) 𝐍))
 !(assertEqual
-  ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))) ; 2, as (Successor (Successor 0))
+  (reduce ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))) ; 2, as (Successor (Successor 0))
   ((𝐒 𝐁) ((𝐒 𝐁) 𝐍)))
 !(assertEqual
-  (((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ; Plus
+  (reduce (𝐓 (𝐒 𝐁))) ; Plus
   (𝐓 (𝐒 𝐁)))
 !(assertEqual
-  (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) (𝐊 𝐈)) (𝐊 𝐈)) ; 0, as (Plus 0 0)
+  (reduce (𝐓 (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)))) ; Plus
+  (𝐓 (𝐒 𝐁)))
+!(assertEqual
+  (reduce (((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)))) ; Plus
+  (𝐓 (𝐒 𝐁)))
+!(assertEqual
+  (reduce ((((𝐒 𝐈) (𝐊 (𝐒 𝐁))) 𝐍) 𝐍))    ; Apparently this is equivalent to (Plus 0 0)
   𝐍)
 !(assertEqual
-  (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
-   ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))) ; 3, as (Plus 1 2)
+  (reduce (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍))            ; 0, as (Plus 0 0)
+  𝐍)
+!(assertEqual
+  (reduce (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) (𝐊 𝐈)) (𝐊 𝐈))) ; 0, as (Plus 0 0)
+  𝐍)
+!(assertEqual
+  (reduce (((((𝐒 (𝐊 (𝐒 𝐈))) 𝐊) (𝐒 ((𝐒 (𝐊 𝐒)) 𝐊))) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
+           ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) ((𝐒 ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈))))) ; 3, as (Plus 1 2)
   ((𝐒 𝐁) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍))))
+
+;; Test reduce on lambda calculus
+!(assertEqual
+  (reduce $x)
+  $x)
+!(assertEqual
+  (reduce ($x $x))
+  ($x $x))
+!(assertEqual
+  (reduce ($f $x))
+  ($f $x))
+!(assertEqual
+  (reduce (λ $x ($f $x)))
+  (λ $x ($f $x)))
+!(assertEqual
+  (reduce ((λ $x $x) $y))
+  $y)
+!(assertEqual
+  (reduce ((λ $x $x) (λ $x $x)))
+  (λ $x $x))
+!(assertEqual
+  (reduce ((λ $f (λ $x $x)) $g))
+  (λ $x $x))
+!(assertEqual
+  (reduce (λ $f (λ $x $x)))                       ; 0
+  (λ $f (λ $x $x)))
+!(assertEqual
+  (reduce (λ $f (λ $x ($f $x))))                  ; 1
+  (λ $f (λ $x ($f $x))))
+!(assertEqual
+  !(reduce (($n $f) $x)) ; Successor subsubsubsubterm
+  (($n $f) $x))
+!(assertEqual
+  !(reduce ($f (($n $f) $x))) ; Successor subsubsubterm
+  ($f (($n $f) $x)))
+!(assertEqual
+  !(reduce (λ $x ($f (($n $f) $x)))) ; Successor subsubterm
+  (λ $x ($f (($n $f) $x))))
+!(assertEqual
+  !(reduce (λ $f (λ $x ($f (($n $f) $x))))) ; Successor subterm
+  (λ $f (λ $x ($f (($n $f) $x)))))
+!(assertEqual
+  !(reduce (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
+  (λ $n (λ $f (λ $x ($f (($n $f) $x))))))
+;; NEXT: re-enable assertEqual when duplicates are fixed.
+;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
+;; !(assertEqual
+!(reduce ((λ $n (λ $f (λ $x ($f (($n $f) $x)))))
+          (λ $f (λ $x $x)))) ; 1, successor of 0
+;; (λ $f (λ $x ($f $x))))
+;; !(assertEqual
+!(reduce ((λ $n (λ $f (λ $x ($f (($n $f) $x)))))  ; Successor
+          ((λ $n (λ $f (λ $x ($f (($n $f) $x))))) ; Successor
+           (λ $f (λ $x $x)))))                    ; 0
+;; (λ $f (λ $x ($f ($f $x)))))  ; 2, the result of (Succ (Succ 0))
+!(assertEqual
+  (reduce (λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x))))))) ; Plus
+  (λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))))
+;; NEXT: re-enable assertEqual when duplicates are fixed.
+;; See issue https://github.com/trueagi-io/hyperon-experimental/issues/235
+!(assertEqual
+  (reduce (((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+            (λ $f (λ $x $x)))                                  ; 0
+           (λ $f (λ $x $x))))                                  ; 0
+  (λ $f (λ $x $x)))  ; 0, the result of (Plus 0 0)
+!(assertEqual
+  (reduce (((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+            (λ $f (λ $x ($f $x))))                             ; 1
+           (λ $f (λ $x ($f ($f $x))))))                        ; 2
+  (λ $f (λ $x ($f ($f ($f $x))))))  ; 3, the result of (Plus 1 2)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Combinatory logic to λ-calculus ;;
@@ -430,57 +782,36 @@
                         ((($f $g) ((cl2lc $f) (cl2lc $g)))
                          ($_ $term))))))))
 
-;; ;; Test cl2lc
-;; !(assertEqual
-;;   (=α (cl2lc 𝐍) (λ $x (λ $y $y)))
-;;   True)
-;; !(cl2lc 𝐒)
-;; !(cl2lc 𝐁)
-;; !($f $x)
-
-;; NEXT: get that fixed, see issue
-;; https://github.com/trueagi-io/hyperon-experimental/issues/642
-;;
-;; !(($f $x) ($g $x))
-
-;; !(λ $f (λ $g (λ $x (($f $x) ($g $x)))))
-;; !(assertEqual
-;; !(cl2lc (𝐒 𝐁))
-;; !(=α (cl2lc (𝐒 𝐁)) (λ $n (λ $f (λ $x ($f (($n $f) $x))))))
-;; ;; Convert (𝐊 𝐈) to (λ $f (λ $x $x)) (zero in lambda calculus)
-;; ;;
-;; ;; TODO: re-enable assertEqual when it will support alpha-equivalence.
-;; ;; Maybe we should introduce something like assertAlphaEqual.
-;; ;;
-;; ;; !(assertEqual
-;;   ;; !(cl2lc (𝐊 𝐈))
-;;   ;; (λ $f (λ $x $x)))
-
-;; ;; Convert ((𝐒 𝐈) 𝐈) to (λ $x ($x $x)) (M, the Mockingbird combinator)
-;; ;; !(cl2lc ((𝐒 𝐈) 𝐈))
-
-;; ;; Disabled because it does not half, as it should
-;; ;; Convert (𝐌 𝐌) (reduction should not halt)
-;; ;; !(cl2lc (𝐌 𝐌))
-
-;; ;; Convert (𝐒 𝐈) to
-;; ;; !(cl2lc (𝐒 𝐈))
-
-;; ;; NEXT: find out if the following is correct
-
-;; ;; Convert ((𝐒 (𝐊 𝐒)) 𝐊) to
-;; ;; (λ $n (λ $f (λ $x ($f (($n $f) $x))))) (successor in lambda calculus)
-;; ;; !(cl2lc ((𝐒 (𝐊 𝐒)) 𝐊))
-
-;; ;; Convert 1 to lambda calculus
-;; ;; !(cl2lc ((((𝐒 (𝐊 𝐒)) 𝐊) ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
-
-;; ;; Convert 2 to lambda calculus
-;; ;; !(cl2lc ((((𝐒 (𝐊 𝐒)) 𝐊) ((𝐒 (𝐊 𝐒)) 𝐊)) (𝐊 𝐈)))
-
-;; ;; From (lc2cl (λ $f (λ $x ($f $x)))), corresponding to 1
-;; ;; !(cl2lc ((𝐒 ((𝐒 (𝐊 𝐒)) ((𝐒 (𝐊 𝐊)) 𝐈))) (𝐊 𝐈)))
-;; ;; (((λ $f378 (λ $g379 (λ $x380 (($f378 $x380) ($g379 $x380))))) (((λ $f448 (λ $g449 (λ $x450 (($f448 $x450) ($g449 $x450))))) ((λ $x470 (λ $y471 $x470)) (λ $f482 (λ $g483 (λ $x484 (($f482 $x484) ($g483 $x484))))))) (((λ $f543 (λ $g544 (λ $x545 (($f543 $x545) ($g544 $x545))))) ((λ $x564 (λ $y565 $x564)) (λ $x570 (λ $y571 $x570)))) (λ $x579 $x579)))) ((λ $x604 (λ $y605 $x604)) (λ $x610 $x610)))
+;; Test cl2lc
+!(assertEqual
+  (=α (cl2lc 𝐍) (λ $f (λ $x $x)))       ; 0
+  True)
+!(assertEqual
+  (=α (cl2lc (𝐒 𝐁))
+      ((λ $n (λ $f (λ $x (($n $x) ($f $x))))) ; 𝐒
+       (λ $y (λ $z (λ $w ($y ($z $w)))))))    ; 𝐁
+  True)
+!(assertequal
+  (=α (reduce (cl2lc (𝐒 𝐁)))
+      (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
+  True)
+!(assertEqual
+  (=α (reduce (cl2lc ((𝐒 𝐁) 𝐍)))                      ; (Succ 0)
+      (reduce ((λ $n (λ $f (λ $x ($f (($n $f) $x)))))  ; Successor
+               (λ $f (λ $x $x)))))                     ; 0
+  True)
+!(assertEqual
+  (=α (reduce (cl2lc ((𝐒 𝐁) 𝐍)))       ; (Succ 0)
+      (λ $f (λ $x ($f $x))))            ; 1, as (Succ 0)
+  True)
+!(assertEqual
+  (=α (reduce (cl2lc (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍)))  ; (Plus 0 0)
+      (λ $f (λ $x $x)))                     ; 0
+  True)
+!(assertEqual
+  (=α (reduce (cl2lc (((𝐓 (𝐒 𝐁)) ((𝐒 𝐁) 𝐍)) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍))))) ; (Plus 1 2)
+      (λ $f (λ $x ($f ($f ($f $x))))))                              ; 3
+  True)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; λ-calculus to combinatory logic ;;
@@ -490,105 +821,127 @@
 (: lc2cl (-> Atom Number Atom Atom))
 (= (lc2cl $term $cnt $dir)
    (if (is-expression $term)
-       ;; Base cases
        (if (== $term ())
+           ;; Base cases
            (trace! (bas-∅ (term $term) (cnt $cnt) (dir $dir)) ())
-           ;; NEXT: try to get rid of as many base cases as possible
-           (if (=α $term (λ $x $x))
-               (trace! (bas-I (term $term) (cnt $cnt) (dir $dir)) 𝐈)
-               (if (=α $term (λ $x (λ $y $x)))
-                   (trace! (bas-K (term $term) (cnt $cnt) (dir $dir)) 𝐊)
-                   (if (=α $term (λ $f (λ $g (λ $x (($f $x) ($g $x))))))
-                       (trace! (bas-S (term $term) (cnt $cnt) (dir $dir)) 𝐒)
-                       (if (=α $term (λ $x ($x $x)))
-                           (trace! (bas-M (term $term) (cnt $cnt) (dir $dir)) 𝐌)
-                           ;; Recursive steps
-                           (case $term
-                             (((λ $x $f)
-                               (if (is-variable $x)
-                                   (let $clf (lc2cl $f (+ 1 $cnt) λC)
-                                     (if (is-subterm-of $x $f)
-                                         ; Build 𝐒
-                                         (trace! (rec-S (term $term) (clf $clf) (cnt $cnt) (dir $dir))
-                                         (if (is-expression $clf)
-                                             (case $clf
-                                               ((($g $h) ((𝐒 (lc2cl (λ $x $g) (+ 2 $cnt) λL))
-                                                          (lc2cl (λ $x $h) (+ 2 $cnt) λR)))
+           ;; Recursive steps
+           (case $term
+             (((λ $x $f)
+               (if (is-variable $x)
+                   (if (== $f $x)
+                       ;; Base case
+                       (trace! (bas-I (term $term) (cnt $cnt) (dir $dir)) 𝐈)
+                       ;; Recursive steps
+                       (let $clf (lc2cl $f (+ 1 $cnt) λC)
+                         (if (is-subterm-of $x $f)
+                             ; Build 𝐒
+                             (trace! (rec-S (term $term) (clf $clf) (cnt $cnt) (dir $dir))
+                                     (if (is-expression $clf)
+                                         (case $clf
+                                           ((($g $h) ((𝐒 (lc2cl (λ $x $g) (+ 2 $cnt) λL))
+                                                      (lc2cl (λ $x $h) (+ 2 $cnt) λR)))
                                                 ($_ (empty))))
-                                             $clf))
-                                         ; Build 𝐊
-                                         (trace! (rec-K (term $term) (clf $clf) (cnt $cnt) (dir $dir))
-                                         (𝐊 $clf))))
-                                   (empty)))
-                              (($f $g) (trace! (rec-app (term $term) (cnt $cnt) (dir $dir))
-                                       ((lc2cl $f (+ 1 $cnt) L) (lc2cl $g (+ 1 $cnt) R)))))))))))
-       (trace! (bas-nch (term $term) (cnt $cnt) (dir $dir)) $term)))
+                                         $clf))
+                             ; Build 𝐊
+                             (trace! (rec-K (term $term) (clf $clf) (cnt $cnt) (dir $dir))
+                                     (𝐊 $clf)))))
+                   (empty)))
+              (($f $g) (trace! (rec-app (term $term) (cnt $cnt) (dir $dir))
+                               ((lc2cl $f (+ 1 $cnt) L) (lc2cl $g (+ 1 $cnt) R)))))))
+           (trace! (bas-nch (term $term) (cnt $cnt) (dir $dir)) $term)))
 
-;; ;; Test lc2cl
-;; !(assertEqual
-;;   (lc2cl $f)
-;;   $f)
-;; !(assertEqual
-;;   (lc2cl ($f $x))
-;;   ($f $x))
-;; !(assertEqual
-;;   (lc2cl ($f ($f $x)))
-;;   ($f ($f $x)))
-;; !(assertEqual
-;;   (lc2cl (λ $x $x))
-;;   𝐈)
-;; !(assertEqual
-;;   (lc2cl (λ $x (λ $y $x)))
-;;   𝐊)
-;; !(assertEqual
-;;   (lc2cl (λ $f (λ $g (λ $x (($f $x) ($g $x))))))
-;;   𝐒)
-;; !(assertEqual
-;;   (lc2cl (λ $x ($x $x)))
-;;   𝐌)
-;; !(assertEqual
-;;   (lc2cl (λ $x $f))
-;;   (𝐊 $f))
-;; !(assertEqual
-;;   (lc2cl (λ $x ($f $g)))
-;;   (𝐊 ($f $g)))
-;; !(assertEqual
-;;   (lc2cl (λ $x ($f ($f $x))))
-;;   ((𝐒 (𝐊 $f)) ((𝐒 (𝐊 $f)) 𝐈)))     ; NEXT: is it correct?
-;; !(assertEqual
-;;   (lc2cl (λ $f (λ $x $x)))    ; 0 in lambda calculus
-;;   (𝐊 𝐈))                    ; 0 in combinatory logic
+;; ;; Convert lambda-calculus to combinatory logic
+;; (: lc2cl (-> Atom Number Atom Atom))
+;; (= (lc2cl $term $cnt $dir)
+;;    (if (is-expression $term)
+;;        (if (== $term ())
+;;            ;; Base cases
+;;            (trace! (bas-∅ (term $term) (cnt $cnt) (dir $dir)) ())
+;;            ;; NEXT: try to get rid of as many base cases as possible
+;;            (if (=α $term (λ $x $x))
+;;                (trace! (bas-I (term $term) (cnt $cnt) (dir $dir)) 𝐈)
+;;                (if (=α $term (λ $x (λ $y $x)))
+;;                    (trace! (bas-K (term $term) (cnt $cnt) (dir $dir)) 𝐊)
+;;                    (if (=α $term (λ $f (λ $g (λ $x (($f $x) ($g $x))))))
+;;                        (trace! (bas-S (term $term) (cnt $cnt) (dir $dir)) 𝐒)
+;;                        (if (=α $term (λ $x ($x $x)))
+;;                            (trace! (bas-M (term $term) (cnt $cnt) (dir $dir)) 𝐌)
+;;                            ;; Recursive steps
+;;                            (case $term
+;;                              (((λ $x $f)
+;;                                (if (is-variable $x)
+;;                                    (let $clf (lc2cl $f (+ 1 $cnt) λC)
+;;                                      (if (is-subterm-of $x $f)
+;;                                          ; Build 𝐒
+;;                                          (trace! (rec-S (term $term) (clf $clf) (cnt $cnt) (dir $dir))
+;;                                          (if (is-expression $clf)
+;;                                              (case $clf
+;;                                                ((($g $h) ((𝐒 (lc2cl (λ $x $g) (+ 2 $cnt) λL))
+;;                                                           (lc2cl (λ $x $h) (+ 2 $cnt) λR)))
+;;                                                 ($_ (empty))))
+;;                                              $clf))
+;;                                          ; Build 𝐊
+;;                                          (trace! (rec-K (term $term) (clf $clf) (cnt $cnt) (dir $dir))
+;;                                          (𝐊 $clf))))
+;;                                    (empty)))
+;;                               (($f $g) (trace! (rec-app (term $term) (cnt $cnt) (dir $dir))
+;;                                        ((lc2cl $f (+ 1 $cnt) L) (lc2cl $g (+ 1 $cnt) R)))))))))))
+;;        (trace! (bas-nch (term $term) (cnt $cnt) (dir $dir)) $term)))
 
+;; NEXT: add tests on remaining individual combinators
 
-;; !(assertEqual
-  ;; !(lc2cl (λ $f (λ $x ($f $x))) 0 C)    ; 1 in lambda calculus
-;; ((𝐒 ((𝐒 (𝐊 𝐒)) ((𝐒 (𝐊 𝐊)) 𝐈))) (𝐊 𝐈))) ; NEXT: 1 in combinatory logic? (see calculi-converter.stdout
-;; https://theory.stanford.edu/~blynn/lambda/cl.html finds
-;; K(S(S(K S)(S(K K)(S K K)))(K(S K K)))
-;; Note that https://crypto.stanford.edu/~blynn/lambda/kiselyov.html is newer
-
-
-;; !(assertEqual
-;;   (lc2cl (λ $f (λ $x ($f ($f $x)))))    ; Two in lambda calculus
-;;   (...))                           ; NEXT: Two in combinatory logic
-
-;; NEXT: find out why the following does not work
-
-;; ;; Convert (λ $g (λ $x ($g $x))) to ?
-;; !(lc2cl (λ $g (λ $x ($g $x))))
-
-;; ;; Convert (λ $g (λ $x ($x ($g $x)))) to ?
-;; !(lc2cl (λ $g (λ $x ($x ($g $x)))))
-
-;; ;; Convert ((λ $f (λ $g (λ $x (($f $x) ($g $x))))) (λ $y $y)) to (𝐒 𝐈)
-;; !(lc2cl ((λ $f (λ $g (λ $x (($f $x) ($g $x))))) (λ $y $y)))
-
-;; ;; Convert S from lambda calculus to combinatory logic.  That is
-;; ;; (λ $n (λ $f (λ $x ($f (($n $f) $x))))) |-> ((𝐒 (𝐊 𝐒)) 𝐊)
-;; !(lc2cl (λ $n (λ $f (λ $x ($f (($n $f) $x))))))
-
-;; (λ $n (λ $f (λ $x ($f (($n $f) $x)))))
-;; -->
+Test lc2cl
+!(assertEqual
+  (lc2cl $f 0 C)
+  $f)
+!(assertEqual
+  (lc2cl ($f $x) 0 C)
+  ($f $x))
+!(assertEqual
+  (lc2cl ($f ($f $x)) 0 C)
+  ($f ($f $x)))
+!(assertEqual
+  (lc2cl (λ $x $x) 0 C)
+  𝐈)
+!(assertEqual
+  (lc2cl (λ $x (λ $y $x)) 0 C)
+  𝐊)
+!(assertEqual
+  (lc2cl (λ $f (λ $g (λ $x (($f $x) ($g $x))))))
+  𝐒)
+!(assertEqual
+  (lc2cl (λ $x ($x $x)))
+  𝐌)
+!(assertEqual
+  (lc2cl (λ $x $f))
+  (𝐊 $f))
+!(assertEqual
+  (lc2cl (λ $x ($f $g)))
+  (𝐊 ($f $g)))
+;; NEXT: make sure that spontaneous reduction is not impoverishing the comparison.
+!(assertEqual
+  (lc2cl (λ $f (λ $x $x)))       ; 0
+  𝐍)
+!(assertEqual
+  (lc2cl (λ $n (λ $f (λ $x ($f (($n $f) $x)))))) ; Successor
+  (𝐒 𝐁))
+!(assertEqual
+  (lc2cl ((λ $n (λ $f (λ $x ($f (($n $f) $x))))) ; Successor
+          (λ $f (λ $x $x))))                     ; 0
+  ((𝐒 𝐁) 𝐍))
+!(assertEqual
+  (lc2cl (λ $f (λ $x ($f $x))))            ; 1, as (Succ 0)
+  ((𝐒 𝐁) 𝐍))
+!(assertEqual
+  (lc2cl (((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+           (λ $f (λ $x $x)))                                  ; 0
+          (λ $f (λ $x $x))))                                  ; 0
+  (((𝐓 (𝐒 𝐁)) 𝐍) 𝐍))
+!(assertEqual
+  (lc2cl (((λ $m (λ $n (λ $f (λ $x (($m $f) (($n $f) $x)))))) ; Plus
+           (λ $f (λ $x ($f $x))))                             ; 1
+          (λ $f (λ $x ($f ($f $x))))))                        ; 2
+  (((𝐓 (𝐒 𝐁)) ((𝐒 𝐁) 𝐍)) ((𝐒 𝐁) ((𝐒 𝐁) 𝐍))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MeTTa to λ-calculus ;;
