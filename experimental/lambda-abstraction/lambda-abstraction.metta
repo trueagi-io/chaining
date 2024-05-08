@@ -87,7 +87,6 @@
 (= (bc $kb $env $bdi (S $k) (: (λ $bdi $prfbdy) (-> $prms $thrm)))
    (let (: $prfbdy $thrm)
      (bc $kb (superpose ((: $bdi $prms) $env)) (Si $bdi) $k (: $prfbdy $thrm))
-     ;; (bc $kb (: $bdi $prms) (Si $bdi) $k (: $prfbdy $thrm))
      (: (λ $bdi $prfbdy) (-> $prms $thrm))))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -128,5 +127,5 @@
 ;; ;; !(assertEqual
 ;;   ;; !(bc &kb () Zi (fromNumber 1) (: $prf (-> $a $a)))
 ;; ;; !(bc &kb () Zi (fromNumber 2) (: $prf (-> $a $b)))
-;; ;; Find proof of (-> $h C)
-;; !(bc &kb () Zi (fromNumber 1) (: $prf (-> $h C)))
+;; Find proof of (-> $h C), filling the $h hypothesis
+!(bc &kb () Zi (fromNumber 1) (: $prf (-> $h C)))
