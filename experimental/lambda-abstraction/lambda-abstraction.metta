@@ -76,14 +76,14 @@
    (let (: $prf $thrm) $env (: $prf $thrm)))
 
 ;; Recursive steps
-;; Application
-(= (bc $kb $env $bdi (S $k) (: ($prfabs $prfarg) $thrm))
+;; Proof application
+(= (bc $kb $env $bdi (S $k) (: ($prfabs (: $prfarg $prms)) $thrm))
    (let* (((: $prfabs (-> $prms $thrm))
            (bc $kb $env $bdi $k (: $prfabs (-> $prms $thrm))))
           ((: $prfarg $prms)
            (bc $kb $env $bdi $k (: $prfarg $prms))))
-     (: ($prfabs $prfarg) $thrm)))
-;; Abstraction
+     (: ($prfabs (: $prfarg $prms)) $thrm)))
+;; Proof abstraction
 (= (bc $kb $env $bdi (S $k) (: (λ $bdi $prfbdy) (-> $prms $thrm)))
    (let (: $prfbdy $thrm)
      (bc $kb (superpose ((: $bdi $prms) $env)) (Si $bdi) $k (: $prfbdy $thrm))
