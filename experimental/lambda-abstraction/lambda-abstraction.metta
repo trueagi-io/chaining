@@ -61,6 +61,15 @@
 ;; A result is the query with its variables grounded, fully or
 ;; partially.  If multiple results are possible, they are returned as
 ;; a superposition.
+;;
+;; Note that the proof is fully type annotated.  Without full type
+;; annotation, lambda abstraction sometimes leads to incorrect
+;; results.  It is suspected to come from the fact that the proof
+;; application recursive step loses bindings about the premise.
+;; Having a fully annotated proof is a good thing anyway, to display a
+;; proof tree and to have a indepth view into the proof.  In order to
+;; remove the type annoation one can use (NEXT: implement)
+;; remove-type-annotation.
 (: bc (-> $a                            ; Knowledge base space
           $b                            ; Environment
           DeBruijn                      ; De Bruijn Index
