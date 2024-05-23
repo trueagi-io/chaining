@@ -116,6 +116,13 @@
                     (-> $p              ; Premise 2
                         $q))))          ; Conclusion
 
+;;;;;;;;;;;;;;;;;;;;;
+;; Reduction Rules ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Identity application
+(= ((λ $x $x) $y) $y)
+
 ;;;;;;;;;;;
 ;; Tests ;;
 ;;;;;;;;;;;
