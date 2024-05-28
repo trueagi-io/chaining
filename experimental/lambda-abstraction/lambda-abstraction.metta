@@ -30,8 +30,8 @@
 (: DeBruijn Type)
 
 ;; Define DeBruijn constructors
-(: Zi DeBruijn)                        ; Zero
-(: Si (-> DeBruijn DeBruijn))          ; Successor
+(: Z' DeBruijn)                        ; Zero
+(: S' (-> DeBruijn DeBruijn))          ; Successor
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
@@ -47,7 +47,7 @@
 ;;   (: <NAME> (-> <PREMISE1> (-> <PREMISE2> <CONCLUSION>)))
 ;;
 ;; * Environment: a superposition of typing relationship between De
-;;   Bruijn index and type, such as (: (BDIdx Z) String).
+;;   Bruijn index and type, such as (: Z' String).
 ;;
 ;; * De Bruijn Index: De Bruijn Index to use in case of lambda
 ;;   abstraction.
@@ -78,25 +78,25 @@
           $c))                          ; Result
 ;; Base cases
 ;; Match the knowledge base
-(= (bc $kb $env $bdi $_ (: $prf $thrm))
+(= (bc $kb $env $idx $_ (: $prf $thrm))
    (match $kb (: $prf $thrm) (: $prf $thrm)))
 ;; Match the environment
-(= (bc $kb $env $bdi $_ (: $prf $thrm))
+(= (bc $kb $env $idx $_ (: $prf $thrm))
    (let (: $prf $thrm) $env (: $prf $thrm)))
 
 ;; Recursive steps
 ;; Proof application
-(= (bc $kb $env $bdi (S $k) (: ($prfabs (: $prfarg $prms)) $thrm))
+(= (bc $kb $env $idx (S $k) (: ($prfabs (: $prfarg $prms)) $thrm))
    (let* (((: $prfabs (-> $prms $thrm))
-           (bc $kb $env $bdi $k (: $prfabs (-> $prms $thrm))))
+           (bc $kb $env $idx $k (: $prfabs (-> $prms $thrm))))
           ((: $prfarg $prms)
-           (bc $kb $env $bdi $k (: $prfarg $prms))))
+           (bc $kb $env $idx $k (: $prfarg $prms))))
      (: ($prfabs (: $prfarg $prms)) $thrm)))
 ;; Proof abstraction
-(= (bc $kb $env $bdi (S $k) (: (λ $bdi $prfbdy) (-> $prms $thrm)))
+(= (bc $kb $env $idx (S $k) (: (λ $idx $prfbdy) (-> $prms $thrm)))
    (let (: $prfbdy $thrm)
-     (bc $kb (superpose ((: $bdi $prms) $env)) (Si $bdi) $k (: $prfbdy $thrm))
-     (: (λ $bdi $prfbdy) (-> $prms $thrm))))
+     (bc $kb (superpose ((: $idx $prms) $env)) (S' $idx) $k (: $prfbdy $thrm))
+     (: (λ $idx $prfbdy) (-> $prms $thrm))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge base ;;
@@ -129,19 +129,54 @@
 
 ;; Find proof of A
 !(assertEqual
-  (bc &kb () Zi (fromNumber 0) (: $prf A))
+  (bc &kb () Z' (fromNumber 0) (: $prf A))
   (: a A))
+
 ;; Find proof of B
 !(assertEqual
-  (bc &kb () Zi (fromNumber 2) (: $prf B))
-  (: ((ModusPonens ab) a) B))
-;; ;; Find proof of C
-;; !(assertEqual
-;;   (bc &kb () Zi (fromNumber 3) (: $prf C))
-;;   (: ((ModusPonens bc) ((ModusPonens ab) a)) C))
-;; ;; Find proof of (-> A B)
-;; ;; !(assertEqual
-;;   ;; !(bc &kb () Zi (fromNumber 1) (: $prf (-> $a $a)))
-;; ;; !(bc &kb () Zi (fromNumber 2) (: $prf (-> $a $b)))
+  (bc &kb () Z' (fromNumber 2) (: $prf B))
+  (: ((ModusPonens (: ab (→ A B))) (: a A)) B))
+
+;; Find proof of C
+!(assertEqual
+  (bc &kb () Z' (fromNumber 3) (: $prf C))
+  (: ((ModusPonens (: bc (→ B C))) (: ((ModusPonens (: ab (→ A B))) (: a A)) B)) C))
+
+;; Find proof of (-> A B)
+!(assertEqual
+  (bc &kb () Z' (fromNumber 1) (: $prf (-> A B)))
+  (: (ModusPonens (: ab (→ A B))) (-> A B)))
+
+;; Find proof of (-> A A)
+!(assertEqualToResult
+  (bc &kb () Z' (fromNumber 1) (: $prf (-> A A)))
+  ((: (λ Z' a) (-> A A))
+   (: (λ Z' Z') (-> A A))
+   (: (λ Z' a) (-> A A))))
+
+;; Infer type of (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A)))
+!(assertEqual
+  (bc &kb () Z' (fromNumber 3)
+      (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) $thrm))
+  (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) (-> A B)))
+
 ;; Find proof of (-> $h C), filling the $h hypothesis
-!(bc &kb () Zi (fromNumber 1) (: $prf (-> $h C)))
+!(assertEqualToResult
+  (bc &kb () Z' (fromNumber 1) (: $prf (-> $h C)))
+  ((: (λ Z' Z') (-> C C))
+   (: (ModusPonens (: bc (→ B C))) (-> B C))))
+
+;; Find proof of (-> A B) with depth 3 to include lambda abstractions
+!(assertEqualToResult
+  (bc &kb () Z' (fromNumber 3) (: (λ Z' $bdy) (-> A B)))
+  ((: (λ Z' ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))
+   (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) (-> A B))
+   (: (λ Z' ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))))
+
+;; Find proof of (-> A B) with depth 3 to include lambda abstractions
+;; Disabled because it takes 5 hours and returns 1200+ candidates
+;; !(assertEqualToResult
+  ;; !(bc &kb () Z' (fromNumber 3) (: $prf (-> A B)))
+  ;; ((: (λ Z' ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))
+  ;;  (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) (-> A B))
+  ;;  (: (λ Z' ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))))
