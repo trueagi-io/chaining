@@ -40,6 +40,13 @@
 ;; Common functions and types ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Define DeBruijn type
+(: DeBruijn Type)
+
+;; Define DeBruijn constructors
+(: Z' DeBruijn)                        ; Zero
+(: S' (-> DeBruijn DeBruijn))          ; Successor
+
 ;; Define Maybe type
 (: Maybe (-> $a Type))
 (: Nothing (Maybe $a))
@@ -890,7 +897,7 @@
 
 ;; NEXT: add tests on remaining individual combinators
 
-Test lc2cl
+;; Test lc2cl
 !(assertEqual
   (lc2cl $f 0 C)
   $f)
@@ -947,39 +954,112 @@ Test lc2cl
 ;; MeTTa to λ-calculus ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; NEXT:
-;; 1. replace LET by let (if possible)
-;; 2. support let*
+;; Convert metta to lambda calculus with De Bruijn indices.  It takes
+;; in arguments
+;;
+;; 1. De Bruijn index to use for the next abstraction
+;;
+;; 2. MeTTa term.  Built-in operators such as let must be previously
+;;    converted into LET to avoid spontaneous reduction.  NEXT: maybe
+;;    we actually don't.
+(: mt2lc (-> DeBruijn Atom Atom))
+(= (mt2lc $idx $term)
+   (case (get-metatype $term)
+     ((Symbol $term)
+      (Grounded $term)
+      (Variable $term)
+      (Expression (case $term
+                    (;; Empty
+                     (() ())
+                     ;; LET
+                     ((LET $x $y $f) (let* (($x $idx)
+                                            ($νf (mt2lc (S' $idx) $f))
+                                            ($νy (mt2lc $idx $y)))
+                                       ((λ $x $νf) $νy)))
+                     ;; Application
+                     (($f $x) ((mt2lc $idx $f) (mt2lc $idx $x)))
+                     ;; Other
+                     ($term $term)))))))
 
-;; Convert a MeTTa expression to lambda calculus
-(: mt2lc (-> Atom Atom))
-(= (mt2lc $expr)
-   (if (is-variable $expr)
-       $expr
-       (case $expr
-         (((LET $x $y $f) ((λ $x (mt2lc $f)) (mt2lc $y)))  ; Let
-          (($f $x) ((mt2lc $f) (mt2lc $x)))                ; Application
-          ($s $s)))))                                      ; Symbol
+!(assertEqual
+  (mt2lc Z' (LET $x (inc 1) (plus $x $x)))
+  ((λ Z' (plus Z' Z')) (inc 1)))
 
-;; !(mt2lc
-;;   (LET $spleeter-output
-;;        (snet.sound-spleeter.spleeter ((snet.sound-spleeter.MkInput "") $input))
-;;        (LET $english-vocals (snet.sound-spleeter.Output.vocals $spleeter-output)
-;;             (LET $chinese-lyrics
-;;                  (naint.machine-translation.Output.translation
-;;                   (naint.machine-translation.translate
-;;                    (((naint.machine-translation.MkInput "English") "Chinese")
-;;                     (snet.speech-recognition.Text.text
-;;                      (snet.speech-recognition.s2t
-;;                       (snet.speech-recognition.MkAudio $english-vocals))))))
-;;                  (LET $midi-notes (tomidi.MIDI.data (tomidi.MkAudio $english-vocals))
-;;                       (LET $chinese-vocals
-;;                            (naint.midi2voice-zh.Answer.output_audio
-;;                             (naint.midi2voice-zh.singingZH
-;;                              (((naint.midi2voice-zh.MkQuery $chinese-lyrics)
-;;                                $midi-notes) 1.0)))
-;;                            (mixer.Audio.data
-;;                             (mixer.mix
-;;                              ((mixer.MkMultiAudio
-;;                                (snet.sound-spleeter.Output.accomp $spleeter-output))
-;;                               $chinese-vocals)))))))))
+!(assertEqual
+  (mt2lc Z'
+         (LET $spleeter-output
+              (snet.sound-spleeter.spleeter ((snet.sound-spleeter.MkInput "") $input))
+              (LET $english-vocals (snet.sound-spleeter.Output.vocals $spleeter-output)
+                   (LET $chinese-lyrics
+                        (naint.machine-translation.Output.translation
+                         (naint.machine-translation.translate
+                          (((naint.machine-translation.MkInput "English") "Chinese")
+                           (snet.speech-recognition.Text.text
+                            (snet.speech-recognition.s2t
+                             (snet.speech-recognition.MkAudio $english-vocals))))))
+                        (LET $midi-notes (tomidi.MIDI.data (tomidi.MkAudio $english-vocals))
+                             (LET $chinese-vocals
+                                  (naint.midi2voice-zh.Answer.output_audio
+                                   (naint.midi2voice-zh.singingZH
+                                    (((naint.midi2voice-zh.MkQuery $chinese-lyrics)
+                                      $midi-notes) 1.0)))
+                                  (mixer.Audio.data
+                                   (mixer.mix
+                                    ((mixer.MkMultiAudio
+                                      (snet.sound-spleeter.Output.accomp $spleeter-output))
+                                     $chinese-vocals)))))))))
+  ((λ Z' ((λ (S' Z') ((λ (S' (S' Z')) ((λ (S' (S' (S' Z'))) ((λ (S' (S' (S' (S' Z')))) (mixer.Audio.data (mixer.mix ((mixer.MkMultiAudio (snet.sound-spleeter.Output.accomp Z')) (S' (S' (S' (S' Z')))))))) (naint.midi2voice-zh.Answer.output_audio (naint.midi2voice-zh.singingZH (((naint.midi2voice-zh.MkQuery (S' (S' Z'))) (S' (S' (S' Z')))) 1.0))))) (tomidi.MIDI.data (tomidi.MkAudio (S' Z'))))) (naint.machine-translation.Output.translation (naint.machine-translation.translate (((naint.machine-translation.MkInput "English") "Chinese") (snet.speech-recognition.Text.text (snet.speech-recognition.s2t (snet.speech-recognition.MkAudio (S' Z'))))))))) (snet.sound-spleeter.Output.vocals Z'))) (snet.sound-spleeter.spleeter ((snet.sound-spleeter.MkInput "") $input))))
+
+;; We replace let by LET to avoid the program getting spontaneously
+;; reduced, indeed the following
+;;
+;; !(let $spleeter-output
+;;       (snet.sound-spleeter.spleeter ((snet.sound-spleeter.MkInput "") $input))
+;;       (let $english-vocals (snet.sound-spleeter.Output.vocals $spleeter-output)
+;;            (let $chinese-lyrics
+;;                 (naint.machine-translation.Output.translation
+;;                  (naint.machine-translation.translate
+;;                   (((naint.machine-translation.MkInput "English") "Chinese")
+;;                    (snet.speech-recognition.Text.text
+;;                     (snet.speech-recognition.s2t
+;;                      (snet.speech-recognition.MkAudio $english-vocals))))))
+;;                 (let $midi-notes (tomidi.MIDI.data (tomidi.MkAudio $english-vocals))
+;;                      (let $chinese-vocals
+;;                           (naint.midi2voice-zh.Answer.output_audio
+;;                            (naint.midi2voice-zh.singingZH
+;;                             (((naint.midi2voice-zh.MkQuery $chinese-lyrics)
+;;                               $midi-notes) 1.0)))
+;;                           (mixer.Audio.data
+;;                            (mixer.mix
+;;                             ((mixer.MkMultiAudio
+;;                               (snet.sound-spleeter.Output.accomp $spleeter-output))
+;;                              $chinese-vocals))))))))
+;;
+;; results into
+;;
+;; (mixer.Audio.data
+;;  (mixer.mix
+;;   ((mixer.MkMultiAudio
+;;     (snet.sound-spleeter.Output.accomp
+;;      (snet.sound-spleeter.spleeter
+;;       ((snet.sound-spleeter.MkInput "") $input))))
+;;    (naint.midi2voice-zh.Answer.output_audio
+;;     (naint.midi2voice-zh.singingZH
+;;      (((naint.midi2voice-zh.MkQuery
+;;         (naint.machine-translation.Output.translation
+;;          (naint.machine-translation.translate
+;;           (((naint.machine-translation.MkInput "English") "Chinese")
+;;            (snet.speech-recognition.Text.text
+;;             (snet.speech-recognition.s2t
+;;              (snet.speech-recognition.MkAudio
+;;               (snet.sound-spleeter.Output.vocals
+;;                (snet.sound-spleeter.spleeter
+;;                 ((snet.sound-spleeter.MkInput "") $input))))))))))
+;;        (tomidi.MIDI.data
+;;         (tomidi.MkAudio
+;;          (snet.sound-spleeter.Output.vocals
+;;           (snet.sound-spleeter.spleeter
+;;            ((snet.sound-spleeter.MkInput "") $input)))))) 1.0))))))
+;;
+;; involving multiple calls of the same services.  In particular
+;; snet.sound-spleeter.spleeter is called 3 times.
