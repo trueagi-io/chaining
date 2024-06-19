@@ -27,6 +27,178 @@
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
+;;;;;;;;;;;;;;;;;;;;;
+;; De Bruijn Index ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Define DeBruijn type
+(: DeBruijn Type)
+
+;; Define DeBruijn constructors
+(: Z' DeBruijn)                        ; Zero
+(: S' (-> DeBruijn DeBruijn))          ; Successor
+
+;;;;;;;;;;
+;; List ;;
+;;;;;;;;;;
+
+;; Declaration of List data type and constructors
+(: List (-> $a Type))
+(: Nil (List $a))
+(: Cons (-> $a (List $a) (List $a)))
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Match over list ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Similar to match but takes a list of terms instead of a space.
+(: match' (-> (List Atom) $a $a $a))
+(= (match' Nil $pattern $rewrite) (empty))
+(= (match' (Cons $head $tail) $pattern $rewrite) (let $pattern $head $rewrite))
+(= (match' (Cons $head $tail) $pattern $rewrite) (match' $tail $pattern $rewrite))
+
+;; ;; Test match' on empty list
+;; !(assertEqualToResult
+;;   (match' Nil ($x $y) ($y $x))
+;;   ())
+
+;; ;; Test match' on singleton
+;; !(assertEqual
+;;   (match' (Cons (A B) Nil) ($x $y) ($y $x))
+;;   (B A))
+
+;; ;; Test match' on pair
+;; !(assertEqualToResult
+;;   (match' (Cons (A B) (Cons (C D) Nil)) ($x $y) ($y $x))
+;;   ((B A)
+;;    (D C)))
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Backward chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; Curried Backward Chainer with lambda abstraction and dependent
+;; types.  A lambda abstraction is represented by
+;;
+;; (λ <INDEX> <BODY>)
+;;
+;; where <INDEX> is a De Bruijn index as define above, such as Z' or
+;; (S' Z'), and <BODY> is a term possibly containing <INDEX>.  Note
+;; that the use of De Bruijn index in lambda abstraction is somewhat
+;; unconventional here.  It differs from what is described in
+;; https://en.wikipedia.org/wiki/De_Bruijn_index in three ways:
+;;
+;; 1. The index is explicitely attached to a λ by being its first
+;;    argument.  For instance the lambda term λx.x, which would
+;;    traditionally be represented by λ1 using De Bruijn index, would
+;;    be represented here by the MeTTa term (λ Z' Z').
+;;
+;; 2. As seen in the example above the index here starts at 0,
+;;    represented by Z', instead of 1.
+;;
+;; 3. The index increases as the lambda abstraction gets deeper.  For
+;;    instance λx.λy.x, which would traditionally be represented by
+;;    λλ2 using De Bruijn index, is represented here by the MeTTa term
+;;    (λ Z' (λ (S' Z') Z').
+;;
+;; This differences are due to the way the proof abstraction recursive
+;; step is defined in the bc, as well as the need for having non
+;; overlapping pattern matching between the two recursive steps.
+;; Specifically, if λ had only one argument, then (λ <BODY>) would
+;; overlap with (<ABS> <ARG>).  Having λ take 2 arguments instead of 1
+;; has the disadvantage of making lambda abstraction not as compact.
+;; On the flip side, the benefit is that the scope of an index is
+;; easier to track.
+;;
+;; The arguments of the backward chainer are:
+;;
+;; * Knowledge base: pointer to a space containing axioms and rules in
+;;   the format (: <NAME> <RULE>).  Note that rules are explicitely
+;;   curried, meaning that a rule with two premises is represented by
+;;
+;;   (: <NAME> (-> <PREMISE1> (-> <PREMISE2> <CONCLUSION>)))
+;;
+;;   In addition, each premise must be an inline typing relationship,
+;;   to represent dependent types.  It should be noted that such
+;;   typing relationship must be provided even if the witness is not
+;;   present in the rest of the definition.  For instance <PREMISE1>
+;;   would have the format
+;;
+;;   (: <TERM1> <TYPE1>)
+;;
+;; * Environment: a list of typing relationship between De Bruijn
+;;   index and type, such as
+;;
+;;   (Cons (: Z' String) (Cons (: (S' Z') Number) Nil))
+;;
+;; * De Bruijn Index: De Bruijn Index to use if a lambda abstraction
+;;   is introduced.
+;;
+;; * Maximum depth: maximum depth of the generated proof tree.
+;;
+;; * Query: a metta term of the form (: <PROOF> <THEOREM>) where
+;;   <PROOF> and <THEOREM> may contain free variables that may be
+;;   filled by the backward chainer.  Note that for arguments of
+;;   applications must be type annotated (unknowns types are of course
+;;   allowed).  For instance the following query
+;;
+;;   (: (ModusPonens ab) $thrm)
+;;
+;;   would not work, instead one needs to provide
+;;
+;;   (: (ModusPonens (: ab $lemma)) $thrm)
+;;
+;; A result is the query with its variables grounded, fully or
+;; partially.  If multiple results are possible, they are returned as
+;; a superposition.
+;;
+;; As explained, the proof arguments must be type annotated.  Without
+;; such type annotation, lambda abstraction sometimes leads to
+;; incorrect results.  It is suspected to come from the fact that
+;; otherwise the proof application recursive step loses bindings about
+;; the premise.  Having annotated proof is however a good thing, to
+;; display a proof tree and to have an indepth view into the proof.
+;; In order to remove (resp. add) type annotation one can use
+;; remove-type (resp. add-type).
+(: bc (-> $a                            ; Knowledge base space
+          $b                            ; Environment
+          DeBruijn                      ; De Bruijn Index
+          Nat                           ; Maximum depth
+          $c                            ; Query
+          $c))                          ; Result
+
+;; Base cases
+
+;; Match the knowledge base
+(= (bc $kb $env $idx $_ (: $prf $thrm))
+   (match $kb (: $prf $thrm) (: $prf $thrm)))
+;; Match the environment
+(= (bc $kb $env $idx $_ (: $prf $thrm))
+   (match' $env (: $prf $thrm) (: $prf $thrm)))
+
+;; Recursive steps
+
+;; Proof application
+(= (bc $kb $env $idx (S $k) (: ($prfabs (: $prfarg $prms)) $thrm))
+   ;; (let () (println! (bc-app (env $env)
+   ;;                           (idx $idx)
+   ;;                           (depth (S $k))
+   ;;                           (query (: ($prfabs (: $prfarg $prms)) $thrm))))
+   (let* (((: $prfabs (-> (: $prfarg $prms) $thrm))
+           (bc $kb $env $idx $k (: $prfabs (-> (: $prfarg $prms) $thrm))))
+          ((: $prfarg $prms)
+           (bc $kb $env $idx $k (: $prfarg $prms))))
+     (: ($prfabs (: $prfarg $prms)) $thrm)))
+;; Proof abstraction
+(= (bc $kb $env $idx (S $k) (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm)))
+   ;; (let () (println! (bc-abs (env $env)
+   ;;                           (idx $idx)
+   ;;                           (depth (S $k))
+   ;;                           (query (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm)))))
+   (let (: $prfbdy $thrm)
+     (bc $kb (Cons (: $idx $prms) $env) (S' $idx) $k (: $prfbdy $thrm))
+     (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge/rule base ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,129 +265,61 @@
 ;; ;; ;; Or, alternatively
 ;; ;; ;; (= (EqualDoubleAndEven $x) (λ $k (× (=== $k (double $x)) (Even $k))))
 
-;; ;; Define Nat
-;; !(add-atom &kb (: Nat Type))
-;; !(add-atom &kb (: Z Nat))
-;; !(add-atom &kb (: S (-> (: $x Nat) Nat)))
+;; Define Nat, called ℕ, with its constructors 𝐙 and 𝐒 to not have
+;; MeTTa type checker interfer with the backward chainer
+!(add-atom &kb (: ℕ Type))
+!(add-atom &kb (: 𝐙 ℕ))
+!(add-atom &kb (: 𝐒 (-> (: $x ℕ) ℕ)))
 
-;; ;; Define Even
-;; !(add-atom &kb (: Even (-> (: $x Nat) Type)))
-;; !(add-atom &kb (: MkEvenZ (Even Z)))
-;; !(add-atom &kb (: MkEvenSS (-> (: $prf (Even $k))   ; Premise
-;;                                (Even (S (S $k)))))) ; Conclusion
+;; Define Even
+!(add-atom &kb (: Even (-> (: $x ℕ) Type)))
+!(add-atom &kb (: MkEvenZ (Even 𝐙)))
+!(add-atom &kb (: MkEvenSS (-> (: $prf (Even $k))   ; Premise
+                               (Even (𝐒 (𝐒 $k)))))) ; Conclusion
 
-;; ;; Define Σ
-;; !(add-atom &kb (: MkΣ (-> (: $p (-> (: $_ $a) Type)) ; Premise 1.  We
-;;                                                      ; need to use (: $_ $a)
-;;                                                      ; as opposed to just $a
-;;                                                      ; to be fully consistent with
-;;                                                      ; The (: PROOF PREMISE)
-;;                                                      ; notation, till it becomes
-;;                                                      ; optional.
-;;                           (-> (: $x $a)              ; Premise 2
-;;                               (-> (: $prf ($p $x))   ; Premise 3
-;;                                   (Σ $a $p))))))     ; Conclusion
+;; Define Σ
+!(add-atom &kb (: MkΣ (-> (: $p (-> (: $_ $a) Type)) ; Premise 1.  We
+                                                     ; need to use (: $_ $a)
+                                                     ; as opposed to just $a
+                                                     ; to be fully consistent with
+                                                     ; The (: PROOF PREMISE)
+                                                     ; notation, till it becomes
+                                                     ; optional.
+                          (-> (: $x $a)              ; Premise 2
+                              (-> (: $prf ($p $x))   ; Premise 3
+                                  (Σ $a $p))))))     ; Conclusion
 
-;; ;; Equality is transitive
-;; !(add-atom &kb (: Trans (-> (: $prf1 (=== $x $y))     ; Premise 1
-;;                             (-> (: $prf2 (=== $y $z)) ; Premise 2
-;;                                 (=== $x $z)))))       ; Conclusion
+;; Equality is transitive
+!(add-atom &kb (: Trans (-> (: $prf1 (=== $x $y))     ; Premise 1
+                            (-> (: $prf2 (=== $y $z)) ; Premise 2
+                                (=== $x $z)))))       ; Conclusion
 
-;; ;; Equality is symmetric
-;; !(add-atom &kb (: Sym (-> (: $prf (=== $x $y)) ; Premise
-;;                           (=== $y $x))))       ; Conclusion
+;; Equality is symmetric
+!(add-atom &kb (: Sym (-> (: $prf (=== $x $y)) ; Premise
+                          (=== $y $x))))       ; Conclusion
 
-;; ;; Equality respects function application
-;; !(add-atom &kb (: Cong (-> (: $f (-> (: $_ $a) $b))                 ; Premise 1
-;;                            (-> (: $x $a)                            ; Premise 2
-;;                                (-> (: $x' $a)                       ; Premise 3
-;;                                    (-> (: $prf (=== $x $x'))        ; Premise 4
-;;                                        (=== ($f $x) ($f $x')))))))) ; Conclusion
+;; Equality respects function application
+!(add-atom &kb (: Cong (-> (: $f (-> (: $_ $a) $b))                 ; Premise 1
+                           (-> (: $x $a)                            ; Premise 2
+                               (-> (: $x' $a)                       ; Premise 3
+                                   (-> (: $prf (=== $x $x'))        ; Premise 4
+                                       (=== ($f $x) ($f $x')))))))) ; Conclusion
 
-;; ;; Rule of replacement
-;; !(add-atom &kb (: Replace (-> (: $prf1 (=== $x $x')) ; Premise 1
-;;                               (-> (: $prf2 $x)       ; Premise 2
-;;                                   $x'))))            ; Conclusion
+;; Rule of replacement
+!(add-atom &kb (: Replace (-> (: $prf1 (=== $x $x')) ; Premise 1
+                              (-> (: $prf2 $x)       ; Premise 2
+                                  $x'))))            ; Conclusion
 
 ;; ;; Modus Ponens (application)
 ;; !(add-atom &kb (: MP (-> (: $f (-> (: $x $a) $b)) ; Premise 1
 ;;                          (-> (: $x $a)            ; Premise 2
 ;;                              $b))))               ; Conclusion
 
-;; ;; Define double
-;; !(add-atom &kb (: double (-> (: $k Nat) Nat)))
-;; !(add-atom &kb (: double_base (=== (double Z) Z)))
-;; !(add-atom &kb (: double_rec (-> (: $k Nat)
-;;                                  (=== (double (S $k)) (S (S (double $k)))))))
-
-;; K combinator
-!(add-atom &kb (: AK (-> (: $x $a)            ; Premise
-                         (-> (: $y $b) $a)))) ; Conclusion
-
-;; S combinator
-!(add-atom &kb (: AS (-> (: $g (-> (: $x $a) (-> (: $y $b) $c))) ; Premise 1
-                         (-> (: $f (-> (: $x $a) $b))            ; Premise 2
-                             (-> (: $x $a) $c)))))               ; Conclusion
-
-;; ;; Composition operator
-;; !(add-atom &kb (: . (-> (: $g (-> (: $y $b) $c))     ; Premise 1
-;;                         (-> (: $f (-> (: $x $a) $b)) ; Premise 2
-;;                             (-> (: $x $a) $c)))))    ; Conclusion
-
-;; ;; Flip operator
-;; !(add-atom &kb (: flip (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) ; Premise
-;;                            (-> (: $y $b) (-> (: $x $a) $c)))))     ; Conclusion
-
-;; ;; Lambda abstraction.  Note that $x does not need to be a MeTTa
-;; ;; variable, or even contain MeTTa variables at all.  As such a closed
-;; ;; term is a valid variable as well, which corresponds to a very
-;; ;; specific, yet valid, abstraction.
-;; ;;
-;; ;; The problem of that definition is that (: $y $b) needs to be
-;; ;; proven, and only a closed term can have such proof, thus it would
-;; ;; automatically limit lambda abstraction to constant functions.
-;; !(add-atom &kb (: (λ $x) (-> (: $y $b)            ; Premise (body)
-;;                              (-> (: $x $a) $b)))) ; Conclusion
-
-;; ;; Lambda identity
-;; !(add-atom &kb (: ((λ $x) $x) (-> (: $x $a) $a)))
-
-;;;;;;;;;;;;;;;;;;;;;;
-;; Backward chainer ;;
-;;;;;;;;;;;;;;;;;;;;;;
-
-;; Similar to the backward chainer in NatDTLTest but rules are
-;; optionally represented as dependent products.  Meaning rule
-;; premises may contain type-of relationships.  That is, instead of
-;;
-;; (: RULE_CONSTRUCTOR (-> PREMISE CONCLUSION))
-;;
-;; it must be
-;;
-;; (: RULE_CONSTRUCTOR (-> (: PROOF PREMISE) CONCLUSION))
-;;
-;; Typically PROOF will be a variable, but it can also be a term
-;; containing variables, in which case CONCLUSION may contain that
-;; term, or variables of that term.
-;;
-;; Unlike for the backward chainer in NatDTLTest, the non-dependent
-;; format is supported as well.  EDIT: not yet!
-
-;; Base case
-(: bc (-> $a Nat $a))
-(= (bc $kb (: $prf $ccln) $_)
-   ;; Query the knowledge for a rule or a fact
-   (match $kb (: $prf $ccln) (: $prf $ccln)))
-
-;; Recursive step
-(= (bc $kb (: ($prfabs $prfarg) $ccln) (S $k))
-   (let* (;; Recurse on proof abstraction
-          ((: $prfabs (-> (: $prfarg $prms) $ccln))
-           (bc $kb (: $prfabs (-> (: $prfarg $prms) $ccln)) $k))
-          ;; Recurse on proof argument
-          ((: $prfarg $prms)
-           (bc $kb (: $prfarg $prms) $k)))
-     (: ($prfabs $prfarg) $ccln)))
+;; Define double
+!(add-atom &kb (: double (-> (: $k ℕ) ℕ)))
+!(add-atom &kb (: double_base (=== (double 𝐙) 𝐙)))
+!(add-atom &kb (: double_rec (-> (: $k ℕ)
+                                 (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))))
 
 ;;;;;;;;;;;;;;;
 ;; Reduction ;;
@@ -229,231 +333,211 @@
 ;; ;; Involution of symmetry
 ;; (= (Sym (Sym $f)) $f)
 
-;; ;; Composition to application
-;; (= (((. $g) $f) $x) ($g ($f $x)))
-
-;; ;; Involution of flip
-;; (= (flip (flip $f)) $f)
-
 ;; ;; Identity
-;; (= (((λ $x) $x) $y) $y)
-
-;; ;; Lambda composition
-;; (= ((. $f) ((λ $x) $y)) ((λ $x) ($f $y)))
+;; (= ((λ $x $x) $y) $y)
 
 ;;;;;;;;;;;
 ;; Tests ;;
 ;;;;;;;;;;;
 
-;; ;; Synthesize natural numbers
-;; !(bc &kb (: $prf Nat) (fromNumber 3))
+;; Synthesize natural numbers
+!(assertEqualToResult
+  (bc &kb Nil Z' (fromNumber 1) (: $prf ℕ))
+  ((: (𝐒 (: 𝐙 ℕ)) ℕ)
+   (: (double (: 𝐙 ℕ)) ℕ)
+   (: 𝐙 ℕ)))
 
-;; ;; Prove that 0 is even
-;; (bc &kb (: $prf (Even (fromNumber 0))) (fromNumber 0))
+;; Prove that 0 is even
+!(assertEqualToResult
+  (bc &kb Nil Z' (fromNumber 0) (: $prf (Even (fromNumber 0))))
+  (: MkEvenZ (Even 𝐙)))
 
-;; ;; Prove that 2 is even
-;; (bc &kb (: $prf (Even (fromNumber 2))) (fromNumber 1))
+;; Prove that 2 is even
+!(assertEqualToResult
+  (bc &kb Nil Z' (fromNumber 1) (: $prf (Even (fromNumber 2))))
+  (: (MkEvenSS (: MkEvenZ (Even 𝐙))) (Even (𝐒 (𝐒 𝐙)))))
 
-;; ;; Synthesize even numbers
-;; (bc &kb (: $prf (Σ Nat Even)) (fromNumber 4))
+;; Synthesize even numbers
+;; !(assertEqualToResult
+  !(bc &kb Nil Z' (fromNumber 4) (: $prf (Σ ℕ Even)))
+  ;; ((: (((MkΣ (: Even (-> (: $_#81011 ℕ) Type))) (: 𝐙 ℕ)) (: MkEvenZ (Even 𝐙))) (Σ ℕ Even))
+  ;;  )
+;; !(bc &kb (: $prf (Σ ℕ Even)) (fromNumber 4))
 
-;; ;; Synthesize unary functions over natural numbers, that is
-;; ;; prove (-> (: $k Nat) Nat).
-;; (bc &kb (: $prf (-> (: $k Nat) Nat)) (fromNumber 3))
+;; Synthesize unary functions over natural numbers, that is
+;; prove (-> (: $k ℕ) ℕ).
+!(assertEqualToResult
+  (bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $k ℕ) ℕ)))
+  ((: (λ Z' 𝐙) (-> (: Z' ℕ) ℕ))
+   (: (λ Z' Z') (-> (: Z' ℕ) ℕ))
+   (: 𝐒 (-> (: $k ℕ) ℕ))
+   (: double (-> (: $k ℕ) ℕ))))
 
-;; ;; Synthesize the identity function from AK and AS, that is prove
-;; ;;
-;; ;; (-> (: $x $a) $a)
-;; ;;
-;; ;; Such a proof could be
-;; ;;
-;; ;; ((AS AK) AK)
-;; (bc &kb (: $prf (-> (: $x $a) $a)) (fromNumber 2))
+;; Synthesize the identity function, that is prove (-> (: $x $a) $a)
+;; TODO: re-enable when we have assertContain
+;; !(assertEqualToResult
+!(bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $x $a) $a)))
+ ;; (: (λ Z' Z') (-> (: Z' $a) $a))
 
-;; ;; Synthesize the composition operator, also corresponding to the B
-;; ;; combinator, from AK and AS, that is prove
-;; ;;
-;; ;; (-> (: $g (-> (: $y $b) $c))
-;; ;;     (-> (: $f (-> (: $x $a) $b))
-;; ;;         (-> (: $x $a) $c)))
-;; ;;
-;; ;; such proof could be
-;; ;;
-;; ;; ((AS (AK AS)) AK)
-;; (bc &kb (: $prf (-> (: $g (-> (: $y $b) $c)) (-> (: $f (-> (: $x $a) $b)) (-> (: $x $a) $c))))
-;;      (fromNumber 3))
+;; Synthesize the composition operator
+!(bc &kb Nil Z' (fromNumber 3)
+     (: $prf (-> (: $g (-> (: $y $b) $c)) (-> (: $f (-> (: $x $a) $b)) (-> (: $x $a) $c)))))
 
-;; NEXT: infer the C combinator, such that C = (S (S (K (S (K S) K)) S) (K K)).
+;; Synthesize the flip operator, that is prove
 ;;
-;; 1. Infer its type with the backward chainer
+;; (-> (: $f (-> (: $x $a) (-> (: $y $b) $c)))
+;;     (-> (: $y $b) (-> (: $x $a) $c)))))
+!(bc &kb Nil Z' (fromNumber 5)
+     (: $prf (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) (-> (: $y $b) (-> (: $x $a) $c)))))
+
+;; Prove that (double 𝐙) is even.
 ;;
-;; 2. Synthesize its definition given its type
+;; A possible proof of that is represented by the following proof tree:
+;;
+;;                                  --(𝐙)       -----------------(double_base)
+;;                                  ℕ         (=== (double 𝐙) 𝐙)
+;; -------------------(Even) --(𝐙)  --(double)  -----------------(Sym)
+;; (-> (: $_ ℕ) Type)      ℕ    ℕ         (=== 𝐙 (double 𝐙))
+;; --------------------------------------------------------------(Cong)  -------(MkEvenZ)
+;;                (=== (Even 𝐙) (Even (double 𝐙)))                       (Even 𝐙)
+;;                --------------------------------------------------------------(Replace)
+;;                                       (Even (double 𝐙))
+;;
+;; Or in MeTTa format:
+;;
+;; (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙)))
+!(bc &kb Nil Z' (fromNumber 6) (: $prf (Even (double 𝐙))))
 
-;; NEXT: see if flip = ((.) (.) f . (const . const))
+;; Prove
+;;
+;; (-> (: Even (-> (: $_ ℕ) Type))
+;;     (-> (: (double (𝐒 $k)) ℕ)
+;;         (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;             (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;                 (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))
+;;
+;; which should merely be Cong.
+!(assertEqual
+  (bc &kb Nil Z' (fromNumber 0)
+      (: $prf (-> (: Even (-> (: $_ ℕ) Type))
+                  (-> (: (double (𝐒 $k)) ℕ)
+                      (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+                          (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+                              (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))))
+  (: Cong (-> (: Even (-> (: $_ ℕ) Type))
+              (-> (: (double (𝐒 $k)) ℕ)
+                  (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+                      (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+                          (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))))
 
-;; NEXT: see if S x y z = (x .) (y z)
+;; Prove
+;;
+;; (-> (: (double (𝐒 $k)) ℕ)
+;;     (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;         (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;             (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))
+;;
+;; which should be (Cong Even).
+;; TODO: re-enable after introducting assertAlphaEqual
+;; !(assertEqual
+  (bc &kb Nil Z' (fromNumber 1)
+      (: $prf (-> (: (double (𝐒 $k)) ℕ)
+                  (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+                      (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+                          (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
+  ;; (: (Cong (: Even (-> (: $_ ℕ) Type)))
+  ;;    (-> (: (double (𝐒 $k)) ℕ)
+  ;;        (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+  ;;            (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+  ;;                (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
 
-;; NEXT: write lambda-calculus to combinatory logic converter
+;; Proof that
+;;
+;; (-> (: $k ℕ)
+;;     (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;         (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))
+;;
+;; which could be
+;;
+;; (λ $k (((Cong Even) (double (𝐒 $k))) (𝐒 (𝐒 (double $k)))))
+!(bc &kb Nil Z' (fromNumber 4)
+     (: $prf
+        (-> (: $k ℕ)
+            (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+                (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))
+
+;; Prove
+;;
+;; (-> (: $k ℕ)
+;;     (-> (: Even (-> (: $_ ℕ) Type))
+;;         (-> (: (double (𝐒 $k)) ℕ)
+;;             (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;                 (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;                     (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
+;;
+;; A possible proof could be
+;;
+;; (λ $k Cong)
+!(assertEqual
+  (bc &kb Nil Z' (fromNumber 1)
+      (: $prf
+         (-> (: $k ℕ)
+             (-> (: Even (-> (: $_ ℕ) Type))
+                 (-> (: (double (𝐒 $k)) ℕ)
+                     (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+                         (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+                             (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))))
+  (: (λ Z' Cong)
+     (-> (: Z' ℕ)
+         (-> (: Even (-> (: $_ ℕ) Type))
+             (-> (: (double (𝐒 Z')) ℕ)
+                 (-> (: (𝐒 (𝐒 (double Z'))) ℕ)
+                     (-> (: $eq (=== (double (𝐒 Z')) (𝐒 (𝐒 (double Z')))))
+                         (=== (Even (double (𝐒 Z'))) (Even (𝐒 (𝐒 (double Z'))))))))))))
 
 ;; NEXT
-;; ;; Synthesize the flip operator from AK and AS, that is prove
-;; ;;
-;; ;; (-> (: $f (-> (: $x $a) (-> (: $y $b) $c)))
-;; ;;     (-> (: $y $b) (-> (: $x $a) $c)))))
-;; ;;
-;; ;; A possible proof could be
-;; ;;
-;; ;; ((AS ((AS (AK AS)) AK)) AS)
-(bc &kb (: $prf (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) (-> (: $y $b) (-> (: $x $a) $c))))
-     (fromNumber 5))
-;; (bc &kb (: ((AS ((AS (AK AS)) AK)) AS)
-;;         (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) (-> (: $z $b) (-> (: $w $a) $c))))
-;;      (fromNumber 10))
-;; (bc &kb (: ((AS ((AS (AK AS)) AK)) AS)
-;;         (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) (-> (: $y $b) (-> (: $x $a) $c))))
-;;      (fromNumber 20))
 
-;; ;; ;; Prove that (double Z) is even.
-;; ;; ;;
-;; ;; ;; A possible proof of that is represented by the following proof tree:
-;; ;; ;;
-;; ;; ;;                                  --(Z)       -----------------(double_base)
-;; ;; ;;                                  Nat         (=== (double Z) Z)
-;; ;; ;; -------------------(Even) --(Z)  --(double)  -----------------(Sym)
-;; ;; ;; (-> (: $_ Nat) Type)      Nat    Nat         (=== Z (double Z))
-;; ;; ;; --------------------------------------------------------------(Cong)  -------(MkEvenZ)
-;; ;; ;;                (=== (Even Z) (Even (double Z)))                       (Even Z)
-;; ;; ;;                --------------------------------------------------------------(Replace)
-;; ;; ;;                                       (Even (double Z))
-;; ;; ;;
-;; ;; ;; Or in MeTTa format:
-;; ;; ;;
-;; ;; ;; (: ((Replace ((((Cong Even) Z) (double Z)) (Sym double_base))) MkEvenZ) (Even (double Z)))
-;; (bc &kb (: $prf (Even (double Z))) (fromNumber 6))
-
-;; ;; Prove
-;; ;;
-;; ;; (-> (: Even (-> (: $_ Nat) Type))
-;; ;;     (-> (: (double (S $k)) Nat)
-;; ;;         (-> (: (S (S (double $k))) Nat)
-;; ;;             (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;; ;;                 (=== (Even (double (S $k))) (Even (S (S (double $k)))))))))
-;; ;;
-;; ;; which should merely be Cong.
-;; !(assertEqual
-;;   (bc (: $prf (-> (: Even (-> (: $_ Nat) Type))
-;;                   (-> (: (double (S $k)) Nat)
-;;                       (-> (: (S (S (double $k))) Nat)
-;;                           (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;;                               (=== (Even (double (S $k))) (Even (S (S (double $k))))))))))
-;;       (fromNumber 0))
-;;   (: Cong (-> (: Even (-> (: $_ Nat) Type))
-;;               (-> (: (double (S $k)) Nat)
-;;                   (-> (: (S (S (double $k))) Nat)
-;;                       (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;;                           (=== (Even (double (S $k))) (Even (S (S (double $k)))))))))))
-
-;; ;; Prove
-;; ;;
-;; ;; (-> (: (double (S $k)) Nat)
-;; ;;     (-> (: (S (S (double $k))) Nat)
-;; ;;         (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;; ;;             (=== (Even (double (S $k))) (Even (S (S (double $k))))))))
-;; ;;
-;; ;; which should be (Cong Even).
-;; !(assertEqual
-;;   (bc (: $prf (-> (: (double (S $k)) Nat)
-;;                   (-> (: (S (S (double $k))) Nat)
-;;                       (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;;                           (=== (Even (double (S $k))) (Even (S (S (double $k)))))))))
-;;       (fromNumber 1))
-;;   (: (Cong Even) (-> (: (double (S $k)) Nat)
-;;                      (-> (: (S (S (double $k))) Nat)
-;;                          (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;;                              (=== (Even (double (S $k))) (Even (S (S (double $k))))))))))
-
-;; ;; ;; Prove NEXT
-;; ;; ;;
-;; ;; ;; (-> (: $k Nat)
-;; ;; ;;     (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;; ;; ;;         (=== (Even (double (S $k))) (Even (S (S (double $k)))))))
-;; ;; ;;
-;; ;; ;; which could be
-;; ;; ;;
-;; ;; ;; ((λ $k) (((Cong Even) (double (S $k))) (S (S (double $k)))))
-;; ;; ;;
-;; ;; ;; or something not involving λ like
-;; ;; ;;
-;; ;; ;; (((Cong Even) (double (S $k))) (S (S (double $k)))) double_rec
-;; ;; ;;
-;; ;; ;; (λ $k (f (double_rec $k)))
-;; ;; ;;
-;; ;; ;; double_rec
-;; ;; ;;
-;; ;; ;; though this one is wrong, it should be corrected, maybe using flip,
-;; ;; ;; composition or such.
-;;   (bc &kb (: $prf (-> (: $k Nat)
-;;                    (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;;                        (=== (Even (double (S $k))) (Even (S (S (double $k))))))))
-;;        (fromNumber 7))
-
-;; ;; Prove
-;; ;;
-;; ;; (-> (: $k Nat) (-> (: Even (-> (: $_ Nat) Type)) (-> (: (double (S $k)) Nat) (-> (: (S (S (double $k))) Nat) (-> (: $eq (=== (double (S $k)) (S (S (double $k))))) (=== (Even (double (S $k))) (Even (S (S (double $k))))))))))
-;; ;;
-;; ;; (λ $k Cong)
-;; (bc &kb (: $prf (-> (: $k Nat)
-;;                  (-> (: Even (-> (: $_ Nat) Type))
-;;                      (-> (: (double (S $k)) Nat)
-;;                          (-> (: (S (S (double $k))) Nat)
-;;                              (-> (: $eq (=== (double (S $k)) (S (S (double $k)))))
-;;                                  (=== (Even (double (S $k))) (Even (S (S (double $k)))))))))))
-;;      (fromNumber 5))
-
-;; ;; Prove that (-> (: $k Nat) (=== (Even (double (S $k))) (Even (S (S (double $k))))))
+;; ;; Prove that (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))
 ;; ;;
 ;; ;; A possible proof tree would be
 ;; ;;
 ;; ;;
 ;; ;; 
 ;; ;; ----------------------------------------------------------------------------------------------
-;; ;; (-> (: $k Nat) (=== (Even (double (S $k))) (Even (S (S (double $k))))))
-;; (bc &kb (: $prf (-> (: $k Nat) (=== (Even (double (S $k))) (Even (S (S (double $k))))))) (fromNumber 7))
+;; ;; (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))
+;; (bc &kb (: $prf (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))) (fromNumber 7))
 
-
-
-;; ;; Prove that (=== (Even (S (S (double $k)))) (Even (double (S $k))))
+;; ;; Prove that (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))
 ;; ;;
 ;; ;; (same as above but Sym)
 ;; ;;
-;; (bc &kb (: $prf (=== (Even (S (S (double $k)))) (Even (double (S $k))))) (fromNumber 5))
-;; (bc &kb (: $prf (-> (: $k Nat) (=== (Even (S (S (double $k)))) (Even (double (S $k))))) (fromNumber 5)))
+;; (bc &kb (: $prf (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))) (fromNumber 5))
+;; (bc &kb (: $prf (-> (: $k ℕ) (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))) (fromNumber 5)))
 
-
-;; Prove that if (double k) is even, then (double (S k)) is even
+;; Prove that if (double k) is even, then (double (𝐒 k)) is even
 ;;
 ;; A possible proof of that is represented by the following proof tree:
 ;;
 ;; NEXT: test subproofs
 ;;
 ;;                                                                                                                                                                                         --------------------------------------------------------(double_rec)  ---------($k)
-;;                                                                                                                                                                                         (-> (: $k Nat) (=== (double (S $k)) (S (S (double $k)))))             (: $k Nat)
-;;                                                                        -------------------(Even)  ----------------------(double (S $k))  --------------------------(S (S (double $k)))  -------------------------------------------------------------------------------(ModusPonens)
-;;                                                                        (-> (: $_ Nat) Type)       (: (double (S $k)) Nat)                (: (S (S (double $k))) Nat)                    (=== (double (S $k)) (S (S (double $k))))
+;;                                                                                                                                                                                         (-> (: $k ℕ) (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))             (: $k ℕ)
+;;                                                                        -------------------(Even)  ----------------------(double (𝐒 $k))  --------------------------(𝐒 (𝐒 (double $k)))  -------------------------------------------------------------------------------(ModusPonens)
+;;                                                                        (-> (: $_ ℕ) Type)       (: (double (𝐒 $k)) ℕ)                (: (𝐒 (𝐒 (double $k))) ℕ)                    (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k))))
 ;;                                                 -----------------($e)  ---------------------------------------------------------------------------------------------------------------------------------------------------------(Cong)
-;;                                                 (Even (double $k))                                           (=== (Even (double (S $k))) (Even (S (S (double $k)))))
+;;                                                 (Even (double $k))                                           (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))
 ;;                                                 -------------------------(MkEvenSS)                          ------------------------------------------------------(Sym)
-;;                                                 (Even (S (S (double $k))))                                   (=== (Even (S (S (double $k)))) (Even (double (S $k))))
+;;                                                 (Even (𝐒 (𝐒 (double $k))))                                   (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))
 ;;                    -----------------($e)        -------------------------------------------------------------------------------------------------------------------(Replace)
-;;                    (Even (double $k))           (Even (double (S $k)))
+;;                    (Even (double $k))           (Even (double (𝐒 $k)))
 ;; --($k)             --------------------------------------------------(λ)
-;; Nat                (-> (: $e (Even (double $k))) (Even (double (S $k))
+;; ℕ                (-> (: $e (Even (double $k))) (Even (double (𝐒 $k))
 ;; ---------------------------------------------------------------------(λ)
-;;  (-> (: $k Nat) (-> (: $e (Even (double $k))) (Even (double (S $k)))
+;;  (-> (: $k ℕ) (-> (: $e (Even (double $k))) (Even (double (𝐒 $k)))
 ;;
 ;; Or in MeTTa format:
 ;;
-;; (λ (: $k Nat) (λ (: $e (Even (double $k))) (Replace (MkEvenSS $e) (Sym (Cong Even (double (S $k)) (S (S (double $k))) (ModusPonens double_rec $k))))))
+;; (λ (: $k ℕ) (λ (: $e (Even (double $k))) (Replace (MkEvenSS $e) (Sym (Cong Even (double (𝐒 $k)) (𝐒 (𝐒 (double $k))) (ModusPonens double_rec $k))))))
 ;;
 ;; NEXT: is it possible to do better by using composition?  ANSWER: probably with composing double_rec, Trans, Sym and Cong
 
@@ -464,7 +548,7 @@
 ;; ;; note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ;; ;; fatal runtime error: Rust panics must be rethrown
 ;; ;; Aborted (core dumped)
-;; (bc &kb (: $prf (-> (: $k Nat) (-> (: $e (Even (double $k))) (Even (double (S $k)))))) (fromNumber 8))
+;; (bc &kb (: $prf (-> (: $k ℕ) (-> (: $e (Even (double $k))) (Even (double (𝐒 $k)))))) (fromNumber 8))
 
 ;; ;; ;; Prove that for all x, (double x) is even
-;; ;; (bc &kb (: $prf (-> (: $x Nat) (Even (double $x)))) (fromNumber 3))
+;; ;; (bc &kb (: $prf (-> (: $x ℕ) (Even (double $x)))) (fromNumber 3))
