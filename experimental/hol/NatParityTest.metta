@@ -159,7 +159,7 @@
 ;; the premise.  Having annotated proof is however a good thing, to
 ;; display a proof tree and to have an indepth view into the proof.
 ;; In order to remove (resp. add) type annotation one can use
-;; remove-type (resp. add-type).
+;; remove-type-annotation (resp. add-type).
 (: bc (-> $a                            ; Knowledge base space
           $b                            ; Environment
           DeBruijn                      ; De Bruijn Index
@@ -336,219 +336,325 @@
 ;; ;; Identity
 ;; (= ((λ $x $x) $y) $y)
 
+;;;;;;;;;;;;;;;;;;;;;
+;; Remove/add type ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Remove type annotations from a query.
+;;
+;; For instance
+;;
+;; (remove-type-annotation (: ((ModusPonens (: ab (→ A B))) (: a A)) B))
+;;
+;; outputs
+;;
+;; ((ModusPonens ab) a)
+(: remove-type-annotation (-> $a $a))
+(= (remove-type-annotation $term)
+   (case (get-metatype $term)
+     ((Symbol $term)
+      (Grounded $term)
+      (Variable $term)
+      (Expression (case $term
+                    ;; Only covers up to trinary expression because
+                    ;; for now the bc is not supposed to generate
+                    ;; n-ary expression where n is greater 3.
+                    ((() ())
+                     (($x) ((remove-type-annotation $x)))
+                     (($x $y) ((remove-type-annotation $x) (remove-type-annotation $y)))
+                     (($x $y $z) (if (== $x :)
+                                     (remove-type-annotation $y)
+                                     ((remove-type-annotation $x)
+                                      (remove-type-annotation $y)
+                                      (remove-type-annotation $z))))
+                     ($_ $_)))))))
+
+;; Add type missing annotation to be compatible with bc query format.
+;; Whatever is missing is only added as variables, not inferred, for
+;; that one may use the bc.  Note that the first annotation must be
+;; provided manually
+;;
+;; For instance
+;;
+;; (add-type-annotation ((ModusPonens ab) a))
+;;
+;; only outputs
+;;
+;; ((ModusPonens (: ab $t#1)) (: a $t#2))
+;;
+;; not
+;;
+;; (: ((ModusPonens (: ab $t#1)) (: a $t#2)) $t#3)
+;;
+;; That is because add-type-annotation can only detect application, that is a
+;; term of the form (<ABS> <ARG>) to add the type annotation to <ARG>.
+;;
+;; NEXT: must keep track of the existing type to remain consistant.
+(: add-type-annotation (-> $a $a))
+(= (add-type-annotation $term)
+   (case (get-metatype $term)
+     ((Symbol $term)
+      (Grounded $term)
+      (Variable $term)
+      (Expression (case $term
+                    ((() ())
+                     (($x) ($x))
+                     (($x $y) (if (== $x S')
+                                  ;; Treat De Bruijn index atomically
+                                  $term
+                                  ;; Add type annotation to argument of application
+                                  (let $νx (add-type-annotation $x) ($νx (: (add-type-annotation $y) $t)))))
+                     (($x $y $z) (if (== $x :)
+                                     ;; Already a type annotation, recurse only on $y
+                                     (: (add-type-annotation $y) $z)
+                                     (if (== $x λ)
+                                         ;; Recurse only on body of lambda abstraction
+                                         (λ $y (add-type-annotation $z))
+                                         $term)))
+                     ($_ $_)))))))
+
 ;;;;;;;;;;;
 ;; Tests ;;
 ;;;;;;;;;;;
 
-;; Synthesize natural numbers
-!(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 1) (: $prf ℕ))
-  ((: (𝐒 (: 𝐙 ℕ)) ℕ)
-   (: (double (: 𝐙 ℕ)) ℕ)
-   (: 𝐙 ℕ)))
-
-;; Prove that 0 is even
-!(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 0) (: $prf (Even (fromNumber 0))))
-  (: MkEvenZ (Even 𝐙)))
-
-;; Prove that 2 is even
-!(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 1) (: $prf (Even (fromNumber 2))))
-  (: (MkEvenSS (: MkEvenZ (Even 𝐙))) (Even (𝐒 (𝐒 𝐙)))))
-
-;; Synthesize even numbers
+;; ;; Synthesize natural numbers
 ;; !(assertEqualToResult
-  !(bc &kb Nil Z' (fromNumber 4) (: $prf (Σ ℕ Even)))
-  ;; ((: (((MkΣ (: Even (-> (: $_#81011 ℕ) Type))) (: 𝐙 ℕ)) (: MkEvenZ (Even 𝐙))) (Σ ℕ Even))
-  ;;  )
-;; !(bc &kb (: $prf (Σ ℕ Even)) (fromNumber 4))
+;;   (bc &kb Nil Z' (fromNumber 1) (: $prf ℕ))
+;;   ((: (𝐒 (: 𝐙 ℕ)) ℕ)
+;;    (: (double (: 𝐙 ℕ)) ℕ)
+;;    (: 𝐙 ℕ)))
 
-;; Synthesize unary functions over natural numbers, that is
-;; prove (-> (: $k ℕ) ℕ).
-!(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $k ℕ) ℕ)))
-  ((: (λ Z' 𝐙) (-> (: Z' ℕ) ℕ))
-   (: (λ Z' Z') (-> (: Z' ℕ) ℕ))
-   (: 𝐒 (-> (: $k ℕ) ℕ))
-   (: double (-> (: $k ℕ) ℕ))))
-
-;; Synthesize the identity function, that is prove (-> (: $x $a) $a)
-;; TODO: re-enable when we have assertContain
+;; ;; Prove that 0 is even
 ;; !(assertEqualToResult
-!(bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $x $a) $a)))
- ;; (: (λ Z' Z') (-> (: Z' $a) $a))
+;;   (bc &kb Nil Z' (fromNumber 0) (: $prf (Even (fromNumber 0))))
+;;   (: MkEvenZ (Even 𝐙)))
 
-;; Synthesize the composition operator
-!(bc &kb Nil Z' (fromNumber 3)
-     (: $prf (-> (: $g (-> (: $y $b) $c)) (-> (: $f (-> (: $x $a) $b)) (-> (: $x $a) $c)))))
+;; ;; Prove that 2 is even
+;; !(assertEqualToResult
+;;   (bc &kb Nil Z' (fromNumber 1) (: $prf (Even (fromNumber 2))))
+;;   (: (MkEvenSS (: MkEvenZ (Even 𝐙))) (Even (𝐒 (𝐒 𝐙)))))
 
-;; Synthesize the flip operator, that is prove
-;;
-;; (-> (: $f (-> (: $x $a) (-> (: $y $b) $c)))
-;;     (-> (: $y $b) (-> (: $x $a) $c)))))
-!(bc &kb Nil Z' (fromNumber 5)
-     (: $prf (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) (-> (: $y $b) (-> (: $x $a) $c)))))
+;; ;; Synthesize even numbers
+;; ;; !(assertEqualToResult
+;;   !(bc &kb Nil Z' (fromNumber 4) (: $prf (Σ ℕ Even)))
+;;   ;; ((: (((MkΣ (: Even (-> (: $_#81011 ℕ) Type))) (: 𝐙 ℕ)) (: MkEvenZ (Even 𝐙))) (Σ ℕ Even))
+;;   ;;  )
+;; ;; !(bc &kb (: $prf (Σ ℕ Even)) (fromNumber 4))
 
-;; Prove that (double 𝐙) is even.
-;;
-;; A possible proof of that is represented by the following proof tree:
-;;
-;;                                  --(𝐙)       -----------------(double_base)
-;;                                  ℕ         (=== (double 𝐙) 𝐙)
-;; -------------------(Even) --(𝐙)  --(double)  -----------------(Sym)
-;; (-> (: $_ ℕ) Type)      ℕ    ℕ         (=== 𝐙 (double 𝐙))
-;; --------------------------------------------------------------(Cong)  -------(MkEvenZ)
-;;                (=== (Even 𝐙) (Even (double 𝐙)))                       (Even 𝐙)
-;;                --------------------------------------------------------------(Replace)
-;;                                       (Even (double 𝐙))
-;;
-;; Or in MeTTa format:
-;;
-;; (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙)))
-!(bc &kb Nil Z' (fromNumber 6) (: $prf (Even (double 𝐙))))
+;; ;; Synthesize unary functions over natural numbers, that is
+;; ;; prove (-> (: $k ℕ) ℕ).
+;; !(assertEqualToResult
+;;   (bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $k ℕ) ℕ)))
+;;   ((: (λ Z' 𝐙) (-> (: Z' ℕ) ℕ))
+;;    (: (λ Z' Z') (-> (: Z' ℕ) ℕ))
+;;    (: 𝐒 (-> (: $k ℕ) ℕ))
+;;    (: double (-> (: $k ℕ) ℕ))))
 
-;; Prove
-;;
-;; (-> (: Even (-> (: $_ ℕ) Type))
-;;     (-> (: (double (𝐒 $k)) ℕ)
-;;         (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;; ;; Synthesize the identity function, that is prove (-> (: $x $a) $a)
+;; ;; TODO: re-enable when we have assertContain
+;; ;; !(assertEqualToResult
+;; !(bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $x $a) $a)))
+;;  ;; (: (λ Z' Z') (-> (: Z' $a) $a))
+
+;; ;; Synthesize the composition operator
+;; !(bc &kb Nil Z' (fromNumber 3)
+;;      (: $prf (-> (: $g (-> (: $y $b) $c)) (-> (: $f (-> (: $x $a) $b)) (-> (: $x $a) $c)))))
+
+;; ;; Synthesize the flip operator, that is prove
+;; ;;
+;; ;; (-> (: $f (-> (: $x $a) (-> (: $y $b) $c)))
+;; ;;     (-> (: $y $b) (-> (: $x $a) $c)))))
+;; !(bc &kb Nil Z' (fromNumber 5)
+;;      (: $prf (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) (-> (: $y $b) (-> (: $x $a) $c)))))
+
+;; !(add-type-annotation (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙))))
+
+;; ;; Prove that (double 𝐙) is even.
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;;                               -(𝐙)      -----------------(double_base)
+;; ;;                               ℕ         (=== (double 𝐙) 𝐙)
+;; ;; -----------------(Even) -(𝐙)  -(double) -----------------(Sym)
+;; ;; (-> (: $_ ℕ) Type)      ℕ     ℕ         (=== 𝐙 (double 𝐙))
+;; ;; ----------------------------------------------------------(Cong)  -------(MkEvenZ)
+;; ;;                (=== (Even 𝐙) (Even (double 𝐙)))                   (Even 𝐙)
+;; ;;                ----------------------------------------------------------(Replace)
+;; ;;                                       (Even (double 𝐙))
+;; ;;
+;; ;; Or in MeTTa format:
+;; ;;
+;; ;; (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙)))
+;; ;; !(bc &kb Nil Z' (fromNumber 6) (: $prf (Even (double 𝐙))))
+;; ;; !(bc &kb
+;; ;;      Nil
+;; ;;      Z'
+;; ;;      (fromNumber 8)
+;; ;;      (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙))))
+!(bc &kb
+     Nil
+     Z'
+     (fromNumber 6)
+     (: ((Replace $subprf) (: MkEvenZ (Even 𝐙)))
+        (Even (double 𝐙))))
+
+;; NEXT: figure out why it doesn't work, or run the one above to
+;; hopefully get the full solution
+
+;; !(bc &kb
+;;      Nil
+;;      Z'
+;;      (fromNumber 6)
+;;      (: ((Replace
+;;           (: ((((Cong
+;;                  (: Even $t119078))
+;;                 (: 𝐙 $t110284))
+;;                (: (double (: 𝐙 $t144337)) $t98804))
+;;               (: (Sym (: double_base $t166308)) $t83636)) $t63986))
+;;          (: MkEvenZ $t43616))
+;;         (Even (double 𝐙))))
+
+;; ;; Prove
+;; ;;
+;; ;; (-> (: Even (-> (: $_ ℕ) Type))
+;; ;;     (-> (: (double (𝐒 $k)) ℕ)
+;; ;;         (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;; ;;             (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;; ;;                 (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))
+;; ;;
+;; ;; which should merely be Cong.
+;; !(assertEqual
+;;   (bc &kb Nil Z' (fromNumber 0)
+;;       (: $prf (-> (: Even (-> (: $_ ℕ) Type))
+;;                   (-> (: (double (𝐒 $k)) ℕ)
+;;                       (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;                           (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;                               (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))))
+;;   (: Cong (-> (: Even (-> (: $_ ℕ) Type))
+;;               (-> (: (double (𝐒 $k)) ℕ)
+;;                   (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;                       (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;                           (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))))
+
+;; ;; Prove
+;; ;;
+;; ;; (-> (: (double (𝐒 $k)) ℕ)
+;; ;;     (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;; ;;         (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;; ;;             (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))
+;; ;;
+;; ;; which should be (Cong Even).
+;; ;; TODO: re-enable after introducting assertAlphaEqual
+;; ;; !(assertEqual
+;;   (bc &kb Nil Z' (fromNumber 1)
+;;       (: $prf (-> (: (double (𝐒 $k)) ℕ)
+;;                   (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;                       (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;                           (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
+;;   ;; (: (Cong (: Even (-> (: $_ ℕ) Type)))
+;;   ;;    (-> (: (double (𝐒 $k)) ℕ)
+;;   ;;        (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;   ;;            (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;   ;;                (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
+
+;; ;; Proof that
+;; ;;
+;; ;; (-> (: $k ℕ)
+;; ;;     (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;; ;;         (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))
+;; ;;
+;; ;; which could be
+;; ;;
+;; ;; (λ $k (((Cong Even) (double (𝐒 $k))) (𝐒 (𝐒 (double $k)))))
+;; !(bc &kb Nil Z' (fromNumber 4)
+;;      (: $prf
+;;         (-> (: $k ℕ)
 ;;             (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
 ;;                 (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))
-;;
-;; which should merely be Cong.
-!(assertEqual
-  (bc &kb Nil Z' (fromNumber 0)
-      (: $prf (-> (: Even (-> (: $_ ℕ) Type))
-                  (-> (: (double (𝐒 $k)) ℕ)
-                      (-> (: (𝐒 (𝐒 (double $k))) ℕ)
-                          (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-                              (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))))
-  (: Cong (-> (: Even (-> (: $_ ℕ) Type))
-              (-> (: (double (𝐒 $k)) ℕ)
-                  (-> (: (𝐒 (𝐒 (double $k))) ℕ)
-                      (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-                          (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))))
 
-;; Prove
-;;
-;; (-> (: (double (𝐒 $k)) ℕ)
-;;     (-> (: (𝐒 (𝐒 (double $k))) ℕ)
-;;         (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-;;             (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))
-;;
-;; which should be (Cong Even).
-;; TODO: re-enable after introducting assertAlphaEqual
+;; ;; Prove
+;; ;;
+;; ;; (-> (: $k ℕ)
+;; ;;     (-> (: Even (-> (: $_ ℕ) Type))
+;; ;;         (-> (: (double (𝐒 $k)) ℕ)
+;; ;;             (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;; ;;                 (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;; ;;                     (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
+;; ;;
+;; ;; A possible proof could be
+;; ;;
+;; ;; (λ $k Cong)
 ;; !(assertEqual
-  (bc &kb Nil Z' (fromNumber 1)
-      (: $prf (-> (: (double (𝐒 $k)) ℕ)
-                  (-> (: (𝐒 (𝐒 (double $k))) ℕ)
-                      (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-                          (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
-  ;; (: (Cong (: Even (-> (: $_ ℕ) Type)))
-  ;;    (-> (: (double (𝐒 $k)) ℕ)
-  ;;        (-> (: (𝐒 (𝐒 (double $k))) ℕ)
-  ;;            (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-  ;;                (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
+;;   (bc &kb Nil Z' (fromNumber 1)
+;;       (: $prf
+;;          (-> (: $k ℕ)
+;;              (-> (: Even (-> (: $_ ℕ) Type))
+;;                  (-> (: (double (𝐒 $k)) ℕ)
+;;                      (-> (: (𝐒 (𝐒 (double $k))) ℕ)
+;;                          (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
+;;                              (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))))
+;;   (: (λ Z' Cong)
+;;      (-> (: Z' ℕ)
+;;          (-> (: Even (-> (: $_ ℕ) Type))
+;;              (-> (: (double (𝐒 Z')) ℕ)
+;;                  (-> (: (𝐒 (𝐒 (double Z'))) ℕ)
+;;                      (-> (: $eq (=== (double (𝐒 Z')) (𝐒 (𝐒 (double Z')))))
+;;                          (=== (Even (double (𝐒 Z'))) (Even (𝐒 (𝐒 (double Z'))))))))))))
 
-;; Proof that
-;;
-;; (-> (: $k ℕ)
-;;     (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-;;         (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))
-;;
-;; which could be
-;;
-;; (λ $k (((Cong Even) (double (𝐒 $k))) (𝐒 (𝐒 (double $k)))))
-!(bc &kb Nil Z' (fromNumber 4)
-     (: $prf
-        (-> (: $k ℕ)
-            (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-                (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))))))
+;; ;; NEXT
 
-;; Prove
-;;
-;; (-> (: $k ℕ)
-;;     (-> (: Even (-> (: $_ ℕ) Type))
-;;         (-> (: (double (𝐒 $k)) ℕ)
-;;             (-> (: (𝐒 (𝐒 (double $k))) ℕ)
-;;                 (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-;;                     (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))
-;;
-;; A possible proof could be
-;;
-;; (λ $k Cong)
-!(assertEqual
-  (bc &kb Nil Z' (fromNumber 1)
-      (: $prf
-         (-> (: $k ℕ)
-             (-> (: Even (-> (: $_ ℕ) Type))
-                 (-> (: (double (𝐒 $k)) ℕ)
-                     (-> (: (𝐒 (𝐒 (double $k))) ℕ)
-                         (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
-                             (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))))
-  (: (λ Z' Cong)
-     (-> (: Z' ℕ)
-         (-> (: Even (-> (: $_ ℕ) Type))
-             (-> (: (double (𝐒 Z')) ℕ)
-                 (-> (: (𝐒 (𝐒 (double Z'))) ℕ)
-                     (-> (: $eq (=== (double (𝐒 Z')) (𝐒 (𝐒 (double Z')))))
-                         (=== (Even (double (𝐒 Z'))) (Even (𝐒 (𝐒 (double Z'))))))))))))
+;; ;; ;; Prove that (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))
+;; ;; ;;
+;; ;; ;; A possible proof tree would be
+;; ;; ;;
+;; ;; ;;
+;; ;; ;; 
+;; ;; ;; ----------------------------------------------------------------------------------------------
+;; ;; ;; (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))
+;; ;; (bc &kb (: $prf (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))) (fromNumber 7))
 
-;; NEXT
+;; ;; ;; Prove that (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))
+;; ;; ;;
+;; ;; ;; (same as above but Sym)
+;; ;; ;;
+;; ;; (bc &kb (: $prf (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))) (fromNumber 5))
+;; ;; (bc &kb (: $prf (-> (: $k ℕ) (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))) (fromNumber 5)))
 
-;; ;; Prove that (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))
+;; ;; Prove that if (double k) is even, then (double (𝐒 k)) is even
 ;; ;;
-;; ;; A possible proof tree would be
+;; ;; A possible proof of that is represented by the following proof tree:
 ;; ;;
+;; ;; NEXT: test subproofs
 ;; ;;
-;; ;; 
-;; ;; ----------------------------------------------------------------------------------------------
-;; ;; (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))
-;; (bc &kb (: $prf (-> (: $k ℕ) (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))) (fromNumber 7))
+;; ;;                                                                                                                                                                                         --------------------------------------------------------(double_rec)  ---------($k)
+;; ;;                                                                                                                                                                                         (-> (: $k ℕ) (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))             (: $k ℕ)
+;; ;;                                                                        -------------------(Even)  ----------------------(double (𝐒 $k))  --------------------------(𝐒 (𝐒 (double $k)))  -------------------------------------------------------------------------------(ModusPonens)
+;; ;;                                                                        (-> (: $_ ℕ) Type)       (: (double (𝐒 $k)) ℕ)                (: (𝐒 (𝐒 (double $k))) ℕ)                    (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k))))
+;; ;;                                                 -----------------($e)  ---------------------------------------------------------------------------------------------------------------------------------------------------------(Cong)
+;; ;;                                                 (Even (double $k))                                           (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))
+;; ;;                                                 -------------------------(MkEvenSS)                          ------------------------------------------------------(Sym)
+;; ;;                                                 (Even (𝐒 (𝐒 (double $k))))                                   (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))
+;; ;;                    -----------------($e)        -------------------------------------------------------------------------------------------------------------------(Replace)
+;; ;;                    (Even (double $k))           (Even (double (𝐒 $k)))
+;; ;; --($k)             --------------------------------------------------(λ)
+;; ;; ℕ                (-> (: $e (Even (double $k))) (Even (double (𝐒 $k))
+;; ;; ---------------------------------------------------------------------(λ)
+;; ;;  (-> (: $k ℕ) (-> (: $e (Even (double $k))) (Even (double (𝐒 $k)))
+;; ;;
+;; ;; Or in MeTTa format:
+;; ;;
+;; ;; (λ (: $k ℕ) (λ (: $e (Even (double $k))) (Replace (MkEvenSS $e) (Sym (Cong Even (double (𝐒 $k)) (𝐒 (𝐒 (double $k))) (ModusPonens double_rec $k))))))
+;; ;;
+;; ;; NEXT: is it possible to do better by using composition?  ANSWER: probably with composing double_rec, Trans, Sym and Cong
 
-;; ;; Prove that (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))
-;; ;;
-;; ;; (same as above but Sym)
-;; ;;
-;; (bc &kb (: $prf (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))) (fromNumber 5))
-;; (bc &kb (: $prf (-> (: $k ℕ) (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))) (fromNumber 5)))
+;; ;; ;; NEXT: this fails with the following error
+;; ;; ;;
+;; ;; ;; thread '<unnamed>' panicked at /home/nilg/Work/TrueAGI/hyperon-experimental/lib/src/atom/matcher.rs:199:14:
+;; ;; ;; Unexpected state
+;; ;; ;; note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+;; ;; ;; fatal runtime error: Rust panics must be rethrown
+;; ;; ;; Aborted (core dumped)
+;; ;; (bc &kb (: $prf (-> (: $k ℕ) (-> (: $e (Even (double $k))) (Even (double (𝐒 $k)))))) (fromNumber 8))
 
-;; Prove that if (double k) is even, then (double (𝐒 k)) is even
-;;
-;; A possible proof of that is represented by the following proof tree:
-;;
-;; NEXT: test subproofs
-;;
-;;                                                                                                                                                                                         --------------------------------------------------------(double_rec)  ---------($k)
-;;                                                                                                                                                                                         (-> (: $k ℕ) (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))             (: $k ℕ)
-;;                                                                        -------------------(Even)  ----------------------(double (𝐒 $k))  --------------------------(𝐒 (𝐒 (double $k)))  -------------------------------------------------------------------------------(ModusPonens)
-;;                                                                        (-> (: $_ ℕ) Type)       (: (double (𝐒 $k)) ℕ)                (: (𝐒 (𝐒 (double $k))) ℕ)                    (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k))))
-;;                                                 -----------------($e)  ---------------------------------------------------------------------------------------------------------------------------------------------------------(Cong)
-;;                                                 (Even (double $k))                                           (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))
-;;                                                 -------------------------(MkEvenSS)                          ------------------------------------------------------(Sym)
-;;                                                 (Even (𝐒 (𝐒 (double $k))))                                   (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))
-;;                    -----------------($e)        -------------------------------------------------------------------------------------------------------------------(Replace)
-;;                    (Even (double $k))           (Even (double (𝐒 $k)))
-;; --($k)             --------------------------------------------------(λ)
-;; ℕ                (-> (: $e (Even (double $k))) (Even (double (𝐒 $k))
-;; ---------------------------------------------------------------------(λ)
-;;  (-> (: $k ℕ) (-> (: $e (Even (double $k))) (Even (double (𝐒 $k)))
-;;
-;; Or in MeTTa format:
-;;
-;; (λ (: $k ℕ) (λ (: $e (Even (double $k))) (Replace (MkEvenSS $e) (Sym (Cong Even (double (𝐒 $k)) (𝐒 (𝐒 (double $k))) (ModusPonens double_rec $k))))))
-;;
-;; NEXT: is it possible to do better by using composition?  ANSWER: probably with composing double_rec, Trans, Sym and Cong
-
-;; ;; NEXT: this fails with the following error
-;; ;;
-;; ;; thread '<unnamed>' panicked at /home/nilg/Work/TrueAGI/hyperon-experimental/lib/src/atom/matcher.rs:199:14:
-;; ;; Unexpected state
-;; ;; note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-;; ;; fatal runtime error: Rust panics must be rethrown
-;; ;; Aborted (core dumped)
-;; (bc &kb (: $prf (-> (: $k ℕ) (-> (: $e (Even (double $k))) (Even (double (𝐒 $k)))))) (fromNumber 8))
-
-;; ;; ;; Prove that for all x, (double x) is even
-;; ;; (bc &kb (: $prf (-> (: $x ℕ) (Even (double $x)))) (fromNumber 3))
+;; ;; ;; ;; Prove that for all x, (double x) is even
+;; ;; ;; (bc &kb (: $prf (-> (: $x ℕ) (Even (double $x)))) (fromNumber 3))
