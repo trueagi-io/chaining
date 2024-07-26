@@ -35,8 +35,8 @@
 (: DeBruijn Type)
 
 ;; Define DeBruijn constructors
-(: Z' DeBruijn)                        ; Zero
-(: S' (-> DeBruijn DeBruijn))          ; Successor
+(: z DeBruijn)                        ; Zero
+(: s (-> DeBruijn DeBruijn))          ; Successor
 
 ;;;;;;;;;;
 ;; List ;;
@@ -57,21 +57,21 @@
 (= (match' (Cons $head $tail) $pattern $rewrite) (let $pattern $head $rewrite))
 (= (match' (Cons $head $tail) $pattern $rewrite) (match' $tail $pattern $rewrite))
 
-;; ;; Test match' on empty list
-;; !(assertEqualToResult
-;;   (match' Nil ($x $y) ($y $x))
-;;   ())
+;; Test match' on empty list
+!(assertEqualToResult
+  (match' Nil ($x $y) ($y $x))
+  ())
 
-;; ;; Test match' on singleton
-;; !(assertEqual
-;;   (match' (Cons (A B) Nil) ($x $y) ($y $x))
-;;   (B A))
+;; Test match' on singleton
+!(assertEqual
+  (match' (Cons (A B) Nil) ($x $y) ($y $x))
+  (B A))
 
-;; ;; Test match' on pair
-;; !(assertEqualToResult
-;;   (match' (Cons (A B) (Cons (C D) Nil)) ($x $y) ($y $x))
-;;   ((B A)
-;;    (D C)))
+;; Test match' on pair
+!(assertEqualToResult
+  (match' (Cons (A B) (Cons (C D) Nil)) ($x $y) ($y $x))
+  ((B A)
+   (D C)))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
@@ -82,8 +82,8 @@
 ;;
 ;; (λ <INDEX> <BODY>)
 ;;
-;; where <INDEX> is a De Bruijn index as define above, such as Z' or
-;; (S' Z'), and <BODY> is a term possibly containing <INDEX>.  Note
+;; where <INDEX> is a De Bruijn index as define above, such as z or
+;; (s z), and <BODY> is a term possibly containing <INDEX>.  Note
 ;; that the use of De Bruijn index in lambda abstraction is somewhat
 ;; unconventional here.  It differs from what is described in
 ;; https://en.wikipedia.org/wiki/De_Bruijn_index in three ways:
@@ -91,15 +91,15 @@
 ;; 1. The index is explicitely attached to a λ by being its first
 ;;    argument.  For instance the lambda term λx.x, which would
 ;;    traditionally be represented by λ1 using De Bruijn index, would
-;;    be represented here by the MeTTa term (λ Z' Z').
+;;    be represented here by the MeTTa term (λ z z).
 ;;
 ;; 2. As seen in the example above the index here starts at 0,
-;;    represented by Z', instead of 1.
+;;    represented by z, instead of 1.
 ;;
 ;; 3. The index increases as the lambda abstraction gets deeper.  For
 ;;    instance λx.λy.x, which would traditionally be represented by
 ;;    λλ2 using De Bruijn index, is represented here by the MeTTa term
-;;    (λ Z' (λ (S' Z') Z').
+;;    (λ z (λ (s z) z).
 ;;
 ;; This differences are due to the way the proof abstraction recursive
 ;; step is defined in the bc, as well as the need for having non
@@ -129,7 +129,7 @@
 ;; * Environment: a list of typing relationship between De Bruijn
 ;;   index and type, such as
 ;;
-;;   (Cons (: Z' String) (Cons (: (S' Z') Number) Nil))
+;;   (Cons (: z String) (Cons (: (s z) Number) Nil))
 ;;
 ;; * De Bruijn Index: De Bruijn Index to use if a lambda abstraction
 ;;   is introduced.
@@ -180,24 +180,20 @@
 
 ;; Proof application
 (= (bc $kb $env $idx (S $k) (: ($prfabs (: $prfarg $prms)) $thrm))
-   ;; (let () (println! (bc-app (env $env)
-   ;;                           (idx $idx)
-   ;;                           (depth (S $k))
-   ;;                           (query (: ($prfabs (: $prfarg $prms)) $thrm))))
    (let* (((: $prfabs (-> (: $prfarg $prms) $thrm))
            (bc $kb $env $idx $k (: $prfabs (-> (: $prfarg $prms) $thrm))))
           ((: $prfarg $prms)
            (bc $kb $env $idx $k (: $prfarg $prms))))
      (: ($prfabs (: $prfarg $prms)) $thrm)))
-;; Proof abstraction
-(= (bc $kb $env $idx (S $k) (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm)))
-   ;; (let () (println! (bc-abs (env $env)
-   ;;                           (idx $idx)
-   ;;                           (depth (S $k))
-   ;;                           (query (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm)))))
-   (let (: $prfbdy $thrm)
-     (bc $kb (Cons (: $idx $prms) $env) (S' $idx) $k (: $prfbdy $thrm))
-     (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm))))
+
+;; TODO: this is necessary for structural induction but makes
+;; everything extremely slow.
+;;
+;; ;; Proof abstraction
+;; (= (bc $kb $env $idx (S $k) (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm)))
+;;    (let (: $prfbdy $thrm)
+;;      (bc $kb (Cons (: $idx $prms) $env) (s $idx) $k (: $prfbdy $thrm))
+;;      (: (λ $idx $prfbdy) (-> (: $idx $prms) $thrm))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge/rule base ;;
@@ -252,7 +248,7 @@
 ;; ;; Equality
 ;; (: === (-> $a $a Type))
 ;;
-;; ;; ;; NEXT
+;; ;; ;; TODO
 ;;
 ;; ;; ;; For all x, there exists k such that k = (double x) and k is even
 ;; ;; ;; ∀x ∃k k=(double x) ∧ (Even k)
@@ -317,9 +313,9 @@
 
 ;; Define double
 !(add-atom &kb (: double (-> (: $k ℕ) ℕ)))
-!(add-atom &kb (: double_base (=== (double 𝐙) 𝐙)))
+!(add-atom &kb (: double_base (=== (double (: 𝐙 ℕ)) 𝐙)))
 !(add-atom &kb (: double_rec (-> (: $k ℕ)
-                                 (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))))
+                                 (=== (double (: (𝐒 $k) ℕ)) (𝐒 (: (𝐒 (: (double (: $k ℕ)) ℕ)) ℕ))))))
 
 ;;;;;;;;;;;;;;;
 ;; Reduction ;;
@@ -389,7 +385,7 @@
 ;; That is because add-type-annotation can only detect application, that is a
 ;; term of the form (<ABS> <ARG>) to add the type annotation to <ARG>.
 ;;
-;; NEXT: must keep track of the existing type to remain consistant.
+;; TODO: must keep track of the existing type to remain consistant.
 (: add-type-annotation (-> $a $a))
 (= (add-type-annotation $term)
    (case (get-metatype $term)
@@ -399,7 +395,7 @@
       (Expression (case $term
                     ((() ())
                      (($x) ($x))
-                     (($x $y) (if (== $x S')
+                     (($x $y) (if (== $x s)
                                   ;; Treat De Bruijn index atomically
                                   $term
                                   ;; Add type annotation to argument of application
@@ -419,57 +415,166 @@
 
 ;; ;; Synthesize natural numbers
 ;; !(assertEqualToResult
-;;   (bc &kb Nil Z' (fromNumber 1) (: $prf ℕ))
+;;   (bc &kb Nil z (fromNumber 1) (: $prf ℕ))
 ;;   ((: (𝐒 (: 𝐙 ℕ)) ℕ)
 ;;    (: (double (: 𝐙 ℕ)) ℕ)
 ;;    (: 𝐙 ℕ)))
 
 ;; ;; Prove that 0 is even
-;; !(assertEqualToResult
-;;   (bc &kb Nil Z' (fromNumber 0) (: $prf (Even (fromNumber 0))))
+;; !(assertEqual
+;;   (bc &kb Nil z (fromNumber 0) (: $prf (Even 𝐙)))
 ;;   (: MkEvenZ (Even 𝐙)))
 
 ;; ;; Prove that 2 is even
-;; !(assertEqualToResult
-;;   (bc &kb Nil Z' (fromNumber 1) (: $prf (Even (fromNumber 2))))
+;; !(assertEqual
+;;   (bc &kb Nil z (fromNumber 1) (: $prf (Even (𝐒 (𝐒 𝐙)))))
 ;;   (: (MkEvenSS (: MkEvenZ (Even 𝐙))) (Even (𝐒 (𝐒 𝐙)))))
 
 ;; ;; Synthesize even numbers
-;; ;; !(assertEqualToResult
-;;   !(bc &kb Nil Z' (fromNumber 4) (: $prf (Σ ℕ Even)))
-;;   ;; ((: (((MkΣ (: Even (-> (: $_#81011 ℕ) Type))) (: 𝐙 ℕ)) (: MkEvenZ (Even 𝐙))) (Σ ℕ Even))
-;;   ;;  )
-;; ;; !(bc &kb (: $prf (Σ ℕ Even)) (fromNumber 4))
+;; TODO: needs alpha equivalence
+;; !(assertEqual
+;;   (bc &kb Nil z (fromNumber 4) (: $prf (Σ ℕ Even)))
+;;   (: (((MkΣ (: Even (-> (: $_13500890 ℕ) Type))) (: 𝐙 ℕ)) (: MkEvenZ (Even 𝐙))) (Σ ℕ Even)))
 
 ;; ;; Synthesize unary functions over natural numbers, that is
 ;; ;; prove (-> (: $k ℕ) ℕ).
 ;; !(assertEqualToResult
-;;   (bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $k ℕ) ℕ)))
-;;   ((: (λ Z' 𝐙) (-> (: Z' ℕ) ℕ))
-;;    (: (λ Z' Z') (-> (: Z' ℕ) ℕ))
+;;   (bc &kb Nil z (fromNumber 1) (: $prf (-> (: $k ℕ) ℕ)))
+;;   ((: (λ z 𝐙) (-> (: z ℕ) ℕ))
+;;    (: (λ z z) (-> (: z ℕ) ℕ))
 ;;    (: 𝐒 (-> (: $k ℕ) ℕ))
 ;;    (: double (-> (: $k ℕ) ℕ))))
 
 ;; ;; Synthesize the identity function, that is prove (-> (: $x $a) $a)
 ;; ;; TODO: re-enable when we have assertContain
 ;; ;; !(assertEqualToResult
-;; !(bc &kb Nil Z' (fromNumber 1) (: $prf (-> (: $x $a) $a)))
-;;  ;; (: (λ Z' Z') (-> (: Z' $a) $a))
+;; !(bc &kb Nil z (fromNumber 1) (: $prf (-> (: $x $a) $a)))
+;;  ;; (: (λ z z) (-> (: z $a) $a))
 
 ;; ;; Synthesize the composition operator
-;; !(bc &kb Nil Z' (fromNumber 3)
-;;      (: $prf (-> (: $g (-> (: $y $b) $c)) (-> (: $f (-> (: $x $a) $b)) (-> (: $x $a) $c)))))
+;; !(bc &kb Nil z (fromNumber 4)
+;;      (: $prf (-> (: $g (-> (: $y $b) $c))
+;;                  (-> (: $f (-> (: $x $a) $b))
+;;                      (-> (: $x $a) $c)))))
 
 ;; ;; Synthesize the flip operator, that is prove
 ;; ;;
 ;; ;; (-> (: $f (-> (: $x $a) (-> (: $y $b) $c)))
 ;; ;;     (-> (: $y $b) (-> (: $x $a) $c)))))
-;; !(bc &kb Nil Z' (fromNumber 5)
-;;      (: $prf (-> (: $f (-> (: $x $a) (-> (: $y $b) $c))) (-> (: $y $b) (-> (: $x $a) $c)))))
+;; !(bc &kb Nil z (fromNumber 5)
+;;      (: $prf (-> (: $f (-> (: $x $a) (-> (: $y $b) $c)))
+;;                  (-> (: $y $b) (-> (: $x $a) $c)))))
 
-;; !(add-type-annotation (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙))))
+;; ;; Prove that Even is a type constructor that takes a natural
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;; -----------------(Even)
+;; ;; (-> (: $_ ℕ) Type)
+;; ;;
+;; !(assertEqual
+;;   (bc &kb Nil z (fromNumber 0) (: $prf (-> (: $_ ℕ) Type)))
+;;   (: Even (-> (: $_ ℕ) Type)))
 
-;; ;; Prove that (double 𝐙) is even.
+;; ;; Verify that 𝐙 is a natural
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;; -(𝐙)
+;; ;; ℕ
+;; ;;
+;; !(assertEqual
+;;   (bc &kb Nil z (fromNumber 0) (: 𝐙 ℕ))
+;;   (: 𝐙 ℕ))
+
+;; ;; Verify that (double 𝐙) is a natural.
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;;  -(𝐙)
+;; ;;  ℕ
+;; ;;  -(double)
+;; ;;  ℕ
+;; ;;
+;; !(assertEqual
+;;   (bc &kb Nil z (fromNumber 1) (: (double (: 𝐙 ℕ)) ℕ))
+;;   (: (double (: 𝐙 ℕ)) ℕ))
+
+;; ;; Prove that 𝐙 = (double 𝐙).
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;; -----------------(double_base)
+;; ;; (=== (double 𝐙) 𝐙)
+;; ;; -----------------(Sym)
+;; ;; (=== 𝐙 (double 𝐙))
+;; ;;
+;; ;; Or in MeTTa format:
+;; ;;
+;; ;; (: (Sym double_base) (=== 𝐙 (double 𝐙)))
+;; !(assertEqual
+;;   (bc &kb Nil z (fromNumber 1) (: $prf (=== 𝐙 (double (: 𝐙 ℕ)))))
+;;   (: (Sym (: double_base (=== (double (: 𝐙 ℕ)) 𝐙)))
+;;      (=== 𝐙 (double (: 𝐙 ℕ)))))
+
+;; ;; Infer the theorem that (Cong Even) proves.
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;; -----------------(Even)
+;; ;; (-> (: $_ ℕ) Type)
+;; ;; ---------------------------------------------------------------------------------(Cong)
+;; ;; (-> (: $x ℕ) (-> (: $x' ℕ) (-> (: $prf (=== $x $x')) (=== (Even $x) (Even $x')))))
+;; ;;
+;; ;; TODO: use assertEqual once we support alpha-equivalence
+;; ;; !(assertEqual
+;; !(bc &kb Nil z (fromNumber 1) (: (Cong (: Even $t)) $thrm))
+;;   ;; (: (Cong (: Even (-> (: $_ ℕ) Type)))
+;;   ;;    (-> (: $x ℕ)
+;;   ;;        (-> (: $x' ℕ)
+;;   ;;            (-> (: $prf (=== $x $x'))
+;;   ;;                (=== (Even $x) (Even $x'))))))
+
+;; ;; Infer the theorem that (Cong Even 𝐙) proves.
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;; -----------------(Even) -(𝐙)
+;; ;; (-> (: $_ ℕ) Type)      ℕ
+;; ;; -------------------------------------------------------------------(Cong)
+;; ;; (-> (: $x' ℕ) (-> (: $prf (=== 𝐙 $x')) (=== (Even 𝐙) (Even $x'))))
+;; ;;
+;; ;; TODO: use assertEqual once we support alpha-equivalence
+;; ;; !(assertEqual
+;; !(bc &kb Nil z (fromNumber 2) (: ((Cong (: Even $t1)) (: 𝐙 $t2)) $thrm))
+;;   ;; (: ((Cong (: Even (-> (: $_ ℕ) Type))) (: 𝐙 ℕ))
+;;   ;;    (-> (: $x' ℕ)
+;;   ;;        (-> (: $prf (=== 𝐙 $x'))
+;;   ;;            (=== (Even 𝐙) (Even $x')))))
+
+;; ;; Infer the theorem that (Cong Even 𝐙 (double 𝐙)) proves.
+;; ;;
+;; ;; A possible proof of that is represented by the following proof tree:
+;; ;;
+;; ;;                              -(𝐙)
+;; ;;                              ℕ
+;; ;; -----------------(Even) -(𝐙) -(double)
+;; ;; (-> (: $_ ℕ) Type)      ℕ    ℕ
+;; ;; -----------------------------------------------------------------(Cong)
+;; ;; (-> (: $prf (=== 𝐙 (double 𝐙))) (=== (Even 𝐙) (Even (double 𝐙))))
+;; ;;
+;; ;; TODO: use assertEqual once we support alpha-equivalence
+;; ;; !(assertEqual
+;; !(bc &kb
+;;      Nil
+;;      z
+;;      (fromNumber 3)
+;;      (: (((Cong (: Even $t1)) (: 𝐙 $t2)) (: (double (: 𝐙 $t3)) $t4)) $thrm))
+;;   ;; (: (((Cong (: Even (-> (: $_ ℕ) Type))) (: 𝐙 ℕ)) (: (double (: 𝐙 ℕ)) ℕ))
+;;   ;;    (-> (: $prf (=== 𝐙 (double (: 𝐙 ℕ))))
+;;   ;;        (=== (Even 𝐙) (Even (double (: 𝐙 ℕ))))))
+
+;; ;; Infer the theorem that (Cong Even 𝐙 (double 𝐙) (Sym double_base)) proves.
 ;; ;;
 ;; ;; A possible proof of that is represented by the following proof tree:
 ;; ;;
@@ -477,42 +582,89 @@
 ;; ;;                               ℕ         (=== (double 𝐙) 𝐙)
 ;; ;; -----------------(Even) -(𝐙)  -(double) -----------------(Sym)
 ;; ;; (-> (: $_ ℕ) Type)      ℕ     ℕ         (=== 𝐙 (double 𝐙))
-;; ;; ----------------------------------------------------------(Cong)  -------(MkEvenZ)
-;; ;;                (=== (Even 𝐙) (Even (double 𝐙)))                   (Even 𝐙)
-;; ;;                ----------------------------------------------------------(Replace)
-;; ;;                                       (Even (double 𝐙))
+;; ;; ----------------------------------------------------------(Cong)
+;; ;;                (=== (Even 𝐙) (Even (double 𝐙)))
 ;; ;;
-;; ;; Or in MeTTa format:
-;; ;;
-;; ;; (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙)))
-;; ;; !(bc &kb Nil Z' (fromNumber 6) (: $prf (Even (double 𝐙))))
-;; ;; !(bc &kb
-;; ;;      Nil
-;; ;;      Z'
-;; ;;      (fromNumber 8)
-;; ;;      (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙))))
-!(bc &kb
-     Nil
-     Z'
-     (fromNumber 6)
-     (: ((Replace $subprf) (: MkEvenZ (Even 𝐙)))
-        (Even (double 𝐙))))
-
-;; NEXT: figure out why it doesn't work, or run the one above to
-;; hopefully get the full solution
-
+;; ;; TODO: use assertEqual once we support alpha-equivalence
+;; ;; !(assertEqual
 ;; !(bc &kb
 ;;      Nil
-;;      Z'
-;;      (fromNumber 6)
-;;      (: ((Replace
-;;           (: ((((Cong
-;;                  (: Even $t119078))
-;;                 (: 𝐙 $t110284))
-;;                (: (double (: 𝐙 $t144337)) $t98804))
-;;               (: (Sym (: double_base $t166308)) $t83636)) $t63986))
-;;          (: MkEvenZ $t43616))
-;;         (Even (double 𝐙))))
+;;      z
+;;      (fromNumber 5)
+;;      (: ((((Cong
+;;             (: Even $t1))
+;;            (: 𝐙 $t2))
+;;           (: (double (: 𝐙 $t3)) $t4))
+;;          (: (Sym (: double_base $t5)) $t6))
+;;         $thrm))
+;;   ;; (: ((((Cong
+;;   ;;        (: Even (-> (: $_ ℕ) Type)))
+;;   ;;       (: 𝐙 ℕ))
+;;   ;;      (: (double (: 𝐙 ℕ)) ℕ))
+;;   ;;     (: (Sym (: double_base (=== (double (: 𝐙 ℕ)) 𝐙))) (=== 𝐙 (double (: 𝐙 ℕ)))))
+;;   ;;    (=== (Even 𝐙) (Even (double (: 𝐙 ℕ)))))
+
+;; ;; Type check the proof that (double 𝐙) is even
+;; ;; TODO: use alpha-equivalence
+;; ;; !(assertAlphaEqual
+;;   !(bc &kb
+;;       Nil
+;;       z
+;;       (fromNumber 6)
+;;       (: ((Replace
+;;            (: ((((Cong
+;;                   (: Even $t1))
+;;                  (: 𝐙 $t2))
+;;                 (: (double (: 𝐙 $t3)) $t4))
+;;                (: (Sym (: double_base $t5)) $t6))
+;;               $t7))
+;;           (: MkEvenZ $t8))
+;;          (Even (double (: 𝐙 ℕ)))))
+;;   ;; (: ((Replace
+;;   ;;      (: ((((Cong
+;;   ;;             (: Even (-> (: $_ ℕ) Type)))
+;;   ;;            (: 𝐙 ℕ))
+;;   ;;           (: (double (: 𝐙 ℕ)) ℕ))
+;;   ;;          (: (Sym (: double_base (=== (double (: 𝐙 ℕ)) 𝐙))) (=== 𝐙 (double (: 𝐙 ℕ)))))
+;;   ;;         (=== (Even 𝐙) (Even (double (: 𝐙 ℕ))))))
+;;   ;;     (: MkEvenZ (Even 𝐙)))
+;;   ;;    (Even (double (: 𝐙 ℕ)))))
+
+;; Prove that (double 𝐙) is even.
+;;
+;; A possible proof of that is represented by the following proof tree:
+;;
+;;                               -(𝐙)      -----------------(double_base)
+;;                               ℕ         (=== (double 𝐙) 𝐙)
+;; -----------------(Even) -(𝐙)  -(double) -----------------(Sym)
+;; (-> (: $_ ℕ) Type)      ℕ     ℕ         (=== 𝐙 (double 𝐙))
+;; ----------------------------------------------------------(Cong)  -------(MkEvenZ)
+;;                (=== (Even 𝐙) (Even (double 𝐙)))                   (Even 𝐙)
+;;                ----------------------------------------------------------(Replace)
+;;                                       (Even (double 𝐙))
+;;
+;; Or in MeTTa format:
+;;
+;; (: ((Replace ((((Cong Even) 𝐙) (double 𝐙)) (Sym double_base))) MkEvenZ) (Even (double 𝐙)))
+;;
+;; Note that for this to run reasonable fast, lambad abstraction needs
+;; to be disabled.
+;;
+;; TODO: re-enable with alpha-equivalence
+;; !(assertEqual
+  !(bc &kb Nil z (fromNumber 6) (: $prf (Even (double (: 𝐙 ℕ)))))
+  ;; (: ((Replace
+  ;;      (: ((((Cong
+  ;;             (: Even (-> (: $_ ℕ) Type)))
+  ;;            (: 𝐙 ℕ))
+  ;;           (: (double (: 𝐙 ℕ)) ℕ))
+  ;;          (: (Sym (: double_base (=== (double (: 𝐙 ℕ)) 𝐙)))
+  ;;             (=== 𝐙 (double (: 𝐙 ℕ)))))
+  ;;         (=== (Even 𝐙) (Even (double (: 𝐙 ℕ))))))
+  ;;     (: MkEvenZ (Even 𝐙)))
+  ;;    (Even (double (: 𝐙 ℕ)))))
+
+;; NEXT
 
 ;; ;; Prove
 ;; ;;
@@ -524,7 +676,7 @@
 ;; ;;
 ;; ;; which should merely be Cong.
 ;; !(assertEqual
-;;   (bc &kb Nil Z' (fromNumber 0)
+;;   (bc &kb Nil z (fromNumber 0)
 ;;       (: $prf (-> (: Even (-> (: $_ ℕ) Type))
 ;;                   (-> (: (double (𝐒 $k)) ℕ)
 ;;                       (-> (: (𝐒 (𝐒 (double $k))) ℕ)
@@ -546,7 +698,7 @@
 ;; ;; which should be (Cong Even).
 ;; ;; TODO: re-enable after introducting assertAlphaEqual
 ;; ;; !(assertEqual
-;;   (bc &kb Nil Z' (fromNumber 1)
+;;   (bc &kb Nil z (fromNumber 1)
 ;;       (: $prf (-> (: (double (𝐒 $k)) ℕ)
 ;;                   (-> (: (𝐒 (𝐒 (double $k))) ℕ)
 ;;                       (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
@@ -566,7 +718,7 @@
 ;; ;; which could be
 ;; ;;
 ;; ;; (λ $k (((Cong Even) (double (𝐒 $k))) (𝐒 (𝐒 (double $k)))))
-;; !(bc &kb Nil Z' (fromNumber 4)
+;; !(bc &kb Nil z (fromNumber 4)
 ;;      (: $prf
 ;;         (-> (: $k ℕ)
 ;;             (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
@@ -585,7 +737,7 @@
 ;; ;;
 ;; ;; (λ $k Cong)
 ;; !(assertEqual
-;;   (bc &kb Nil Z' (fromNumber 1)
+;;   (bc &kb Nil z (fromNumber 1)
 ;;       (: $prf
 ;;          (-> (: $k ℕ)
 ;;              (-> (: Even (-> (: $_ ℕ) Type))
@@ -593,13 +745,13 @@
 ;;                      (-> (: (𝐒 (𝐒 (double $k))) ℕ)
 ;;                          (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
 ;;                              (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k))))))))))))
-;;   (: (λ Z' Cong)
-;;      (-> (: Z' ℕ)
+;;   (: (λ z Cong)
+;;      (-> (: z ℕ)
 ;;          (-> (: Even (-> (: $_ ℕ) Type))
-;;              (-> (: (double (𝐒 Z')) ℕ)
-;;                  (-> (: (𝐒 (𝐒 (double Z'))) ℕ)
-;;                      (-> (: $eq (=== (double (𝐒 Z')) (𝐒 (𝐒 (double Z')))))
-;;                          (=== (Even (double (𝐒 Z'))) (Even (𝐒 (𝐒 (double Z'))))))))))))
+;;              (-> (: (double (𝐒 z)) ℕ)
+;;                  (-> (: (𝐒 (𝐒 (double z))) ℕ)
+;;                      (-> (: $eq (=== (double (𝐒 z)) (𝐒 (𝐒 (double z)))))
+;;                          (=== (Even (double (𝐒 z))) (Even (𝐒 (𝐒 (double z))))))))))))
 
 ;; ;; NEXT
 
