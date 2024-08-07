@@ -161,7 +161,7 @@
 ;; In order to remove (resp. add) type annotation one can use
 ;; remove-type-annotation (resp. add-type).
 (: bc (-> $a                            ; Knowledge base space
-          $b                            ; Environment
+          (List $b)                     ; Environment
           DeBruijn                      ; De Bruijn Index
           Nat                           ; Maximum depth
           $c                            ; Query
@@ -266,6 +266,9 @@
 !(add-atom &kb (: ℕ Type))
 !(add-atom &kb (: 𝐙 ℕ))
 !(add-atom &kb (: 𝐒 (-> (: $x ℕ) ℕ)))
+
+;; Define structural induction on ℕ
+;; NEXT
 
 ;; Define Even
 !(add-atom &kb (: Even (-> (: $x ℕ) Type)))
@@ -834,7 +837,7 @@
 ;;   ;;        (-> (: $eq (=== (double (: (𝐒 (: z ℕ)) ℕ)) (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))
 ;;   ;;            (=== (Even (double (: (𝐒 (: z ℕ)) ℕ))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))))
 
-;; ;; Prove that
+;; ;; Prove
 ;; ;;
 ;; ;; (-> (: $k ℕ)
 ;; ;;     (-> (: $eq (=== (double (𝐒 $k)) (𝐒 (𝐒 (double $k)))))
@@ -1164,96 +1167,147 @@
 ;;           (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))))
 ;;      (-> (: z ℕ) (-> (: (s z) (Even (double (: z ℕ)))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
 
-;; NEXT: try to understand why the following does not work.
+;; ;; Like above but only the last hypothesis is wrapped in a lambda abstraction
+;; !(assertEqual
+;;   (bc &kb
+;;       (Cons (: z ℕ)
+;;             (Cons (: (s z) (Even (double (: z ℕ))))
+;;                   Nil))
+;;       (s (s z))
+;;       (fromNumber 3)
+;;       (: (λ (s (s z))
+;;            ((Replace
+;;              (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+;;             (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))
+;;          (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
+;;              (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+;;   (: (λ (s (s z))
+;;        ((Replace (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+;;         (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))
+;;      (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
+;;          (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
 
-;; Like above but all hypotheses are wrapped in lambda abstractions
+;; ;; Like above but the last 2 hypotheses are wrapped in lambda abstractions
+;; !(assertEqual
+;;   (bc &kb
+;;       (Cons (: z ℕ) Nil)
+;;       (s z)
+;;       (fromNumber 4)
+;;       (: (λ (s z)
+;;            (λ (s (s z))
+;;              ((Replace
+;;                (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+;;               (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))))
+;;          (-> (: (s z) (Even (double (: z ℕ))))
+;;              (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
+;;                  (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
+;;   (: (λ (s z)
+;;        (λ (s (s z))
+;;          ((Replace (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+;;           (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))))
+;;      (-> (: (s z) (Even (double (: z ℕ))))
+;;          (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
+;;              (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
+
+;; ;; Like above but all hypotheses are wrapped in lambda abstractions.
+;; ;; In other words, type check that if (double z) is even, and
+;; ;;
+;; ;; (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))
+;; ;;
+;; ;; is equal to
+;; ;;
+;; ;; (Even (double (: (𝐒 (: z ℕ)) ℕ))))
+;; ;;
+;; ;; then (𝐒 (𝐒 (double z))) is even.
+;; !(assertEqual
+;;   (bc &kb
+;;       Nil
+;;       z
+;;       (fromNumber 5)
+;;       (: (λ z
+;;            (λ (s z)
+;;              (λ (s (s z))
+;;                ((Replace
+;;                  (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+;;                 (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))))
+;;          (-> (: z ℕ)
+;;              (-> (: (s z) (Even (double (: z ℕ))))
+;;                  (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
+;;                      (Even (double (: (𝐒 (: z ℕ)) ℕ))))))))
+;;   (: (λ z
+;;        (λ (s z)
+;;          (λ (s (s z))
+;;            ((Replace
+;;              (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+;;             (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))))
+;;      (-> (: z ℕ)
+;;          (-> (: (s z) (Even (double (: z ℕ))))
+;;              (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
+;;                  (Even (double (: (𝐒 (: z ℕ)) ℕ))))))))
+
+;; Check that
+;;
+;; (λ z (λ (s z) ((Replace (Sym ((((Cong Even) (double (𝐒 z))) (𝐒 (𝐒 (double z)))) (double_rec z)))) (MkEvenSS (s z)))))
+;;
+;; proves that if (double k) is even, then (double (𝐒 k)) is even, corresponding to the tree below
+;;
+;;                                                                                 -(z)
+;;                                                                                 ℕ
+;;                                                                      -(z)      -(double)
+;;                                                                      ℕ          ℕ
+;;                                                                      -(𝐒)       -(𝐒)                      -(z)
+;;                                                                      ℕ          ℕ                         ℕ
+;;                                               -----------------(Even)  -(double)  -(𝐒)  --------------------------------------(double_rec)
+;;                                               (-> (: $_ ℕ) Type)       ℕ          ℕ     (=== (double (𝐒 z)) (𝐒 (𝐒 (double z))))
+;;                                               ----------------------------------------------------------------------------------(Cong)  ----------------(s z)
+;;                                               (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))                                   (Even (double z))
+;;                                               ------------------------------------------------------(Sym)                       ------------------------(MkEvenSS)
+;;                                               (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))                           (Even (𝐒 (𝐒 (double z))))
+;;              ----------------(s z)            ----------------------------------------------------------------------------------------------------------(Replace)
+;;              (Even (double z))                (Even (double (𝐒 z)))
+;; -(z)         -----------------------------------------------------(λ)
+;; ℕ            (-> (: (s z) (Even (double z))) (Even (double (𝐒 z))))
+;; ------------------------------------------------------------------(λ)
+;; (-> (: z ℕ) (-> (: (s z) (Even (double z))) (Even (double (𝐒 z)))))
+;;
+;; Before checking, let us type annotate the proof (disabled till assertAlphaEqual is supported)
+;; !(assertAlphaEqual
+;;   (add-type-annotation (λ z (λ (s z) ((Replace (Sym ((((Cong Even) (double (𝐒 z))) (𝐒 (𝐒 (double z)))) (double_rec z)))) (MkEvenSS (s z))))))
+;;   (λ z (λ (s z) ((Replace (: (Sym (: ((((Cong (: Even $a)) (: (double (: (𝐒 (: z $b)) $c)) $d)) (: (𝐒 (: (𝐒 (: (double (: z $e)) $f)) $g)) $h)) (: (double_rec (: z $i)) $j)) $k)) $l)) (: (MkEvenSS (: (s z) $m)) $n)))))
 !(assertEqual
   (bc &kb
       Nil
       z
-      (fromNumber 5)
+      (fromNumber 10)
       (: (λ z
            (λ (s z)
-             (λ (s (s z))
-               (: ((Replace
-                    (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
-                   (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))
-                  (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
+             ((Replace
+               (: (Sym
+                   (: ((((Cong (: Even (-> (: $_ ℕ) Type)))
+                         (: (double (: (𝐒 (: z ℕ)) ℕ)) ℕ))
+                        (: (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)) ℕ))
+                       (: (double_rec (: z ℕ)) (=== (double (: (𝐒 (: z ℕ)) ℕ)) (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))
+                      (=== (Even (double (: (𝐒 (: z ℕ)) ℕ))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))
+                  (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+              (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))))
          (-> (: z ℕ)
              (-> (: (s z) (Even (double (: z ℕ))))
-                 (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
-                     (Even (double (: (𝐒 (: z ℕ)) ℕ))))))))
+                 (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
   (: (λ z
        (λ (s z)
-         (λ (s (s z))
-           (: ((Replace
-                (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
-               (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))
-              (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
+         ((Replace
+           (: (Sym
+               (: ((((Cong (: Even (-> (: $_ ℕ) Type)))
+                     (: (double (: (𝐒 (: z ℕ)) ℕ)) ℕ))
+                    (: (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)) ℕ))
+                   (: (double_rec (: z ℕ)) (=== (double (: (𝐒 (: z ℕ)) ℕ)) (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))
+                  (=== (Even (double (: (𝐒 (: z ℕ)) ℕ))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))
+              (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
+          (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))))
      (-> (: z ℕ)
          (-> (: (s z) (Even (double (: z ℕ))))
-             (-> (: (s (s z)) (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ)))))
-                 (Even (double (: (𝐒 (: z ℕ)) ℕ))))))))
-
-;; ;; Check that
-;; ;;
-;; ;; (λ z (λ (s z) ((Replace (Sym ((((Cong Even) (double (𝐒 z))) (𝐒 (𝐒 (double z)))) (double_rec z)))) (MkEvenSS (s z)))))
-;; ;;
-;; ;; is a proof that if (double k) is even, then (double (𝐒 k)) is even.
-;; ;;
-;; ;; See the corresponding proof tree below
-;; ;;
-;; ;;                                                                                 -(z)
-;; ;;                                                                                 ℕ
-;; ;;                                                                      -(z)      -(double)
-;; ;;                                                                      ℕ          ℕ
-;; ;;                                                                      -(𝐒)       -(𝐒)                      -(z)
-;; ;;                                                                      ℕ          ℕ                         ℕ
-;; ;;                                               -----------------(Even)  -(double)  -(𝐒)  --------------------------------------(double_rec)
-;; ;;                                               (-> (: $_ ℕ) Type)       ℕ          ℕ     (=== (double (𝐒 z)) (𝐒 (𝐒 (double z))))                         
-;; ;;                                               ----------------------------------------------------------------------------------(Cong)  ----------------(s z)
-;; ;;                                               (=== (Even (double (𝐒 $k))) (Even (𝐒 (𝐒 (double $k)))))                                   (Even (double z))
-;; ;;                                               ------------------------------------------------------(Sym)                       ------------------------(MkEvenSS)
-;; ;;                                               (=== (Even (𝐒 (𝐒 (double $k)))) (Even (double (𝐒 $k))))                           (Even (𝐒 (𝐒 (double z))))
-;; ;;              ----------------(s z)            ----------------------------------------------------------------------------------------------------------(Replace)
-;; ;;              (Even (double z))                (Even (double (𝐒 z)))
-;; ;; -(z)         -----------------------------------------------------(λ)
-;; ;; ℕ            (-> (: (s z) (Even (double z))) (Even (double (𝐒 z))))
-;; ;; ------------------------------------------------------------------(λ)
-;; ;; (-> (: z ℕ) (-> (: (s z) (Even (double z))) (Even (double (𝐒 z)))))
-;; ;;
-;; ;; Before checking, let us type annotate the proof (disabled till assertAlphaEqual is supported)
-;; ;; !(assertAlphaEqual
-;; ;;   (add-type-annotation (λ z (λ (s z) ((Replace (Sym ((((Cong Even) (double (𝐒 z))) (𝐒 (𝐒 (double z)))) (double_rec z)))) (MkEvenSS (s z))))))
-;; ;;   (λ z (λ (s z) ((Replace (: (Sym (: ((((Cong (: Even $a)) (: (double (: (𝐒 (: z $b)) $c)) $d)) (: (𝐒 (: (𝐒 (: (double (: z $e)) $f)) $g)) $h)) (: (double_rec (: z $i)) $j)) $k)) $l)) (: (MkEvenSS (: (s z) $m)) $n)))))
-;; !(bc &kb Nil z (fromNumber 12)
-;;   (: (λ z
-;;        (λ (s z)
-;;          ((Replace
-;;            (: (Sym
-;;                (: ((((Cong (: Even (-> (: $_ ℕ) Type)))
-;;                      (: (double (: (𝐒 (: z ℕ)) ℕ)) ℕ))
-;;                     (: (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)) ℕ))
-;;                    (: (double_rec (: z ℕ)) (=== (double (: (𝐒 (: z ℕ)) ℕ)) (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))
-;;                   (=== (Even (double (: (𝐒 (: z ℕ)) ℕ))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))))))
-;;               (=== (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ))) (Even (double (: (𝐒 (: z ℕ)) ℕ))))))
-;;           (: (MkEvenSS (: (s z) (Even (double (: z ℕ))))) (Even (𝐒 (: (𝐒 (: (double (: z ℕ)) ℕ)) ℕ)))))))
-;;      (-> (: z ℕ)
-;;          (-> (: (s z) (Even (double (: z ℕ))))
-;;              (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
-;;      ;; (: (λ z
-;;      ;;      (λ (s z)
-;;      ;;        ((Replace
-;;      ;;          (: (Sym
-;;      ;;              (: ((((Cong (: Even $a))
-;;      ;;                    (: (double (: (𝐒 (: z $b)) $c)) $d))
-;;      ;;                   (: (𝐒 (: (𝐒 (: (double (: z $e)) $f)) $g)) $h))
-;;      ;;                  (: (double_rec (: z $i)) $j))
-;;      ;;                 $k))
-;;      ;;             $l))
-;;      ;;         (: (MkEvenSS (: (s z) $m)) $n))))
-;;      ;;    $thrm))
-
+             (Even (double (: (𝐒 (: z ℕ)) ℕ)))))))
+  
 ;; ;; ;; NEXT: this fails with the following error
 ;; ;; ;;
 ;; ;; ;; thread '<unnamed>' panicked at /home/nilg/Work/TrueAGI/hyperon-experimental/lib/src/atom/matcher.rs:199:14:
