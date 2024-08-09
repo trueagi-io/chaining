@@ -15,8 +15,8 @@
 - [forward-chaining](forward-chaining): forward chaining experiments,
   both using proof as program and proof as program execution trace.
 
-- [hol](hol): higher order logic, attempt to reason about programs,
-  such as providing that 0 is the right identity of +.
+- [program-verification](program-verification): attempt to reason
+  about programs, such as providing that 0 is the right identity of +.
 
 - [inference-control](inference-control): inference control
   experiments, replace depth by control functions.
