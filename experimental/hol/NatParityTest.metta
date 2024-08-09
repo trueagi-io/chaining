@@ -43,6 +43,11 @@
 ;; The dependent sum (aka sigma type) representation is borrowed from
 ;; https://idris2.readthedocs.io/en/latest/tutorial/typesfuns.html#dependent-pairs
 ;;
+;; The structural induction rule is slightly tailored for that
+;; specific problem by requiring that the property be expressed as the
+;; composition of two functions.  We intend to remedy that in the
+;; future.
+;;
 ;; Running the whole file takes about 1h30 on an Intel i9-10940X.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
