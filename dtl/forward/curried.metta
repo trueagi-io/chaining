@@ -48,21 +48,21 @@
      (: ($prfabs $prfarg) $ccln)))
 
 ;; Forward DTL Curried
-(: fc (-> $a                            ; Knowledge base space
-          Nat                           ; Maximum depth
-          $b                            ; Source
-          $b))                          ; Conclusion
+(: fcc (-> $a                            ; Knowledge base space
+           Nat                           ; Maximum depth
+           $b                            ; Source
+           $b))                          ; Conclusion
 
 ;; Base case
-(= (fc $kb $_ (: $prf $prms)) (: $prf $prms))
+(= (fcc $kb $_ (: $prf $prms)) (: $prf $prms))
 
 ;; Recursive step
-(= (fc $kb (S $k) (: $prfarg $prms))
+(= (fcc $kb (S $k) (: $prfarg $prms))
    (let (: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln)))
-     (fc $kb $k (: ($prfabs $prfarg) $ccln))))
-(= (fc $kb (S $k) (: $prfabs (-> $prms $ccln)))
+     (fcc $kb $k (: ($prfabs $prfarg) $ccln))))
+(= (fcc $kb (S $k) (: $prfabs (-> $prms $ccln)))
     (let (: $prfarg $prms) (bc $kb $k (: $prfarg $prms))
-     (fc $kb $k (: ($prfabs $prfarg) $ccln))))
+     (fcc $kb $k (: ($prfabs $prfarg) $ccln))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Iterative Forward chaining DTL curried using Backward chaining ;;
@@ -73,11 +73,11 @@
 
 ;; Iterative Forward DTL Curried Chainer
 
-(: ifcc (-> $a                           ; Knowledge base space 
+(: ifcc (-> $a                            ; Knowledge base space 
             Nat                           ; Depth
             Nat                           ; Number of iterations
             $b                            ; Source
-            $a))                          ; Conclusion
+            $b))                          ; Conclusion
 
 ;; Base case.  For now it terminates at exactly iteration Z to avoid
 ;; collecting too many redundant results.
@@ -85,7 +85,7 @@
 
 ;; Iterative step
 (= (ifcc $kb $depth (S $k) $prms)
-   (let* (($res (fc $kb $depth $prms))
+   (let* (($res (fcc $kb $depth $prms))
           ($cres (collapse $res))
           ($dummy (add-atoms-nodup $kb $cres)))
      (ifcc $kb $depth $k (superpose $cres))))
