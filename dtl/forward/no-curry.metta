@@ -1,16 +1,20 @@
-
-! "=== DTL ==="
+;;;;;;;;;
+;; DTL ;;
+;;;;;;;;;
 
 ;; Foward chainer
-(: fc_dtl (-> Atom (-> Atom) (-> Atom) Nat Atom))
+(: fc (-> $a                            ; Knowledge base space 
+          Nat                           ; Depth
+          $b                            ; Source
+          $b))                          ; Conclusion
 ;; Base case
-(= (fc_dtl (: $proof $premise) $kb $rb $depth) (: $proof $premise))
+(= (fc $kb $depth (: $proof $premise)) (: $proof $premise))
 ;; Recursive steps
-(= (fc_dtl (: $proof1 $premise1) $kb $rb (S $k))
-   (let* (((: $ructor (-> $premise1 $premise2 $conclusion)) ($rb))
-          ((: $proof2 $premise2) ($kb)))
-     (fc_dtl (: ($ructor $proof1 $proof2) $conclusion) $kb $rb $k)))
-(= (fc_dtl (: $proof2 $premise2) $kb $rb (S $k))
-   (let* (((: $ructor (-> $premise1 $premise2 $conclusion)) ($rb))
-          ((: $proof1 $premise1) ($kb)))
-     (fc_dtl (: ($ructor $proof1 $proof2) $conclusion) $kb $rb $k)))
+(= (fc $kb (S $k) (: $proof1 $premise1))
+   (let* (((: $ructor (-> $premise1 $premise2 $conclusion)) (get-atoms $kb))
+          ((: $proof2 $premise2) (get-atoms $kb)))
+     (fc $kb $k (: ($ructor $proof1 $proof2) $conclusion))))
+(= (fc $kb (S $k) (: $proof2 $premise2))
+   (let* (((: $ructor (-> $premise1 $premise2 $conclusion)) (get-atoms $kb))
+          ((: $proof1 $premise1) (get-atoms $kb)))
+     (fc $kb $k (: ($ructor $proof1 $proof2) $conclusion))))
