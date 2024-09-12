@@ -1,3 +1,7 @@
+;; Import modules
+!(register-module! ../../../chaining)
+!(import! &self chaining:dtl:utils)
+
 ;; Test utility functions
 ! "=== Test Utility Functions ==="
 
