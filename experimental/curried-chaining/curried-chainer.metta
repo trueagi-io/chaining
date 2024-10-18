@@ -39,9 +39,9 @@
 !(add-atom &kb (: ab (→ A B)))
 !(add-atom &kb (: bc (→ B C)))
 !(add-atom &kb (: ModusPonens
-                (-> (→ $p $q)           ; Premise 1
-                    (-> $p              ; Premise 2
-                        $q))))          ; Conclusion
+                  (-> (→ $p $q)           ; Premise 1
+                      (-> $p              ; Premise 2
+                          $q))))          ; Conclusion
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
@@ -66,26 +66,26 @@
 ;; partially.  If multiple results are possible, they are returned as
 ;; a superposition.
 (: bc (-> $a                            ; Knowledge base space
-          $b                            ; Query
           Nat                           ; Maximum depth
+          $b                            ; Query
           $b))                          ; Result
 ;; Base case
-(= (bc $kb (: $prf $ccln) $_) (match $kb (: $prf $ccln) (: $prf $ccln)))
+(= (bc $kb $_ (: $prf $ccln)) (match $kb (: $prf $ccln) (: $prf $ccln)))
 ;; Recursive step
-(= (bc $kb (: ($prfabs $prfarg) $ccln) (S $k))
-   (let* (((: $prfabs (-> $prms $ccln)) (bc $kb (: $prfabs (-> $prms $ccln)) $k))
-          ((: $prfarg $prms) (bc $kb (: $prfarg $prms) $k)))
+(= (bc $kb (S $k) (: ($prfabs $prfarg) $ccln))
+   (let* (((: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln))))
+          ((: $prfarg $prms) (bc $kb $k (: $prfarg $prms))))
      (: ($prfabs $prfarg) $ccln)))
 
 ;; Test curried backward chainer
 !(assertEqual
-  (bc &kb (: $prf A) (fromNumber 0))
+  (bc &kb (fromNumber 0) (: $prf A))
   (: a A))
 !(assertEqual
-  (bc &kb (: $prf B) (fromNumber 2))
+  (bc &kb (fromNumber 2) (: $prf B))
   (: ((ModusPonens ab) a) B))
 !(assertEqual
-  (bc &kb (: $prf C) (fromNumber 3))
+  (bc &kb (fromNumber 3) (: $prf C))
   (: ((ModusPonens bc) ((ModusPonens ab) a)) C))
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -112,31 +112,31 @@
 ;; multiple results are possible, they are returned as a
 ;; superposition.
 (: fc (-> $a                            ; Knowledge base space
-          $b                            ; Source
           Nat                           ; Maximum depth
+          $b                            ; Source
           $b))                          ; Conclusion
 ;; Base case
-(= (fc $kb (: $prf $prms) $_) (: $prf $prms))
+(= (fc $kb $_ (: $prf $prms)) (: $prf $prms))
 ;; Recursive step
-(= (fc $kb (: $prfarg $prms) (S $k))
-   (let (: $prfabs (-> $prms $ccln)) (bc $kb (: $prfabs (-> $prms $ccln)) $k)
-     (fc $kb (: ($prfabs $prfarg) $ccln) $k)))
-(= (fc $kb (: $prfabs (-> $prms $ccln)) (S $k))
-    (let (: $prfarg $prms) (bc $kb (: $prfarg $prms) $k)
-     (fc $kb (: ($prfabs $prfarg) $ccln) $k)))
+(= (fc $kb (S $k) (: $prfarg $prms))
+   (let (: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln)))
+     (fc $kb $k (: ($prfabs $prfarg) $ccln))))
+(= (fc $kb (S $k) (: $prfabs (-> $prms $ccln)))
+    (let (: $prfarg $prms) (bc $kb $k (: $prfarg $prms))
+     (fc $kb $k (: ($prfabs $prfarg) $ccln))))
 
 ;; Test curried forward chainer
 !(assertEqualToResult
-  (fc &kb (: ab (→ A B)) (fromNumber 1))
+  (fc &kb (fromNumber 1) (: ab (→ A B)))
   ((: ab (→ A B))
    (: (ModusPonens ab) (-> A B))))
 !(assertEqualToResult
-  (fc &kb (: ab (→ A B)) (fromNumber 2))
+  (fc &kb (fromNumber 2) (: ab (→ A B)))
   ((: ab (→ A B))
    (: (ModusPonens ab) (-> A B))
    (: ((ModusPonens ab) a) B)))
 !(assertEqualToResult
-  (fc &kb (: a A) (fromNumber 3))
+  (fc &kb (fromNumber 3) (: a A))
   ((: a A)
    (: ((ModusPonens ab) a) B)
    (: ((ModusPonens bc) ((ModusPonens ab) a)) C)))
