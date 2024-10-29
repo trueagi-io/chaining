@@ -44,8 +44,8 @@
 (: DeBruijn Type)
 
 ;; Define DeBruijn constructors
-(: Z' DeBruijn)                        ; Zero
-(: S' (-> DeBruijn DeBruijn))          ; Successor
+(: z DeBruijn)                        ; Zero
+(: s (-> DeBruijn DeBruijn))          ; Successor
 
 ;; Define Maybe type
 (: Maybe (-> $a Type))
@@ -973,7 +973,7 @@
                      (() ())
                      ;; LET
                      ((LET $x $y $f) (let* (($x $idx)
-                                            ($νf (mt2lc (S' $idx) $f))
+                                            ($νf (mt2lc (s $idx) $f))
                                             ($νy (mt2lc $idx $y)))
                                        ((λ $x $νf) $νy)))
                      ;; Application
@@ -982,5 +982,5 @@
                      ($term $term)))))))
 
 !(assertEqual
-  (mt2lc Z' (LET $x (inc 1) (plus $x $x)))
-  ((λ Z' (plus Z' Z')) (inc 1)))
+  (mt2lc z (LET $x (inc 1) (plus $x $x)))
+  ((λ z (plus z z)) (inc 1)))
