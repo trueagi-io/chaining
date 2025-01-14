@@ -215,7 +215,7 @@
    (: . (-> (-> $q $r) (-> (-> $p $q) (-> $p $r))))
    (: ((ModusPonens ab) a) B))
   asserted)
-  (asserted)) 
+  (asserted))
 
 ;; One iteration of two steps backward chainer.  C can be proven with
 ;; just one iteration by re-using the proof of B.
