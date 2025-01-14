@@ -30,8 +30,8 @@
 (: DeBruijn Type)
 
 ;; Define DeBruijn constructors
-(: Z' DeBruijn)                        ; Zero
-(: S' (-> DeBruijn DeBruijn))          ; Successor
+(: z DeBruijn)                        ; Zero
+(: s (-> DeBruijn DeBruijn))          ; Successor
 
 ;;;;;;;;;;
 ;; List ;;
@@ -77,8 +77,8 @@
 ;;
 ;; (λ <INDEX> <BODY>)
 ;;
-;; where <INDEX> is a De Bruijn index as define above, such as Z' or
-;; (S' Z'), and <BODY> is a term possibly containing <INDEX>.  Note
+;; where <INDEX> is a De Bruijn index as define above, such as z or
+;; (s z), and <BODY> is a term possibly containing <INDEX>.  Note
 ;; that the use of De Bruijn index in lambda abstraction is somewhat
 ;; unconventional here.  It differs from what is described in
 ;; https://en.wikipedia.org/wiki/De_Bruijn_index in three ways:
@@ -86,15 +86,15 @@
 ;; 1. The index is explicitely attached to a λ by being its first
 ;;    argument.  For instance the lambda term λx.x, which would
 ;;    traditionally be represented by λ1 using De Bruijn index, would
-;;    be represented here by the MeTTa term (λ Z' Z').
+;;    be represented here by the MeTTa term (λ z z).
 ;;
 ;; 2. As seen in the example above the index here starts at 0,
-;;    represented by Z', instead of 1.
+;;    represented by z, instead of 1.
 ;;
 ;; 3. The index increases as the lambda abstraction gets deeper.  For
 ;;    instance λx.λy.x, which would traditionally be represented by
 ;;    λλ2 using De Bruijn index, is represented here by the MeTTa term
-;;    (λ Z' (λ (S' Z') Z').
+;;    (λ z (λ (s z) z).
 ;;
 ;; This differences are due to the way the proof abstraction recursive
 ;; step is defined in the bc, as well as the need for having non
@@ -116,7 +116,7 @@
 ;; * Environment: a list of typing relationship between De Bruijn
 ;;   index and type, such as
 ;;
-;;   (Cons (: Z' String) (Cons (: (S' Z') Number) Nil))
+;;   (Cons (: z String) (Cons (: (s z) Number) Nil))
 ;;
 ;; * De Bruijn Index: De Bruijn Index to use if a lambda abstraction
 ;;   is introduced.
@@ -175,7 +175,7 @@
 ;; Proof abstraction
 (= (bc $kb $env $idx (S $k) (: (λ $idx $prfbdy) (-> $prms $thrm)))
    (let (: $prfbdy $thrm)
-     (bc $kb (Cons (: $idx $prms) $env) (S' $idx) $k (: $prfbdy $thrm))
+     (bc $kb (Cons (: $idx $prms) $env) (s $idx) $k (: $prfbdy $thrm))
      (: (λ $idx $prfbdy) (-> $prms $thrm))))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -209,90 +209,90 @@
 
 ;; Find proof of A
 !(assertEqual
-  (bc &kb Nil Z' (fromNumber 0) (: $prf A))
+  (bc &kb Nil z (fromNumber 0) (: $prf A))
   (: a A))
 
 ;; Find proof of B
 !(assertEqual
-  (bc &kb Nil Z' (fromNumber 2) (: $prf B))
+  (bc &kb Nil z (fromNumber 2) (: $prf B))
   (: ((ModusPonens (: ab (→ A B))) (: a A)) B))
 
 ;; Find proof of C
 !(assertEqual
-  (bc &kb Nil Z' (fromNumber 3) (: $prf C))
+  (bc &kb Nil z (fromNumber 3) (: $prf C))
   (: ((ModusPonens (: bc (→ B C))) (: ((ModusPonens (: ab (→ A B))) (: a A)) B)) C))
 
 ;; Find proof of (-> A B)
 !(assertEqual
-  (bc &kb Nil Z' (fromNumber 1) (: $prf (-> A B)))
+  (bc &kb Nil z (fromNumber 1) (: $prf (-> A B)))
   (: (ModusPonens (: ab (→ A B))) (-> A B)))
 
 ;; Find proof of (-> A A)
 !(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 1) (: $prf (-> A A)))
-  ((: (λ Z' a) (-> A A))
-   (: (λ Z' Z') (-> A A))))
+  (bc &kb Nil z (fromNumber 1) (: $prf (-> A A)))
+  ((: (λ z a) (-> A A))
+   (: (λ z z) (-> A A))))
 
-;; Infer type of (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A)))
+;; Infer type of (λ z ((ModusPonens (: ab (→ A B))) (: z A)))
 !(assertEqual
-  (bc &kb Nil Z' (fromNumber 3)
-      (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) $thrm))
-  (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) (-> A B)))
+  (bc &kb Nil z (fromNumber 3)
+      (: (λ z ((ModusPonens (: ab (→ A B))) (: z A))) $thrm))
+  (: (λ z ((ModusPonens (: ab (→ A B))) (: z A))) (-> A B)))
 
 ;; Find proof of (-> $h C), filling the $h hypothesis
 !(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 1) (: $prf (-> $h C)))
-  ((: (λ Z' Z') (-> C C))
+  (bc &kb Nil z (fromNumber 1) (: $prf (-> $h C)))
+  ((: (λ z z) (-> C C))
    (: (ModusPonens (: bc (→ B C))) (-> B C))))
 
 ;; Find proof of (-> A B) with depth 3 to include lambda abstractions
 !(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 3) (: (λ Z' $bdy) (-> A B)))
-  ((: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) (-> A B))
-   (: (λ Z' ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))))
+  (bc &kb Nil z (fromNumber 3) (: (λ z $bdy) (-> A B)))
+  ((: (λ z ((ModusPonens (: ab (→ A B))) (: z A))) (-> A B))
+   (: (λ z ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))))
 
 ;; Check proof of B assuming the type of one De Bruijn index in the
 ;; environment
 !(assertEqual
-  (bc &kb (Cons (: Z' (→ A B)) Nil) Z' (fromNumber 2)
-      (: ((ModusPonens (: Z' (→ A B))) (: a A)) B))
-  (: ((ModusPonens (: Z' (→ A B))) (: a A)) B))
+  (bc &kb (Cons (: z (→ A B)) Nil) z (fromNumber 2)
+      (: ((ModusPonens (: z (→ A B))) (: a A)) B))
+  (: ((ModusPonens (: z (→ A B))) (: a A)) B))
 
 ;; Check proof of B assuming the types of another De Bruijn indix in
 ;; the environment
 !(assertEqual
-  (bc &kb (Cons (: (S' Z') A) Nil) Z' (fromNumber 2)
-      (: ((ModusPonens (: ab (→ A B))) (: (S' Z') A)) B))
-  (: ((ModusPonens (: ab (→ A B))) (: (S' Z') A)) B))
+  (bc &kb (Cons (: (s z) A) Nil) z (fromNumber 2)
+      (: ((ModusPonens (: ab (→ A B))) (: (s z) A)) B))
+  (: ((ModusPonens (: ab (→ A B))) (: (s z) A)) B))
 
 ;; Check proof of B assuming the types of two De Bruijn indices in the
 ;; environment
 !(assertEqual
-  (bc &kb (Cons (: Z' (→ A B)) (Cons (: (S' Z') A) Nil)) Z' (fromNumber 2)
-      (: ((ModusPonens (: Z' (→ A B))) (: (S' Z') A)) B))
-  (: ((ModusPonens (: Z' (→ A B))) (: (S' Z') A)) B))
+  (bc &kb (Cons (: z (→ A B)) (Cons (: (s z) A) Nil)) z (fromNumber 2)
+      (: ((ModusPonens (: z (→ A B))) (: (s z) A)) B))
+  (: ((ModusPonens (: z (→ A B))) (: (s z) A)) B))
 
 ;; Find proof of (-> A B) with depth 3 restricted to lambda abstractions
 !(assertEqualToResult
-  (bc &kb Nil Z' (fromNumber 3) (: (λ Z' $prfbdy) (-> A B)))
-  ((: (λ Z' ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))
-   (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) (-> A B))))
+  (bc &kb Nil z (fromNumber 3) (: (λ z $prfbdy) (-> A B)))
+  ((: (λ z ((ModusPonens (: ab (→ A B))) (: a A))) (-> A B))
+   (: (λ z ((ModusPonens (: ab (→ A B))) (: z A))) (-> A B))))
 
 ;; Check proof involving nested lambda abstractions
 !(assertEqual
-  (bc &kb Nil Z' (fromNumber 4)
-      (: (λ Z' (λ (S' Z') ((ModusPonens (: Z' (→ A B))) (: (S' Z') A))))
+  (bc &kb Nil z (fromNumber 4)
+      (: (λ z (λ (s z) ((ModusPonens (: z (→ A B))) (: (s z) A))))
          (-> (→ A B) (-> A B))))
-  (: (λ Z' (λ (S' Z') ((ModusPonens (: Z' (→ A B))) (: (S' Z') A))))
+  (: (λ z (λ (s z) ((ModusPonens (: z (→ A B))) (: (s z) A))))
      (-> (→ A B) (-> A B))))
 
 ;; Check proof
-!(bc &kb Nil Z' (fromNumber 4) (: $prf (-> (-> $b $c) (-> (-> $a $b) (-> $a $c)))))
-     ;; (: (: (λ Z' (λ (S' Z') Z')) (-> (-> $b $c) (-> (-> $b $b) (-> $b $c))))
+!(bc &kb Nil z (fromNumber 4) (: $prf (-> (-> $b $c) (-> (-> $a $b) (-> $a $c)))))
+     ;; (: (: (λ z (λ (s z) z)) (-> (-> $b $c) (-> (-> $b $b) (-> $b $c))))
      ;;    (-> (-> $b $c) (-> (-> $b $b) (-> $b $c)))))
 
-!(bc &kb Nil Z' (fromNumber 3)
-     (: (λ Z' (λ (S' Z') (S' Z'))) (-> (-> $c $c) (-> (-> $c $c) (-> $c $c)))))
+!(bc &kb Nil z (fromNumber 3)
+     (: (λ z (λ (s z) (s z))) (-> (-> $c $c) (-> (-> $c $c) (-> $c $c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Remove/add type ;;
@@ -342,8 +342,8 @@
 
 ;; Test remove-type over a term with lambda abstraction
 !(assertEqual
-  (remove-type (: (λ Z' ((ModusPonens (: ab (→ A B))) (: Z' A))) (-> A B)))
-  (λ Z' ((ModusPonens ab) Z')))
+  (remove-type (: (λ z ((ModusPonens (: ab (→ A B))) (: z A))) (-> A B)))
+  (λ z ((ModusPonens ab) z)))
 
 ;; Add type missing annotation to be compatible with bc query format.
 ;; Whatever is missing is only added as variables, not inferred, for
@@ -369,15 +369,15 @@
 ;; meaning that the whole index is type annotated, not its
 ;; sub-indices.  For instance
 ;;
-;; (add-type (λ Z' (λ (S' Z') ((ModusPonens (S' Z')) Z'))))
+;; (add-type (λ z (λ (s z) ((ModusPonens (s z)) z))))
 ;;
 ;; outputs
 ;;
-;; (λ Z' (λ (S' Z') ((ModusPonens (: (S' Z') $t1)) (: Z' $t2))))
+;; (λ z (λ (s z) ((ModusPonens (: (s z) $t1)) (: z $t2))))
 ;;
 ;; not
 ;;
-;; (λ Z' (λ (S' Z') ((ModusPonens (: (S' (: Z' $t3)) $t1)) (: Z' $t2))))
+;; (λ z (λ (s z) ((ModusPonens (: (s (: z $t3)) $t1)) (: z $t2))))
 (: add-type (-> $a $a))
 (= (add-type $term)
    (case (get-metatype $term)
@@ -387,7 +387,7 @@
       (Expression (case $term
                     ((() ())
                      (($x) ($x))
-                     (($x $y) (if (== $x S')
+                     (($x $y) (if (== $x s)
                                   ;; Treat De Bruijn index atomically
                                   $term
                                   ;; Add type annotation to argument of application
@@ -410,7 +410,7 @@
 !(add-type (: ((ModusPonens ab) a) $thrm))
 
 ;; Test add-type to lambda abstraction
-!(add-type (λ Z' ((ModusPonens ab) Z')))
+!(add-type (λ z ((ModusPonens ab) z)))
 
 ;; Test add-type to a multi lambda abstraction term
-!(add-type (λ Z' (λ (S' Z') ((ModusPonens (S' Z')) Z'))))
+!(add-type (λ z (λ (s z) ((ModusPonens (s z)) z))))
