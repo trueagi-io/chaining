@@ -133,21 +133,21 @@
 ;; term, or variables of that term.
 
 ;; Base case
-(: bc (-> $a Nat $a))
-(= (bc (: $prf $ccln) $_)
+(: bc (-> Nat $a $a))
+(= (bc $_ (: $prf $ccln))
    ;; Query the knowledge for a rule or a fact
-   (trace! (⊷ bc-base (: $prf $ccln) $_)
+   (trace! (⊷ bc-base $_ (: $prf $ccln))
    (match &kb (: $prf $ccln) (: $prf $ccln))))
 
 ;; Recursive step
-(= (bc (: ($prfabs $prfarg) $ccln) (S $k))
-   (trace! (⊷ bc-rec (: ($prfabs $prfarg) $ccln) (S $k))
+(= (bc (S $k) (: ($prfabs $prfarg) $ccln))
+   (trace! (⊷ bc-rec (S $k) (: ($prfabs $prfarg) $ccln))
    (let* (;; Recurse on proof abstraction
           ((: $prfabs (-> (: $prfarg $prms) $ccln))
-           (bc (: $prfabs (-> (: $prfarg $prms) $ccln)) $k))
+           (bc $k (: $prfabs (-> (: $prfarg $prms) $ccln))))
           ;; Recurse on proof argument
           ((: $prfarg $prms)
-           (bc (: $prfarg $prms) $k)))
+           (bc $k (: $prfarg $prms))))
      (: ($prfabs $prfarg) $ccln))))
 
 ;;;;;;;;;;;;;;;
@@ -176,12 +176,12 @@
 
 ;; ;; Prove that Z is left identity of plus
 ;; ;; !(assertEqual
-;;   !(bc (: $prf (=== ((plus Z) $y) $y)) Z)
+;;   !(bc Z (: $prf (=== ((plus Z) $y) $y)))
 ;;   ;; (: Refl (=== $y $y)))
 
 ;; ;; Prove that any natural equals to itself
 ;; ;; !(assertEqual
-;;   !(bc (: $prf (-> (: $y Nat) (=== $y $y))) (fromNumber 2))
+;;   !(bc (fromNumber 2) (: $prf (-> (: $y Nat) (=== $y $y))))
 ;;   ;; (: ((lambda $y) Refl) (-> (: $y Nat) (=== $y $y))))
 
 ;; Prove that (=== (=== (plus Z Z) Z) (ZRID_plus Z)).
@@ -197,7 +197,7 @@
 ;;
 ;; (Sym plusRightIdProp)
 ;; !(assertEqual
-  !(bc (: $prf (=== (=== ((plus Z) Z) Z) (plusRightId Z))) (fromNumber 2))
+  !(bc (fromNumber 2) (: $prf (=== (=== ((plus Z) Z) Z) (plusRightId Z))))
   ;; (: (Sym plusRightIdProp) (=== (=== (plus Z Z) Z) (plusRightId Z))))
 
 ;; ;; Prove that (plusRightId Z) holds.  Meaning that Z is the right
@@ -218,7 +218,7 @@
 ;; ;;
 ;; ;; TODO: re-enable when assertContainResults is introduced
 ;; !(assertEqualToResult
-;;   (bc (: $prf (plusRightId Z)) (fromNumber 4))
+;;   (bc (fromNumber 4) (: $prf (plusRightId Z)))
 ;;   ((: ((Replace0 plusBase) ((Replace0 (Sym plusBase)) ((Replace0 (Sym plusRightIdProp)) plusBase))) (plusRightId Z))
 ;;    (: ((Replace0 ((Trans plusBase) (Sym plusRightIdProp))) ((Replace0 (Sym plusBase)) plusBase)) (plusRightId Z))
 ;;    (: ((Replace0 ((Trans plusRightIdProp) (Sym plusRightIdProp))) ((Replace0 (Sym plusRightIdProp)) plusBase)) (plusRightId Z))
@@ -242,7 +242,7 @@
 ;; ;;
 ;; ;; TODO: re-enable when assertContainResults is introduced
 ;; ;; !(assertEqualToResult
-;;   !(bc (: $prf (-> (=== (plus $x Z) $x) (=== (plus (S $x) Z) (S $x)))) (fromNumber 3))
+;;   !(bc (fromNumber 3) (: $prf (-> (=== (plus $x Z) $x) (=== (plus (S $x) Z) (S $x)))))
 ;;   ;; (: ((. (Trans plusRec)) Cong) (-> (=== (plus $x Z) $x) (=== (plus (S $x) Z) (S $x))))
 
 ;; ;; Prove that (-> (plusRightId $x) (plusRightId (S $x)))
@@ -271,7 +271,7 @@
 ;; ;;
 ;; ;; TODO: re-enable when assertContainResults is introduced
 ;; ;; !(assertEqualToResult
-;;   !(bc (: $prf (-> (plusRightId $x) (plusRightId (S $x)))) (fromNumber 4))
+;;   !(bc (fromNumber 4) (: $prf (-> (plusRightId $x) (plusRightId (S $x)))))
 ;;   ;; (: ((. (Replace0 (Sym plusRightIdProp))) ((. (Trans plusRec)) ((. Cong) (Replace0 plusRightIdProp)))) (-> (plusRightId $x) (plusRightId (S $x))))
 
 ;; ;; Prove that Z is the right identity of plus
@@ -291,5 +291,5 @@
 ;; ;;
 ;; ;; We provide half of the proof otherwise the search takes too much memory (over 64GB)
 ;; !(assertEqual
-;;   (bc (: ((NatInd ((Replace0 (Sym plusRightIdProp)) plusBase)) $subprf) (plusRightId $x)) (fromNumber 5))
+;;   (bc (fromNumber 5) (: ((NatInd ((Replace0 (Sym plusRightIdProp)) plusBase)) $subprf) (plusRightId $x)))
 ;;   (: ((NatInd ((Replace0 (Sym plusRightIdProp)) plusBase)) ((. (Replace0 (Sym plusRightIdProp))) ((. (Trans plusRec)) ((. Cong) (Replace0 plusRightIdProp))))) (plusRightId $x)))

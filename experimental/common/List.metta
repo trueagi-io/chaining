@@ -25,7 +25,7 @@
 (= (elem $x Nil) False)
 (= (elem $x (Cons $head $tail)) (if (== $x $head) True (elem $x $tail)))
 
-;; Remove duplicates from a list
+;; Remove duplicates from a list (sorted or not)
 (: uniq_ (-> (List $a) (List $a) (List $a)))
 (= (uniq_ $acc Nil) Nil)
 (= (uniq_ $acc (Cons $head $tail))

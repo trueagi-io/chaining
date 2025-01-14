@@ -1,6 +1,10 @@
-;;;;;;;;;;;;;;;;;;;;;;;;
-;; Common definitions ;;
-;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Example of backward curried chainers supporting implicit argument   ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;
+;; Nat ;;
+;;;;;;;;;
 
 ;; Define Nat
 (: Nat Type)
@@ -18,12 +22,43 @@
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
+;;;;;;;;;;;;;;;;;;;;
+;; Knowledge base ;;
+;;;;;;;;;;;;;;;;;;;;
+
+;; Simple knowledge base for expository purpose.  Do not confuse `->`,
+;; the MeTTa arrow type, and `→`, a regular MeTTa symbol denoting a
+;; relationship.
+
+!(bind! &kb (new-space))
+
+;; A, B and C are subtypes of Data
+!(add-atom &kb (: AD (<: A Data)))
+!(add-atom &kb (: BD (<: B Data)))
+!(add-atom &kb (: CD (<: C Data)))
+
+;; Type signatures of f, g and h
+!(add-atom &kb (: f (-> A B)))
+!(add-atom &kb (: g (-> B C)))
+!(add-atom &kb (: h (-> A A)))
+
+;; NEXT: add implicit arguments
+
+;; Sequential composition combinator
+!(add-atom &kb (: . (-> (-> $b $c)
+                        (-> (-> $a $b)
+                            (-> $a $c)))))
+
+;; Square combinator.  (sq f) is equivalent to (. f f)
+!(add-atom &kb (: sq (-> (-> $a $a)
+                         (-> $a $a))))
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-;; Curried Backward Chainer with fully annotated proofs.  The
-;; arguments of the backward chainer are:
+;; Curried Backward Chainer.  The arguments of the backward chainer
+;; are:
 ;;
 ;; * Knowledge base: pointer to a space containing axioms and rules in
 ;;   the format (: <NAME> <RULE>).  Note that rules are explicitely
@@ -47,25 +82,7 @@
 ;; Base case
 (= (bc $kb $_ (: $prf $ccln)) (match $kb (: $prf $ccln) (: $prf $ccln)))
 ;; Recursive step
-(= (bc $kb (S $k) (: ($prfabs (: $prfarg $prms)) $ccln))
+(= (bc $kb (S $k) (: ($prfabs $prfarg) $ccln))
    (let* (((: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln))))
           ((: $prfarg $prms) (bc $kb $k (: $prfarg $prms))))
-     (: ($prfabs (: $prfarg $prms)) $ccln)))
-
-;;;;;;;;;;;;;;;;;;;;
-;; Knowledge base ;;
-;;;;;;;;;;;;;;;;;;;;
-
-!(bind! &kb (new-space))
-!(add-atom &kb (: Z Nat))
-!(add-atom &kb (: S (-> Nat Nat)))
-!(add-atom &kb (: plus (-> Nat (-> Nat Nat))))
-
-;;;;;;;;;;;
-;; Tests ;;
-;;;;;;;;;;;
-
-;; Add 1 and 2
-(: ($op (: $x Nat) (: $y Nat)) Nat)
-
-;; !(bc &kb (fromNumber 3) (: (($op (: $x Nat)) (: $y Nat)) Nat))
+     (: ($prfabs $prfarg) $ccln)))

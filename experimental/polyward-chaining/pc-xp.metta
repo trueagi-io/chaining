@@ -53,66 +53,66 @@
 ;; `../backward-chaining/bc-xp.metta` but rules are in an atomspace
 ;; instead of being hardwired.  To be used by the forward revertant
 ;; chainer defined below.
-(: bc (-> Atom Nat Atom))
+(: bc (-> Nat Atom Atom))
 ;; Base case
-(= (bc (: $prf $ccln) $depth)
+(= (bc $depth (: $prf $ccln))
    (match &kb (: $prf $ccln) (: $prf $ccln)))
 ;; Recursive cases
-(= (bc (: $prf $ccln) (S $k))
+(= (bc (S $k) (: $prf $ccln))
    (match &rb (: $ctor (-> $prms1 $prms2 $ccln))
-          (let* (((: $prf1 $prms1) (bc (: $prf1 $prms1) $k))
-                 ((: $prf2 $prms2) (bc (: $prf2 $prms2) $k))
+          (let* (((: $prf1 $prms1) (bc $k (: $prf1 $prms1)))
+                 ((: $prf2 $prms2) (bc $k (: $prf2 $prms2)))
                  (($ctor $prf1 $prf2) $prf))
             (: $prf $ccln))))
 
 ;; Test backward chainer
 !(assertEqual
-  (bc (: $prf A) Z)
+  (bc Z (: $prf A))
   (: a A))
 !(assertEqual
-  (bc (: $prf (→ A B)) Z)
+  (bc Z (: $prf (→ A B)))
   (: ab (→ A B)))
 !(assertEqual
-  (bc (: $prf (→ B C)) Z)
+  (bc Z (: $prf (→ B C)))
   (: bc (→ B C)))
 !(assertEqual
-  (bc (: $prf B) (fromNumber 1))
+  (bc (fromNumber 1) (: $prf B))
   (: (ModusPonens ab a) B))
 !(assertEqualToResult
-  (bc (: $prf C) (fromNumber 2))
+  (bc (fromNumber 2) (: $prf C))
   ((: (ModusPonens bc (ModusPonens ab a)) C)
    (: (ModusPonens (Deduction ab bc) a) C)))
 !(assertEqual
-  (bc (: $prf (→ A C)) (fromNumber 2))
+  (bc (fromNumber 2) (: $prf (→ A C)))
   (: (Deduction ab bc) (→ A C)))
 
 ;; Forward revertant chainer, based on the DTL version of
 ;; `../backward-chaining/bc-xp.metta` but matching premises is
 ;; replaced by calling the backward chainer defined above.
-(: frc (-> Atom Nat Atom))
+(: frc (-> Nat Atom Atom))
 ;; Base case
-(= (frc (: $prf $prms) $depth) (: $prf $prms))
+(= (frc $depth (: $prf $prms)) (: $prf $prms))
 ;; Recursive cases
-(= (frc (: $prf1 $prms1) (S $k))
+(= (frc (S $k) (: $prf1 $prms1))
    (match &rb (: $ctor (-> $prms1 $prms2 $ccln))
-          (let (: $prf2 $prms2) (bc (: $prf2 $prms2) $k)
-               (frc (: ($ctor $prf1 $prf2) $ccln) $k))))
-(= (frc (: $prf2 $prms2) (S $k))
+          (let (: $prf2 $prms2) (bc $k (: $prf2 $prms2))
+               (frc $k (: ($ctor $prf1 $prf2) $ccln)))))
+(= (frc (S $k) (: $prf2 $prms2))
    (match &rb (: $ctor (-> $prms1 $prms2 $ccln))
-          (let (: $prf1 $prms1) (bc (: $prf1 $prms1) $k)
-               (frc (: ($ctor $prf1 $prf2) $ccln) $k))))
+          (let (: $prf1 $prms1) (bc $k (: $prf1 $prms1))
+               (frc $k (: ($ctor $prf1 $prf2) $ccln)))))
 
 ;; Test forward revertant chainer
 !(assertEqual
-  (frc (: a A) Z)
+  (frc Z (: a A))
   (: a A))
 !(assertEqualToResult
-  (frc (: a A) (fromNumber 1))
+  (frc (fromNumber 1) (: a A))
   ((: a A)
    (: (ModusPonens ab a) B)))
 ;; Disable assertEqualToResult due to leftover
 ;; !(assertEqualToResult
-  !(frc (: a A) (fromNumber 2))
+  !(frc (fromNumber 2) (: a A))
   ;; ((: a A)
   ;;  (: (ModusPonens ab a) B)
   ;;  (: (ModusPonens bc (ModusPonens ab a)) C)
