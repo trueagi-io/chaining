@@ -41,15 +41,15 @@
 ;; partially.  If multiple results are possible, they are returned as
 ;; a superposition.
 (: bc (-> $a                            ; Knowledge base space
-          $b                            ; Query
           Nat                           ; Maximum depth
+          $b                            ; Query
           $b))                          ; Result
 ;; Base case
-(= (bc $kb (: $prf $ccln) $_) (match $kb (: $prf $ccln) (: $prf $ccln)))
+(= (bc $kb $_ (: $prf $ccln)) (match $kb (: $prf $ccln) (: $prf $ccln)))
 ;; Recursive step
-(= (bc $kb (: ($prfabs (: $prfarg $prms)) $ccln) (S $k))
-   (let* (((: $prfabs (-> $prms $ccln)) (bc $kb (: $prfabs (-> $prms $ccln)) $k))
-          ((: $prfarg $prms) (bc $kb (: $prfarg $prms) $k)))
+(= (bc $kb (S $k) (: ($prfabs (: $prfarg $prms)) $ccln))
+   (let* (((: $prfabs (-> $prms $ccln)) (bc $kb $k (: $prfabs (-> $prms $ccln))))
+          ((: $prfarg $prms) (bc $kb $k (: $prfarg $prms))))
      (: ($prfabs (: $prfarg $prms)) $ccln)))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -68,4 +68,4 @@
 ;; Add 1 and 2
 (: ($op (: $x Nat) (: $y Nat)) Nat)
 
-;; !(bc &kb (: (($op (: $x Nat)) (: $y Nat)) Nat) (fromNumber 3))
+;; !(bc &kb (fromNumber 3) (: (($op (: $x Nat)) (: $y Nat)) Nat))
