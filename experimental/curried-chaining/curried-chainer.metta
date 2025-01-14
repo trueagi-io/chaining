@@ -77,7 +77,7 @@
           ((: $prfarg $prms) (bc $kb (: $prfarg $prms) $k)))
      (: ($prfabs $prfarg) $ccln)))
 
-;; Test curred backward chainer
+;; Test curried backward chainer
 !(assertEqual
   (bc &kb (: $prf A) (fromNumber 0))
   (: a A))
