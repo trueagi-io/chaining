@@ -165,14 +165,18 @@
 (: is-variable (-> Atom Bool))
 (= (is-variable $x) (== (get-metatype $x) Variable))
 
-;; Return True iff $x is closed
+;; Return True iff $term is closed
 (: is-closed (-> Atom Bool))
-(= (is-closed $x) (if (is-variable $x)
-                      False
-                      (if (is-expression $x)
-                          (or (let $head (car-atom $y) (is-closed $head))
-                              (let $tail (cdr-atom $y) (is-closed $tail)))
-                          True)))
+(= (is-closed $term)
+   (case (get-metatype $term)
+     ((Variable False)
+      (Symbol True)
+      (Grounded True)
+      (Expression (if (== $term ())
+                      True
+                      (let* (($head (car-atom $term))
+                             ($tail (cdr-atom $term)))
+                        (and (is-closed $head) (is-closed $tail))))))))
 
 ;; Return the proof of a query iff it is closed.  Otherwise prune the branch.
 (: get-closed-proof (-> $a $a))
