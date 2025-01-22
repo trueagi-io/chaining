@@ -108,44 +108,62 @@
 (: Nil (List $a))
 (: Cons (-> $a (List $a) (List $a)))
 
+;;;;;;;;;;;;;;;;;;;;;
+;; Match over list ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Similar to match but takes a list of terms instead of a space.
+(: match' (-> (List Atom) $a $a $a))
+(= (match' Nil $pattern $rewrite) (empty))
+(= (match' (Cons $head $tail) $pattern $rewrite) (let $pattern $head $rewrite))
+(= (match' (Cons $head $tail) $pattern $rewrite) (match' $tail $pattern $rewrite))
+
+;; Test match' on empty list
+!(assertEqualToResult
+  (match' Nil ($x $y) ($y $x))
+  ())
+
+;; Test match' on singleton
+!(assertEqual
+  (match' (Cons (A B) Nil) ($x $y) ($y $x))
+  (B A))
+
+;; Test match' on pair
+!(assertEqualToResult
+  (match' (Cons (A B) (Cons (C D) Nil)) ($x $y) ($y $x))
+  ((B A)
+   (D C)))
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-;; Curried Backward Chainer.  There is no explicit support for lambda
-;; abstraction due to the combinatorial explosion resulting from
-;; combining lambda and application.  Instead, variables are
-;; explicitly added to the knowledge base.  So for instance, if the
+;; Backward Chainer with environment.  There is no explicit support
+;; for lambda abstraction due to the combinatorial explosion resulting
+;; from combining lambda abstractions and applications.  Instead,
+;; variables are added to the environment.  So for instance, if the
 ;; program to synthesize has the following type signature
 ;;
 ;; Boolean -> Boolean -> Boolean
 ;;
 ;; meaning it is a binary boolean function, thus has 2 arguments, we
-;; add the following two declarations in the knowledge base
+;; add the following two declarations in the environment
 ;;
-;; (: x Boolean)
-;; (: y Boolean)
+;; (: z Boolean)
+;; (: (s z) Boolean)
 ;;
-;; where x and y represents the variables associated with the
-;; arguments.  In order to draw an arbitrary number of variables, one
-;; may use DeBruijn index where z represents the first variable, (s z)
-;; the second, (s (s z)) the third, etc.
+;; where z and (s z) represents the variables associated with the two
+;; arguments.
 ;;
 ;; The arguments of the backward chainer are:
 ;;
-;; * Knowledge base: pointer to a space containing axioms and rules in
-;;   the format (: <NAME> <RULE>).  Note that rules are explicitely
-;;   curried, meaning that a rule with two premises is represented by
+;; * Knowledge base: reference to a space containing axioms and rules
+;;   in the format (: <NAME> <RULE>).  Rules may or may not be curried
+;;   depending on the convenience of the situation.
 ;;
-;;   (: <NAME> (-> <PREMISE1> (-> <PREMISE2> <CONCLUSION>)))
+;; * Environment: a list of typing relationships such as
 ;;
-;;   In addition, each premise must be an inline typing relationship,
-;;   to represent dependent types.  It should be noted that such
-;;   typing relationship must be provided even if the witness is not
-;;   present in the rest of the definition.  For instance <PREMISE1>
-;;   would have the format (NEXT: do we really need that?)
-;;
-;;   (: <TERM1> <TYPE1>)
+;;   (Cons (: z Boolean) (Cons (: (s z) Boolean) Nil))
 ;;
 ;; * Maximum depth: maximum depth of the generated proof tree.
 ;;
@@ -153,35 +171,44 @@
 ;;   <PROOF> and <THEOREM> may contain free variables that may be
 ;;   filled by the backward chainer.
 (: bc (-> $a                            ; Knowledge base space
+          (List $b)                     ; Environment
           Nat                           ; Maximum depth
           $c                            ; Query
           $c))                          ; Result
 
-;; Base case: match the knowledge base
-(= (bc $kb $_ (: $prf $thrm))
-   (match $kb (: $prf $thrm) (: $prf $thrm)))
+;; Base cases
+;; Match the knowledge base
+(= (bc $kb $env $_ (: $prf $thrm))
+   (let () (println! (⊷ bc-kb $kb (S $k) (: $prf $thrm)))
+   (match $kb (: $prf $thrm) (: $prf $thrm))))
+;; Match the environment
+(= (bc $kb $env $_ (: $prf $thrm))
+   (let () (println! (⊷ bc-env $kb (S $k) (: $prf $thrm)))
+   (match' $env (: $prf $thrm) (: $prf $thrm))))
+
 ;; Recursive steps
 ;; Unary proof application
-(= (bc $kb (S $k) (: ($prfabs $prfarg) $thrm))
+(= (bc $kb $env (S $k) (: ($prfabs $prfarg) $thrm))
+   (let () (println! (⊷ bc-unary $kb (S $k) (: ($prfabs $prfarg) $thrm)))
    (let* (;; Recurse on unary rule
           ((: $prfabs (-> (: $prfarg $prms) $thrm))
-           (bc $kb $k (: $prfabs (-> (: $prfarg $prms) $thrm))))
+           (bc $kb $env $k (: $prfabs (-> (: $prfarg $prms) $thrm))))
           ;; Recurse on premise
-          ((: $prfarg $prms) (bc $kb $k (: $prfarg $prms))))
-     (: ($prfabs (: $prfarg $prms)) $thrm)))
+          ((: $prfarg $prms) (bc $kb $env $k (: $prfarg $prms))))
+     (: ($prfabs $prfarg) $thrm))))
 ;; Binary proof application
-(= (bc $kb (S $k) (: ($prfabs $prfarg1 $prfarg2) $thrm))
+(= (bc $kb $env (S $k) (: ($prfabs $prfarg1 $prfarg2) $thrm))
    (let* (;; Recurse on binary rule
           ((: $prfabs (-> (: $prfarg1 $prms1)
                           (: $prfarg2 $prms2)
                           $thrm))
-           (bc $kb $k (: $prfabs (-> (: $prfarg1 $prms1)
-                                     (: $prfarg2 $prms2)
-                                     $thrm))))
+           (bc $kb $env $k (: $prfabs (-> (: $prfarg1 $prms1)
+                                          (: $prfarg2 $prms2)
+                                          $thrm))))
           ;; Recurse on premise 1
-          ((: $prfarg1 $prms1) (bc $kb $k (: $prfarg1 $prms1)))
+          ((: $prfarg1 $prms1) (bc $kb $env $k (: $prfarg1 $prms1)))
           ;; Recurse on premise 2
-          ((: $prfarg2 $prms2) (bc $kb $k (: $prfarg2 $prms2))))
+          ((: $prfarg2 $prms2) (bc $kb $env $k (: $prfarg2 $prms2))))
      (: ($prfabs $prfarg1 $prfarg2) $thrm)))
 ;; Ternary proof application
 (= (bc $kb (S $k) (: ($prfabs $prfarg1 $prfarg2 $prfarg3) $thrm))
@@ -190,16 +217,16 @@
                           (: $prfarg2 $prms2)
                           (: $prfarg3 $prms3)
                           $thrm))
-           (bc $kb $k (: $prfabs (-> (: $prfarg1 $prms1)
-                                     (: $prfarg2 $prms2)
-                                     (: $prfarg3 $prms3)
-                                     $thrm))))
+           (bc $kb $env $k (: $prfabs (-> (: $prfarg1 $prms1)
+                                          (: $prfarg2 $prms2)
+                                          (: $prfarg3 $prms3)
+                                          $thrm))))
           ;; Recurse on premise 1
-          ((: $prfarg1 $prms1) (bc $kb $k (: $prfarg1 $prms1)))
+          ((: $prfarg1 $prms1) (bc $kb $env $k (: $prfarg1 $prms1)))
           ;; Recurse on premise 2
-          ((: $prfarg2 $prms2) (bc $kb $k (: $prfarg2 $prms2)))
+          ((: $prfarg2 $prms2) (bc $kb $env $k (: $prfarg2 $prms2)))
           ;; Recurse on premise 3
-          ((: $prfarg3 $prms3) (bc $kb $k (: $prfarg3 $prms3))))
+          ((: $prfarg3 $prms3) (bc $kb $env $k (: $prfarg3 $prms3))))
      (: ($prfabs $prfarg1 $prfarg2 $prfarg3) $thrm)))
 
 ;;;;;;;;;;;;;
@@ -210,10 +237,15 @@
 ;; input arguments), output the result of the evaluation of that
 ;; candidate on the arguments.
 (: evaluate (-> Atom Expression Atom))
+;; Constants
 (= (evaluate T $inputs) T)
 (= (evaluate F $inputs) F)
-(= (evaluate x ($x $y)) $x)
-(= (evaluate y ($x $y)) $y)
+;; Variables.  Note that if the DeBruijn index is greater than the
+;; length of the tuple corresponding to the input arguments, MeTTa
+;; will raise an error.
+(= (evaluate z $inputs) (car-atom $inputs))
+(= (evaluate (s $k) $inputs) (let $tail (cdr-atom $inputs) (evaluate z $tail)))
+;; Operators
 (= (evaluate (And $x $y) $inputs)
    (if (== (evaluate $x $inputs) T)
        (evaluate $y $inputs)
@@ -232,13 +264,13 @@
   (evaluate T (F T))
   T)
 !(assertEqual
-  (evaluate x (F T))
+  (evaluate z (F T))
   F)
 !(assertEqual
-  (evaluate (Or T x) (F T))
+  (evaluate (Or T z) (F T))
   T)
 !(assertEqual
-  (evaluate (And (Or T x) y) (F T))
+  (evaluate (And (Or T z) (s z)) (F T))
   T)
 
 ;; Evaluation correctness function.  Given a candidate and a pair
@@ -254,7 +286,7 @@
   ((evaluate-correctness T) ((F T) T))
   True)
 !(assertEqual
-  ((evaluate-correctness (And (Or T x) y)) ((F T) T))
+  ((evaluate-correctness (And (Or T z) (s z))) ((F T) T))
   True)
 
 ;; Output -1 when given False, 0 otherwise.
@@ -264,10 +296,11 @@
 
 ;; Fitness function.  Assign a fitness score to a given candidate
 ;; corresponding to the number of incorrect answers compared to a
-;; certain truth table (here binary conjunction).
+;; certain truth table.  In that particular implementation the truth
+;; table is hardwired to correspond to logical conjunction.
 (: fitness (-> Atom Number))
 (= (fitness $cnd)
-   (let* (;; Define a truth table
+   (let* (;; Define a truth table (logical conjunction)
           ($truth-table (((T T) T)
                          ((T F) F)
                          ((F T) F)
@@ -282,7 +315,7 @@
   (fitness T)
   -3)
 !(assertEqual
-  (fitness (And x y))
+  (fitness (And z (s z)))
   0)
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -313,8 +346,6 @@
 !(add-atom &kb (: Not (-> (: $x Boolean) Boolean)))
 !(add-atom &kb (: T Boolean))
 !(add-atom &kb (: F Boolean))
-!(add-atom &kb (: x Boolean))
-!(add-atom &kb (: y Boolean))
 
 ;; Define fitness predicate.  It takes 2 arguments
 ;; 1. a number representing the fitness of
@@ -323,7 +354,7 @@
 ;; The type of the candidate is merely Bool because the programs being
 ;; evolved are boolean expressions.
 !(add-atom &kb
-           (: Fit (-> (: $fit Number)
+           (: Fit (-> (: $ftns Number)
                       (-> (: $cnd Boolean)
                           Type))))
 
@@ -331,11 +362,123 @@
 ;; the fitness of a given candidate.  At this point sub-symbolic
 ;; processing takes over for efficiency reason.  The proof is merely
 ;; represented by the symbol CPU.  It is as if the proof were saying
-;; that "the fitness of the given candidate is such because the CPU
-;; said so".  Because a CPU is a black box from the viewpoint of a
-;; program, it conveys the idea that the backward chainer should trust
-;; that black box and move on.
-(= (bc &kb $_ (: CPU ((Fit $fit) $cnd)))
+;; "the fitness of the given candidate is such because the CPU said
+;; so".  Because a CPU is a black box from the viewpoint of a program,
+;; it conveys the idea that the backward chainer should trust that
+;; black box and move on.
+(= (bc $kb $env $_ (: CPU ((Fit $ftns) $cnd)))
    (when (is-closed $cnd)
-     (let $fit (fitness $cnd)
-       (: CPU ((Fit $fit) $cnd)))))
+     (let $ftns (fitness $cnd)
+       (: CPU ((Fit $ftns) $cnd)))))
+
+;;;;;;;;;;
+;; Test ;;
+;;;;;;;;;;
+
+;; Generate candidates up to depth 0 (assuming a binary function)
+!(assertEqualToResult
+  (bc &kb
+      (Cons (: z Boolean) (Cons (: (s z) Boolean) Nil))
+      Z
+      (: $cnd Boolean))
+  ((: T Boolean)
+   (: F Boolean)
+   (: z Boolean)
+   (: (s z) Boolean)))
+
+;; Generate candidates up to depth 1 (assuming a unary function)
+!(assertEqualToResult
+  (bc &kb
+      (Cons (: z Boolean) Nil)
+      (fromNumber 1)
+      (: $cnd Boolean))
+  ((: T Boolean)
+   (: F Boolean)
+   (: z Boolean)
+   (: (Or T T) Boolean)
+   (: (Or T F) Boolean)
+   (: (Or T z) Boolean)
+   (: (Or F T) Boolean)
+   (: (Or F F) Boolean)
+   (: (Or F z) Boolean)
+   (: (Or z T) Boolean)
+   (: (Or z F) Boolean)
+   (: (Or z z) Boolean)
+   (: (And T T) Boolean)
+   (: (And T F) Boolean)
+   (: (And T z) Boolean)
+   (: (And F T) Boolean)
+   (: (And F F) Boolean)
+   (: (And F z) Boolean)
+   (: (And z T) Boolean)
+   (: (And z F) Boolean)
+   (: (And z z) Boolean)
+   (: (Not T) Boolean)
+   (: (Not F) Boolean)
+   (: (Not z) Boolean)))
+
+;; ;; Generate 1 candidate up to depth 2 (only works with MeTTaLog)
+;; !(limit 1 (bc &kb Nil (fromNumber 1) (: $cnd Boolean)))
+
+;; Evaluate candidate T
+!(assertEqual
+  (bc &kb Nil Z (: $prf ((Fit $ftns) T)))
+  (: CPU ((Fit -3) T)))
+
+;; Evaluate candidate z
+!(assertEqual
+  (bc &kb (Cons (: z Boolean) Nil) Z (: $prf ((Fit $ftns) z)))
+  (: CPU ((Fit -1) z)))
+
+;; Evaluate candidate (Or z (s z))
+!(assertEqual
+  (bc &kb
+      (Cons (: z Boolean) (Cons (: (s z) Boolean) Nil))
+      Z
+      (: $prf ((Fit $ftns) (Or z (s z)))))
+  (: CPU ((Fit -2) (Or z (s z)))))
+
+;; Evaluate candidate (And z (s z))
+!(assertEqual
+  (bc &kb
+      (Cons (: z Boolean) (Cons (: (s z) Boolean) Nil))
+      Z
+      (: $prf ((Fit $ftns) (And z (s z)))))
+  (: CPU ((Fit 0) (And z (s z)))))
+
+;; Infer type of Fit
+!(assertAlphaEqual
+  (bc &kb Nil Z (: Fit $t))
+  (: Fit (-> (: $ftns Number) (-> (: $cnd Boolean) Type))))
+
+;; Infer type of (Fit $ftns), assuming that $ftns is of type Number
+!(assertAlphaEqual
+  (bc &kb
+      (Cons (: $ftns Number) Nil)
+      (fromNumber 1)
+      (: (Fit $ftns) $t))
+  (: (Fit $ftns) (-> (: $cnd Boolean) Type)))
+
+;; Instantiate sigma type rule for the Fit predicate, assuming that
+;; $ftns is of type Number.
+!(assertEqual
+  (bc &kb
+      (Cons (: $ftns Number) Nil)
+      Z (: $prf (-> (: (Fit $ftns) (-> (: $_ Boolean) Type))
+                    (: $cnd Boolean)
+                    (: $prf ((Fit $ftns) $cnd))
+                    (Σ Boolean (Fit $ftns)))))
+  (: MkΣ (-> (: (Fit $ftns) (-> (: $_ Boolean) Type))
+             (: $cnd Boolean)
+             (: MkΣ ((Fit $ftns) $cnd))
+             (Σ Boolean (Fit $ftns)))))
+
+;; NEXT
+
+;; Instantiate all candidates and their fitness scores up to depth 1,
+;; assuming that $ftns is of type Number.
+!(bc &kb
+     ;; (Cons (: $ftns Number) Nil)
+     (Cons (: (Fit $ftns) (-> (: $_ Boolean) Type)) Nil)
+     (fromNumber 3)
+     (: $cnds (Σ Boolean (Fit $ftns))))
