@@ -141,8 +141,8 @@
 ;; Backward Chainer with environment.  There is no explicit support
 ;; for lambda abstraction due to the combinatorial explosion resulting
 ;; from combining lambda abstractions and applications.  Instead,
-;; variables are added to the environment.  So for instance, if the
-;; program to synthesize has the following type signature
+;; variables are added to the environment manually.  So for instance,
+;; if the program to synthesize has the following type signature
 ;;
 ;; Boolean -> Boolean -> Boolean
 ;;
@@ -179,23 +179,20 @@
 ;; Base cases
 ;; Match the knowledge base
 (= (bc $kb $env $_ (: $prf $thrm))
-   (let () (println! (⊷ bc-kb $kb (S $k) (: $prf $thrm)))
-   (match $kb (: $prf $thrm) (: $prf $thrm))))
+   (match $kb (: $prf $thrm) (: $prf $thrm)))
 ;; Match the environment
 (= (bc $kb $env $_ (: $prf $thrm))
-   (let () (println! (⊷ bc-env $kb (S $k) (: $prf $thrm)))
-   (match' $env (: $prf $thrm) (: $prf $thrm))))
+   (match' $env (: $prf $thrm) (: $prf $thrm)))
 
 ;; Recursive steps
 ;; Unary proof application
 (= (bc $kb $env (S $k) (: ($prfabs $prfarg) $thrm))
-   (let () (println! (⊷ bc-unary $kb (S $k) (: ($prfabs $prfarg) $thrm)))
    (let* (;; Recurse on unary rule
           ((: $prfabs (-> (: $prfarg $prms) $thrm))
            (bc $kb $env $k (: $prfabs (-> (: $prfarg $prms) $thrm))))
           ;; Recurse on premise
           ((: $prfarg $prms) (bc $kb $env $k (: $prfarg $prms))))
-     (: ($prfabs $prfarg) $thrm))))
+     (: ($prfabs $prfarg) $thrm)))
 ;; Binary proof application
 (= (bc $kb $env (S $k) (: ($prfabs $prfarg1 $prfarg2) $thrm))
    (let* (;; Recurse on binary rule
@@ -211,7 +208,7 @@
           ((: $prfarg2 $prms2) (bc $kb $env $k (: $prfarg2 $prms2))))
      (: ($prfabs $prfarg1 $prfarg2) $thrm)))
 ;; Ternary proof application
-(= (bc $kb (S $k) (: ($prfabs $prfarg1 $prfarg2 $prfarg3) $thrm))
+(= (bc $kb $env (S $k) (: ($prfabs $prfarg1 $prfarg2 $prfarg3) $thrm))
    (let* (;; Recurse on ternary rule
           ((: $prfabs (-> (: $prfarg1 $prms1)
                           (: $prfarg2 $prms2)
@@ -365,7 +362,7 @@
 ;; "the fitness of the given candidate is such because the CPU said
 ;; so".  Because a CPU is a black box from the viewpoint of a program,
 ;; it conveys the idea that the backward chainer should trust that
-;; black box and move on.
+;; black box and move along.
 (= (bc $kb $env $_ (: CPU ((Fit $ftns) $cnd)))
    (when (is-closed $cnd)
      (let $ftns (fitness $cnd)
@@ -466,19 +463,16 @@
       (Cons (: $ftns Number) Nil)
       Z (: $prf (-> (: (Fit $ftns) (-> (: $_ Boolean) Type))
                     (: $cnd Boolean)
-                    (: $prf ((Fit $ftns) $cnd))
+                    (: $cpuprf ((Fit $ftns) $cnd))
                     (Σ Boolean (Fit $ftns)))))
   (: MkΣ (-> (: (Fit $ftns) (-> (: $_ Boolean) Type))
              (: $cnd Boolean)
-             (: MkΣ ((Fit $ftns) $cnd))
+             (: $cpuprf ((Fit $ftns) $cnd))
              (Σ Boolean (Fit $ftns)))))
-
-;; NEXT
 
 ;; Instantiate all candidates and their fitness scores up to depth 1,
 ;; assuming that $ftns is of type Number.
 !(bc &kb
-     ;; (Cons (: $ftns Number) Nil)
-     (Cons (: (Fit $ftns) (-> (: $_ Boolean) Type)) Nil)
-     (fromNumber 3)
+     (Cons (: z Boolean) (Cons (: (s z) Boolean) (Cons (: $ftns Number) Nil)))
+     (fromNumber 2)
      (: $cnds (Σ Boolean (Fit $ftns))))
