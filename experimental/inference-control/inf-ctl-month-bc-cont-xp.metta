@@ -187,13 +187,18 @@
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
-;; Return True iff $x is closed
+;; Return True iff $term is closed
 (: is-closed (-> Atom Bool))
-(= (is-closed $x)
-   (case ($x (get-metatype $x))
-     ((($_ Variable) False)
-      ((($abs $arg) Expression) (and (is-closed $abs) (is-closed $arg)))
-      ($_ True))))
+(= (is-closed $term)
+   (case (get-metatype $term)
+     ((Variable False)
+      (Symbol True)
+      (Grounded True)
+      (Expression (if (== $term ())
+                      True
+                      (let* (($head (car-atom $term))
+                             ($tail (cdr-atom $term)))
+                        (and (is-closed $head) (is-closed $tail))))))))
 
 ;; Return the proof of a query iff it is closed.  Otherwise prune the branch.
 (: get-closed-proof (-> $a $a))
