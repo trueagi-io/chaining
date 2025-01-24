@@ -30,7 +30,7 @@
 ;;                                                                         ;;
 ;;                                                                         ;;
 ;; To reframe evolutionary programming as a form of reasoning, we          ;;
-;; express the query of finding inhabitants of the type expressing the     ;;
+;; express the query of finding inhabitants of a type expressing the       ;;
 ;; class of *fit programs*.  To acheive that we use a Sigma type.  The     ;;
 ;; full query looks like                                                   ;;
 ;;                                                                         ;;
