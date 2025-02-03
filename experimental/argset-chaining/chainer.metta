@@ -31,6 +31,9 @@
 ;; Check if 2 elements are unifiable
 (= (unifiable $a $b) (unify $a $b True False))
 
+;; Check if 2 elements are unifiable
+(= (unifiable2 $a $b) (unify $a $b $a Empty))
+
 !(assertEqual (unifiable a a) True)
 !(assertEqual (unifiable a b) False)
 
@@ -151,16 +154,6 @@
 ;!((overlap ==) (a b c) (a b d))
 !(assertEqual ((overlap meq) (a) (c)) ((a) () (c)))
 
-
-(= (overlap2 $kb $depth $list1 $list2)
-   (if (== (get-metatype $list1) Variable)
-     (() $list2 ())
-     (if (== (get-metatype $list2) Variable)
-       (() $list1 ())
-       (let $clean_list2 (traceid (myfold-atom1 (map-atom $list2 $elem (let (: $prf (-> $prms $type)) $elem $type)) unique-union-atom))
-       (let (: $fset (-> $pset $cset)) (traceid (bc $kb $depth (: $fset (-> $list1 $clean_list2))))
-       ($_ $pset ()))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; To simplify the chainer we assume that everything is a function
@@ -218,56 +211,33 @@
           $q                            ; Query
           $q))                          ; Result
 
-(= (bc $kb $depth_full $query) 
- ;Base Case
- (unify $kb $query $query
-  ;Recursive steps
-  (let* (((S $depth) $depth_full)
 
-         (debug (trace! (Query $query) debug))
+(= (bc $kb $depth_full (: $fset (-> $pset $cset)))
+ (unify $kb (: $ufset (-> $pset $cset)) (traceid (let ($_ $nfset ()) ((overlap unifiable2) $fset $ufset) (: $nfset (-> $pset $cset))))
+  (let ($npset $_ $ncset) ((overlap unifiable2) $pset $cset)
+   (if (== $ncset ())
+    (: () (: $var ()))
+    ;Base Case
+    ;Recursive steps
+    (let* (((S $depth) $depth_full)
 
-         ((: $fset (-> $pset $cset)) $query)
+           (debug (trace! (Query (: $fset (-> $npset $ncset))) debug))
 
-         ($cmatched (myfold-atom1 (map-atom $cset $conclusion (bc $kb $depth (: $matched_prf (-> $matched_prms ($conclusion))))) unionStmt))
+           ((: $mfset (-> $mpset $mcset)) (myfold-atom1 (map-atom $ncset $conclusion (bc $kb $depth (sealed $fset (: $fset (-> $matched_prms ($conclusion)))))) unionStmt))
 
-         (debug (trace! (CMatch $cmatched) debug))
+           (debug (trace! (Match (: $mfset (-> $mpset $mcset))) debug))
 
-         ($fmatched (myfold-atom1 (map-atom $fset $function (bc $kb $depth (: $function (-> $fmatched_prms $fconclusion)))) unionStmt))
+           ;(($mprms $_ ()) ((overlap (unifyproof $kb $depth)) $mpset $mcset))
 
-         (debug (trace! (FMatch $fmatched) debug))
+           ;($clean_mpset (myfold-atom1 (map-atom $mpset $elem (let (: $prf (-> $prms $type)) $elem $type)) unique-union-atom))
 
-         ((: $mfset (-> $mpset $mcset)) (unionStmt $fmatched $cmatched))
+           (debug (trace! (Proof1 (: $fset (-> $npset $mpset))) debug))
 
-         (debug (trace! (MFSet $mfset) debug))
+           ((: $pfset (-> $ppset $pcset)) (traceid (bc $kb $depth (: $fset (-> $npset $mpset)))))
 
-         (($fset_ $ffset ()) ((overlap meq) $fset $mfset))
-
-         (debug (trace! (FFSet $ffset) debug))
-
-         ;(($mprms $_ ()) ((overlap (unifyproof $kb $depth)) $mpset $mcset))
-
-         ;(debug (trace! (MPrms $mprms) debug))
-
-         ;($debug (trace! (Overlap $pset $mpset) a))
-         ;(($superfluous_prms $noproof_prms $proof_prms) ((overlap (proof $kb $depth)) $pset $mpset))
-         ;($debug (trace! (Overlap2 $superfluous_prms $noproof_prms $proof_prms) a))
-
-         ;($debug (trace! (Overlap $pset $mpset) a))
-         ;(($superfluous_prms $noproof_prms ()) (overlap2 $kb $depth $pset $mpset))
-         ;($debug (trace! (Overlap2 $superfluous_prms $noproof_prms $proof_prms) a))
-
-         ($clean_mpset (traceid (myfold-atom1 (map-atom $mpset $elem (let (: $prf (-> $prms $type)) $elem $type)) unique-union-atom)))
-         ((: $pfset (-> $ppset $pcset)) (traceid (bc $kb $depth (: $fset (-> $pset $clean_mpset)))))
-
-         ;($debug (trace! (Overlap3 $args (concat $proof_prms $matched_args)) a))
-         ;(($superfluous_args $final_args ()) ((overlap (unifyproof $kb $depth)) $args (concat $proof_prms $matched_args)))
-         ;($debug (trace! (Overlap4 $superfluous_args $final_args) a))
-
-         ;($debug (trace! (ProfPrms1 $proof_prms) a))
-         ;((: $pfset (-> $ppset $pcset)) (myfold-atom1 (map-atom $proof_prms $premise (bc $kb $depth $premise)) unionStmt))
-         ;($debug (trace! (ProfPrms2 $pfset) a))
-        )
-    (: (unique-union-atom $ffset $pfset) (-> $ppset $cset)))))
+           (debug (trace! (Proof2 (: $pfset (-> $ppset $pcset))) debug))
+          )
+     (: (unique-union-atom $mfset $pfset) (-> $ppset $cset)))))))
 
 ;Some tests
 !(bind! &s (new-space))
@@ -313,14 +283,25 @@
 
 !(bind! &kb (new-space))
 
-!(add-atom &kb (: (kb_id) (-> ((: $prf (-> () ($T)))) ($T))))
-!(add-atom &kb (: (a) (-> () (A))))
-;!(add-atom &kb (: ab_c (-> ((: $a (-> () (A))) (: $b (-> () (B)))) C)))
-!(add-atom &kb (: (a_c) (-> ((: $a (-> () (A)))) (C))))
-!(add-atom &kb (: (c_d) (-> ((: $c (-> () (C)))) (D))))
+!(bind! b (: (b) (-> () ((: (b) (-> () (B)))))))
+!(add-atom &kb b)
+!(bind! b_d (: (b_d) (-> ((: $b (-> () (B)))) ((: ((b_d $b)) (-> () (D)))))))
+;!(bind! b_d (: (b_d) (-> ((: $b (-> () (B)))) (D))))
+!(add-atom &kb b_d)
+
+!(bind! a_c (: (a_c) (-> ((: $a (-> () (A)))) ((: ((a_c $a)) (-> () (C)))))))
+!(add-atom &kb a_c)
+!(add-atom &kb (: (c_d) (-> ((: $c (-> () (C)))) ((: ((c_d $c)) (-> () (D)))))))
 
 ;!(bc &kb (S (S Z)) (: $prf (-> () (C))))
-!(bc &kb (S (S Z)) (: $prf (-> ((: $a (-> () (A)))) (D))))
+;!(bc &kb (S (S Z)) (: $prf (-> ((: $a (-> () (A)))) ((: (($prf $a)) (-> () (D)))))))
+
+!(myAssertEqual (bc &kb Z (: (a_c) (-> $a $b))) a_c)
+!(myAssertEqual (bc &kb Z (: $prf (-> ((: $a (-> () (A)))) ((: $a (-> () (A))))))) (: () (: $prf ())))
+!(assertEqual (bc &kb Z (: $prf (-> () ((: $p2 (-> () (B))))))) b)
+
+;!(myAssertEqual (bc &kb Z (: $prf (-> () (D)))) (: $prf (-> () (D))))
+!(bc &kb (S Z) (: $prf (-> () ((: $p2 ( -> () (D)))))))
 
 ;!(overlap2 &kb (S (S Z)) ((: $pa (-> () (A)))) ((: $pc (-> () (C)))))
 
