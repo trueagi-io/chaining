@@ -141,7 +141,10 @@
   ("1" "2" "3"))
 
 ;; Fold a tuple from right to left
-(: foldr (-> (-> $a $b $b) $b $c $d))
+(: foldr (-> (-> $a $b $b)  ; Binary operator
+             $b             ; Initial value
+             $c             ; Container
+             $b))
 (= (foldr $f $i $xs)
    (if (== $xs ())
        $i
