@@ -82,6 +82,8 @@ def test_setspace():
     
     # Test cases
     test_queries = [
+        {'a'},
+        {'a', 'x'},
         {'a', 'b', 'x'}, # Should find ab_value and x_value
     ]
     
