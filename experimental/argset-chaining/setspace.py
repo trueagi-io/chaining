@@ -25,21 +25,33 @@ class SetSpace:
 
         current.value = value
     
-    def _find_matches(self, node: TrieNode, remaining: Set[str], path: Set[str]) -> List[Tuple[Set[str], str]]:
-        """Recursively find all matching sets in the trie"""
-        matches = []
+    def _find_best_match(self, node: TrieNode, elements: SortedSet, current_path: Set[str]) -> Optional[Tuple[Set[str], str]]:
+        """Find the best matching set starting from the current node"""
+        if not elements:
+            return None
+
+        current_elem = elements[0]  # SortedSet supports indexing
         
-        # If this node has a value and some elements match our remaining set
-        if node.value is not None and path & remaining:
-            matches.append((path, node.value))
+        # Try to follow the path for the current element
+        if current_elem in node.children:
+            child = node.children[current_elem]
+            new_path = current_path | {current_elem}
             
-        # Recursively check children that match remaining elements
-        for elem, child in node.children.items():
-            if elem in remaining:
-                new_path = path | {elem}
-                matches.extend(self._find_matches(child, remaining, new_path))
+            # If this node has a value, it's a potential match
+            result = None
+            if child.value is not None:
+                result = (new_path, child.value)
+            
+            # Try to find a longer match
+            # Create a new SortedSet without the first element
+            remaining = SortedSet(elements[1:])
+            deeper_match = self._find_best_match(child, remaining, new_path)
+            if deeper_match is not None:
+                result = deeper_match
                 
-        return matches
+            return result
+            
+        return None
     
     def lookup(self, query: Set[str]) -> List[Tuple[frozenset, str]]:
         """
