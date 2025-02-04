@@ -30,11 +30,10 @@ class SetSpace:
         if not elements or not node.children:
             return None
 
-        # Process elements in order, removing as we go
-        while elements:
-            elem = elements.pop(0)  # Remove and get first element
-            if elem in node.children:
-                child = node.children[elem]
+        # Process children in order
+        for elem, child in node.children.items():
+            try:
+                elements.remove(elem)  # Try to remove the element
                 new_path = current_path | {elem}
                 
                 # If this node has a value, it's a potential match
@@ -44,6 +43,8 @@ class SetSpace:
                 deeper_match = self._find_best_match(child, elements, new_path)
                 
                 return deeper_match or result
+            except KeyError:
+                continue  # Element wasn't in the set
             
         return None
     
