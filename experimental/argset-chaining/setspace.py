@@ -1,7 +1,7 @@
 from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from sortedcontainers import SortedSet, SortedDict
-from hyperon import Atom, SymbolAtom, ExpressionAtom, MeTTa, OperationAtom
+from hyperon import Atom, SymbolAtom, ExpressionAtom, MeTTa, OperationAtom, E
 from hyperon.ext import register_atoms
 
 class TrieNode:
@@ -93,35 +93,36 @@ class SpaceManager:
     def __init__(self):
         self.spaces: Dict[str, SetSpace] = {}
     
-    def create_space(self, name: SymbolAtom) -> List[Atom]:
+    def create_space(self, name: SymbolAtom) -> List[ExpressionAtom]:
         space_name = str(name)
         if space_name not in self.spaces:
             self.spaces[space_name] = SetSpace()
-        return [name]
+        return [E(name)]
     
     def get_space(self, name: SymbolAtom) -> Optional[SetSpace]:
         return self.spaces.get(str(name))
     
-    def add_to_space(self, space_name: SymbolAtom, elements: ExpressionAtom, value: Atom) -> List[Atom]:
+    def add_to_space(self, space_name: SymbolAtom, elements: ExpressionAtom, value: Atom) -> List[ExpressionAtom]:
         space = self.get_space(space_name)
         if space:
             space.add(elements, value)
-            return [value]
+            return [E(value)]
         return []
     
-    def lookup_in_space(self, space_name: SymbolAtom, query: ExpressionAtom) -> List[Atom]:
+    def lookup_in_space(self, space_name: SymbolAtom, query: ExpressionAtom) -> List[ExpressionAtom]:
         space = self.get_space(space_name)
         if space:
-            return space.lookup(query)
+            results = space.lookup(query)
+            return [E(*results)] if results else []
         return []
 
 # Global SpaceManager instance
 MANAGER = SpaceManager()
 
 # Create operation atoms
-create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom', 'Atom'], unwrap=False)
-add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
-lookup_atom = OperationAtom("lookup-in-space", MANAGER.lookup_in_space, ['Atom', 'Expression', 'List'], unwrap=False)
+create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom', 'Expression'], unwrap=False)
+add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Expression'], unwrap=False)
+lookup_atom = OperationAtom("lookup-in-space", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 
 @register_atoms
 def my_atoms():
