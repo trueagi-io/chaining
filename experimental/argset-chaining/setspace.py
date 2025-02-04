@@ -11,10 +11,10 @@ class SetSpace:
     def __init__(self):
         self.root = TrieNode()
     
-    def add(self, elements: List[str], value: str):
+    def add(self, elements: List[Any], value: Any):
         """Add a set and its associated value to the trie"""
-        # Sort elements to ensure consistent insertion order
-        sorted_elements = sorted(elements)
+        # Sort elements to ensure consistent insertion order and convert to strings
+        sorted_elements = sorted(str(elem) for elem in elements)
         
         current = self.root
         # Add intermediate nodes
@@ -61,7 +61,7 @@ class SetSpace:
     def test(self):
              print("Hello World");
 
-    def lookup(self, query: List[str]) -> List[str]:
+    def lookup(self, query: List[Any]) -> List[str]:
         """
         Find minimal sets that together cover all elements in the query.
         Returns list of (set, value) pairs.
@@ -69,7 +69,7 @@ class SetSpace:
         if not query:
             return []
         
-        elements = SortedSet(query)
+        elements = SortedSet(str(elem) for elem in query)
         result = []
         
         while elements:
