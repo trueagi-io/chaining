@@ -1,7 +1,8 @@
 from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from sortedcontainers import SortedSet, SortedDict
-from hyperon.atoms import Atom, SymbolAtom
+from hyperon import Atom, SymbolAtom, MeTTa, OperationAtom
+from hyperon.ext import register_atoms
 
 class TrieNode:
     def __init__(self, value: Optional[Atom] = None):
@@ -59,9 +60,6 @@ class SetSpace:
             new_prefix = prefix + ("    " if is_last else "│   ")
             self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
-    def test(self):
-             print("Hello World");
-
     def lookup(self, query: List[SymbolAtom]) -> List[Atom]:
         """
         Find minimal sets that together cover all elements in the query.
@@ -91,6 +89,9 @@ class SetSpace:
             elements.difference_update(match_set)
             
         return result
+
+
+#print(metta.run("!(test c)"))
 
 def test_setspace():
     # Create test space
@@ -125,5 +126,5 @@ def test_setspace():
         else:
             print("No matching sets found")
 
-if __name__ == "__main__":
-    test_setspace()
+#if __name__ == "__main__":
+#test_setspace()
