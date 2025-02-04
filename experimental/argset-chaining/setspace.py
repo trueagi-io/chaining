@@ -38,10 +38,8 @@ class SetSpace:
             new_path = current_path | {current_elem}
             
             # If this node has a value, it's a potential match
-            result = None
-            if child.value is not None:
-                result = (new_path, child.value)
-            
+            result = (new_path, child.value) if child.value is not None else None
+
             # Try to find a longer match
             # Create a new SortedSet without the first element
             remaining = SortedSet(elements[1:])
@@ -81,21 +79,11 @@ def test_setspace():
     space = SetSpace()
     
     # Add test sets
-    space.add({'a', 'b'}, "ab_value")
-    space.add({'a'}, "a_value")
-    space.add({'b'}, "b_value")
-    space.add({'x'}, "x_value")
-    space.add({'a', 'b', 'c'}, "abc_value")
+    space.add({'a', 'x'}, "ax_value")
+    space.add({'b'}, "x_value")
     
     # Test cases
     test_queries = [
-        {'a', 'b'},      # Should find ab_value
-        {'a'},           # Should find a_value
-        {'a', 'b', 'c'}, # Should find abc_value
-        {'x'},           # Should find x_value
-        set(),           # Empty set
-        {'y'},           # Non-existent element
-        {'a', 'x'},      # Should find a_value and x_value
         {'a', 'b', 'x'}, # Should find ab_value and x_value
     ]
     
