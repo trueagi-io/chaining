@@ -27,7 +27,7 @@ class SetSpace:
     
     def _find_best_match(self, node: TrieNode, elements: SortedSet, current_path: Set[str]) -> Optional[Tuple[Set[str], str]]:
         """Find the best matching set starting from the current node"""
-        result = (current_path, node.value) if node.value is not None else None
+        best_match = (current_path, node.value) if node.value is not None else None
 
         # Process children in order
         for elem, child in node.children.items():
@@ -37,16 +37,14 @@ class SetSpace:
                 
                 # Try to find a longer match with remaining elements
                 deeper_match = self._find_best_match(child, elements, new_path)
+                elements.add(elem)
 
-                result = deeper_match or result
-                if result is not None:
-                    return result
-                else:
-                    elements.add(elem)
+                if deeper_match and (not best_match or len(deeper_match[0]) > len(best_match[0])):
+                    best_match = deeper_match
             except KeyError:
                 continue  # Element wasn't in the set
             
-        return result
+        return best_match
     
     def pretty_print(self, node: Optional[TrieNode] = None, prefix: str = "", is_last: bool = True, elem: str = "") -> None:
         """Pretty print the trie structure"""
