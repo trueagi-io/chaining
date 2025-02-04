@@ -79,9 +79,6 @@ class SetSpace:
             except KeyError:
                 return []
 
-            print(f"Match {match}")
-            print(f"Elements {elements}")
-
             if not match:
                 return []
                 
