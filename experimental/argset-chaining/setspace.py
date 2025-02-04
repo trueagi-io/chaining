@@ -1,15 +1,10 @@
 from typing import Dict, List, Set, Tuple, Optional, Any
-from dataclasses import dataclass
 from collections import defaultdict
 
-@dataclass
 class TrieNode:
-    value: Optional[str] = None
-    children: Dict[str, 'TrieNode'] = None
-    
-    def __post_init__(self):
-        if self.children is None:
-            self.children = {}
+    def __init__(self, value: Optional[str] = None):
+        self.value = value
+        self.children: Dict[str, 'TrieNode'] = {}
 
 class SetSpace:
     def __init__(self):
