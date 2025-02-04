@@ -91,40 +91,23 @@ class SetSpace:
         return result
 
 
-#print(metta.run("!(test c)"))
+# Global SetSpace instance
+SPACE = SetSpace()
 
-def test_setspace():
-    # Create test space
-    space = SetSpace()
-    
-    # Add test sets
-    space.add({'a', 'x'}, "ax_value")
-    space.add({'a', 'x', 'y' , 'z'}, "axyz_value")
-    space.add({'b'}, "b_value")
-    space.add({'b', 'c'}, "bc_value")
-    space.add({'a', 'b', 'c'}, "abc_value")
+def add_to_space(elements: List[SymbolAtom], value: Atom):
+    SPACE.add(elements, value)
+    return [value]
 
-    # Print the trie structure
-    print("\nTrie Structure:")
-    space.pretty_print()
+def lookup_in_space(query: List[SymbolAtom]):
+    return SPACE.lookup(query)
 
-    # Test cases
-    test_queries = [
-        {'a', 'x'},      # Should find ax_value
-        {'b'},           # Should find b_value
-        {'a', 'b', 'c'}, # Should find abc_value
-        {'a', 'b', 'x'}, # Should find ax_value
-        {'a', 'b', 'c', 'x', 'y', 'z'}, # Should find ax_value
-    ]
-    
-    for query in test_queries:
-        print("\nQuery:", sorted(query))
-        result = space.lookup(query)
-        print("Result:")
-        if result:
-            print(f"{result}")
-        else:
-            print("No matching sets found")
+# Create operation atoms
+add_atom = OperationAtom("add-to-space", add_to_space, ['List', 'Atom', 'Atom'], unwrap=False)
+lookup_atom = OperationAtom("lookup-in-space", lookup_in_space, ['List', 'List'], unwrap=False)
 
-#if __name__ == "__main__":
-#test_setspace()
+@register_atoms
+def my_atoms():
+    return {
+        "add-to-space": add_atom,
+        "lookup-in-space": lookup_atom
+    }
