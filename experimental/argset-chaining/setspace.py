@@ -93,20 +93,20 @@ class SpaceManager:
     def __init__(self):
         self.spaces: Dict[str, SetSpace] = {}
     
-    def create_space(self, name: SymbolAtom) -> List[ExpressionAtom]:
+    def create_space(self, name: SymbolAtom) -> List[Atom]:
         space_name = str(name)
         if space_name not in self.spaces:
             self.spaces[space_name] = SetSpace()
-        return [E(name)]
+        return [name]
     
     def get_space(self, name: SymbolAtom) -> Optional[SetSpace]:
         return self.spaces.get(str(name))
     
-    def add_to_space(self, space_name: SymbolAtom, elements: ExpressionAtom, value: Atom) -> List[ExpressionAtom]:
+    def add_to_space(self, space_name: SymbolAtom, elements: ExpressionAtom, value: Atom) -> List[Atom]:
         space = self.get_space(space_name)
         if space:
             space.add(elements, value)
-            return [E(value)]
+            return [value]
         return []
     
     def lookup_in_space(self, space_name: SymbolAtom, query: ExpressionAtom) -> List[ExpressionAtom]:
@@ -120,8 +120,8 @@ class SpaceManager:
 MANAGER = SpaceManager()
 
 # Create operation atoms
-create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom', 'Expression'], unwrap=False)
-add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Expression'], unwrap=False)
+create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom', 'Atom'], unwrap=False)
+add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
 lookup_atom = OperationAtom("lookup-in-space", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 
 @register_atoms
