@@ -27,8 +27,7 @@ class SetSpace:
     
     def _find_best_match(self, node: TrieNode, elements: SortedSet, current_path: Set[str]) -> Optional[Tuple[Set[str], str]]:
         """Find the best matching set starting from the current node"""
-        if not elements or not node.children:
-            return None
+        result = (current_path, node.value) if node.value is not None else None
 
         # Process children in order
         for elem, child in node.children.items():
@@ -36,17 +35,18 @@ class SetSpace:
                 elements.remove(elem)  # Try to remove the element
                 new_path = current_path | {elem}
                 
-                # If this node has a value, it's a potential match
-                result = (new_path, child.value) if child.value is not None else None
-
                 # Try to find a longer match with remaining elements
                 deeper_match = self._find_best_match(child, elements, new_path)
-                
-                return deeper_match or result
+
+                result = deeper_match or result
+                if result is not None:
+                    return result
+                else:
+                    elements.add(elem)
             except KeyError:
                 continue  # Element wasn't in the set
             
-        return None
+        return result
     
     def pretty_print(self, node: Optional[TrieNode] = None, prefix: str = "", is_last: bool = True, elem: str = "") -> None:
         """Pretty print the trie structure"""
@@ -66,7 +66,7 @@ class SetSpace:
             new_prefix = prefix + ("    " if is_last else "│   ")
             self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
-    def lookup(self, query: Set[str]) -> List[Tuple[frozenset, str]]:
+    def lookup(self, query: Set[str]) -> List[str]:
         """
         Find minimal sets that together cover all elements in the query.
         Returns list of (set, value) pairs.
@@ -78,7 +78,7 @@ class SetSpace:
         result = []
         
         while elements:
-            elem = elements.pop()
+            elem = elements.pop(0)
             try:
                 match = self._find_best_match(self.root.children[elem], elements, set())
             except KeyError:
@@ -88,7 +88,7 @@ class SetSpace:
                 return []
                 
             match_set, match_value = match
-            result.append((frozenset(match_set), match_value))
+            result.append(match_value)
             elements.difference_update(match_set)
             
         return result
@@ -99,6 +99,7 @@ def test_setspace():
     
     # Add test sets
     space.add({'a', 'x'}, "ax_value")
+    space.add({'a', 'x', 'y' , 'z'}, "axyz_value")
     space.add({'b'}, "b_value")
     space.add({'a', 'b', 'c'}, "abc_value")
 
@@ -111,6 +112,8 @@ def test_setspace():
         {'a', 'x'},      # Should find ax_value
         {'b'},           # Should find b_value
         {'a', 'b', 'c'}, # Should find abc_value
+        {'a', 'b', 'x'}, # Should find ax_value
+        {'a', 'b', 'c', 'x', 'y', 'z'}, # Should find ax_value
     ]
     
     for query in test_queries:
@@ -118,8 +121,7 @@ def test_setspace():
         result = space.lookup(query)
         print("Result:")
         if result:
-            for s, v in result:
-                print(f"Set: {s}, Value: {v}")
+            print(f"{result}")
         else:
             print("No matching sets found")
 
