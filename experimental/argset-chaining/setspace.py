@@ -1,25 +1,55 @@
-from typing import Set, Dict, List, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, Any
+from dataclasses import dataclass
 from collections import defaultdict
+
+@dataclass
+class TrieNode:
+    value: Optional[str] = None
+    children: Dict[str, 'TrieNode'] = None
+    
+    def __post_init__(self):
+        if self.children is None:
+            self.children = {}
 
 class SetSpace:
     def __init__(self):
-        # Store sets and their associated values
-        self.space: Dict[frozenset, str] = {}
-        # Index mapping elements to sets containing them
-        self.element_index: Dict[str, Set[frozenset]] = defaultdict(set)
-        # Cache of sorted sets
-        self._sorted_sets: Optional[List[frozenset]] = None
+        self.root = TrieNode()
     
     def add(self, elements: Set[str], value: str):
-        """Add a set and its associated value to the space"""
-        frozen = frozenset(elements)
-        self.space[frozen] = value
-        # Update element index
-        for elem in elements:
-            self.element_index[elem].add(frozen)
-        # Invalidate cache
-        self._sorted_sets = None
+        """Add a set and its associated value to the trie"""
+        # Sort elements to ensure consistent insertion order
+        sorted_elements = sorted(elements)
         
+        current = self.root
+        # Add intermediate nodes
+        for elem in sorted_elements[:-1]:
+            if elem not in current.children:
+                current.children[elem] = TrieNode()
+            current = current.children[elem]
+        
+        # Add final node with value
+        if sorted_elements:
+            last_elem = sorted_elements[-1]
+            if last_elem not in current.children:
+                current.children[last_elem] = TrieNode()
+            current.children[last_elem].value = value
+    
+    def _find_matches(self, node: TrieNode, remaining: Set[str], path: Set[str]) -> List[Tuple[Set[str], str]]:
+        """Recursively find all matching sets in the trie"""
+        matches = []
+        
+        # If this node has a value and some elements match our remaining set
+        if node.value is not None and path & remaining:
+            matches.append((path, node.value))
+            
+        # Recursively check children that match remaining elements
+        for elem, child in node.children.items():
+            if elem in remaining:
+                new_path = path | {elem}
+                matches.extend(self._find_matches(child, remaining, new_path))
+                
+        return matches
+    
     def lookup(self, query: Set[str]) -> List[Tuple[frozenset, str]]:
         """
         Find minimal sets that together cover all elements in the query.
@@ -27,46 +57,24 @@ class SetSpace:
         """
         if not query:
             return []
-            
-        # Get candidate sets that contain any query elements
-        candidates = set()
-        for elem in query:
-            candidates.update(self.element_index[elem])
-            
-        if not candidates:
-            return []
-            
-        query_set = set(query)
-        remaining = query_set.copy()
+        
+        remaining = set(query)
         result = []
         
-        # Use cached sorted sets, filtering to candidates
-        if self._sorted_sets is None:
-            self._sorted_sets = sorted(self.space.keys(), key=len, reverse=True)
-        
-        candidate_sets = [s for s in self._sorted_sets if s in candidates]
-        
         while remaining:
-            best_coverage = None
-            best_overlap = 0
-            best_size = float('inf')
+            # Find all possible matches in the trie
+            matches = self._find_matches(self.root, remaining, set())
             
-            # Find set with maximum overlap and minimum size
-            for stored_set in candidate_sets:
-                overlap = len(remaining & stored_set)
-                if overlap > 0:  # Only consider sets with some overlap
-                    if overlap > best_overlap or (overlap == best_overlap and len(stored_set) < best_size):
-                        best_overlap = overlap
-                        best_size = len(stored_set)
-                        best_coverage = stored_set
-            
-            if best_coverage is None:
+            if not matches:
                 break
                 
-            result.append((best_coverage, self.space[best_coverage]))
-            remaining -= best_coverage
-            # Remove used set from candidates
-            candidate_sets.remove(best_coverage)
+            # Find best match (maximum overlap with remaining elements)
+            best_match = max(matches, key=lambda x: len(x[0] & remaining))
+            match_set, match_value = best_match
+            
+            # Add to result and remove covered elements
+            result.append((frozenset(match_set), match_value))
+            remaining -= match_set
             
         return result
 
@@ -75,20 +83,21 @@ def test_setspace():
     space = SetSpace()
     
     # Add test sets
-    space.add({'f', 'a'}, "fa_value")
-    space.add({'f'}, "f_value") 
+    space.add({'a', 'b'}, "ab_value")
     space.add({'a'}, "a_value")
-    space.add({'x'}, "x_value")
     space.add({'b'}, "b_value")
-    space.add({'f', 'a', 'b'}, "fab_value")
+    space.add({'x'}, "x_value")
+    space.add({'a', 'b', 'c'}, "abc_value")
     
     # Test cases
     test_queries = [
-        {'f', 'a', 'b'},  # Should prefer larger overlapping set
-        {'x'},            # Single element
+        {'a', 'b'},      # Should find ab_value
+        {'a'},           # Should find a_value
+        {'a', 'b', 'c'}, # Should find abc_value
+        {'x'},           # Should find x_value
         set(),           # Empty set
         {'y'},           # Non-existent element
-        {'f', 'a', 'x'}  # Multiple sets needed
+        {'a', 'x'}       # Should find a_value and x_value
     ]
     
     for query in test_queries:
