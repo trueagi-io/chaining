@@ -64,8 +64,7 @@ class SetSpace:
         for i, (elem, child) in enumerate(children):
             is_last_child = i == len(children) - 1
             new_prefix = prefix + ("    " if is_last else "│   ")
-            print(f"{new_prefix}{connector}{elem}", end="")
-            self.pretty_print(child, new_prefix, is_last_child)
+            self.pretty_print(child, new_prefix + connector + elem, is_last_child)
 
     def lookup(self, query: Set[str]) -> List[Tuple[frozenset, str]]:
         """
