@@ -1,5 +1,6 @@
 from typing import Dict, List, Set, Tuple, Optional, Any
 from collections import defaultdict
+from sortedcontainers import SortedSet
 
 class TrieNode:
     def __init__(self, value: Optional[str] = None):
@@ -48,23 +49,18 @@ class SetSpace:
         if not query:
             return []
         
-        remaining = set(query)
+        elements = SortedSet(query)
         result = []
         
-        while remaining:
-            # Find all possible matches in the trie
-            matches = self._find_matches(self.root, remaining, set())
+        while elements:
+            match = self._find_best_match(self.root, elements, set())
             
-            if not matches:
+            if not match:
                 break
                 
-            # Find best match (maximum overlap with remaining elements)
-            best_match = max(matches, key=lambda x: len(x[0] & remaining))
-            match_set, match_value = best_match
-            
-            # Add to result and remove covered elements
+            match_set, match_value = match
             result.append((frozenset(match_set), match_value))
-            remaining -= match_set
+            elements.difference_update(match_set)
             
         return result
 
