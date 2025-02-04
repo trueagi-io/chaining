@@ -11,7 +11,7 @@ class SetSpace:
     def __init__(self):
         self.root = TrieNode()
     
-    def add(self, elements: Set[str], value: str):
+    def add(self, elements: List[str], value: str):
         """Add a set and its associated value to the trie"""
         # Sort elements to ensure consistent insertion order
         sorted_elements = sorted(elements)
@@ -31,18 +31,12 @@ class SetSpace:
 
         # Process children in order
         for elem, child in node.children.items():
-            try:
-                elements.remove(elem)  # Try to remove the element
-                new_path = current_path | {elem}
-                
+            if elem in elements:
                 # Try to find a longer match with remaining elements
-                deeper_match = self._find_best_match(child, elements, new_path)
-                elements.add(elem)
+                deeper_match = self._find_best_match(child, elements, current_path | {elem})
 
                 if deeper_match and (not best_match or len(deeper_match[0]) > len(best_match[0])):
                     best_match = deeper_match
-            except KeyError:
-                continue  # Element wasn't in the set
             
         return best_match
     
@@ -64,7 +58,10 @@ class SetSpace:
             new_prefix = prefix + ("    " if is_last else "│   ")
             self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
-    def lookup(self, query: Set[str]) -> List[str]:
+    def test(self):
+             print("Hello World");
+
+    def lookup(self, query: List[str]) -> List[str]:
         """
         Find minimal sets that together cover all elements in the query.
         Returns list of (set, value) pairs.
@@ -81,7 +78,10 @@ class SetSpace:
                 match = self._find_best_match(self.root.children[elem], elements, set())
             except KeyError:
                 return []
-            
+
+            print(f"Match {match}")
+            print(f"Elements {elements}")
+
             if not match:
                 return []
                 
@@ -99,6 +99,7 @@ def test_setspace():
     space.add({'a', 'x'}, "ax_value")
     space.add({'a', 'x', 'y' , 'z'}, "axyz_value")
     space.add({'b'}, "b_value")
+    space.add({'b', 'c'}, "bc_value")
     space.add({'a', 'b', 'c'}, "abc_value")
 
     # Print the trie structure
@@ -115,7 +116,7 @@ def test_setspace():
     ]
     
     for query in test_queries:
-        print("\nQuery:", query)
+        print("\nQuery:", sorted(query))
         result = space.lookup(query)
         print("Result:")
         if result:
