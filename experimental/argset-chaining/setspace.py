@@ -1,11 +1,11 @@
 from typing import Dict, List, Set, Tuple, Optional, Any
 from collections import defaultdict
-from sortedcontainers import SortedSet
+from sortedcontainers import SortedSet, SortedDict
 
 class TrieNode:
     def __init__(self, value: Optional[str] = None):
         self.value = value
-        self.children: Dict[str, 'TrieNode'] = {}
+        self.children: SortedDict[str, 'TrieNode'] = SortedDict()
 
 class SetSpace:
     def __init__(self):
@@ -27,27 +27,25 @@ class SetSpace:
     
     def _find_best_match(self, node: TrieNode, elements: SortedSet, current_path: Set[str]) -> Optional[Tuple[Set[str], str]]:
         """Find the best matching set starting from the current node"""
-        if not elements:
+        if not elements or not node.children:
             return None
 
-        current_elem = elements[0]  # SortedSet supports indexing
-        
-        # Try to follow the path for the current element
-        if current_elem in node.children:
-            child = node.children[current_elem]
-            new_path = current_path | {current_elem}
-            
-            # If this node has a value, it's a potential match
-            result = (new_path, child.value) if child.value is not None else None
-
-            # Try to find a longer match
-            # Create a new SortedSet without the first element
-            remaining = SortedSet(elements[1:])
-            deeper_match = self._find_best_match(child, remaining, new_path)
-            if deeper_match is not None:
-                result = deeper_match
+        # Get the first available child that matches any remaining element
+        for elem in elements:
+            if elem in node.children:
+                child = node.children[elem]
+                new_path = current_path | {elem}
                 
-            return result
+                # If this node has a value, it's a potential match
+                result = (new_path, child.value) if child.value is not None else None
+
+                # Try to find a longer match using remaining elements
+                remaining = SortedSet(x for x in elements if x > elem)
+                deeper_match = self._find_best_match(child, remaining, new_path)
+                if deeper_match is not None:
+                    result = deeper_match
+                    
+                return result
             
         return None
     
