@@ -30,8 +30,9 @@ class SetSpace:
         if not elements or not node.children:
             return None
 
-        # Get the first available child that matches any remaining element
-        for elem in elements:
+        # Process elements in order, removing as we go
+        while elements:
+            elem = elements.pop(0)  # Remove and get first element
             if elem in node.children:
                 child = node.children[elem]
                 new_path = current_path | {elem}
@@ -39,12 +40,12 @@ class SetSpace:
                 # If this node has a value, it's a potential match
                 result = (new_path, child.value) if child.value is not None else None
 
-                # Try to find a longer match using remaining elements
-                remaining = SortedSet(x for x in elements if x > elem)
-                deeper_match = self._find_best_match(child, remaining, new_path)
-                if deeper_match is not None:
-                    result = deeper_match
-                    
+                # Try to find a longer match with remaining elements
+                if elements:
+                    deeper_match = self._find_best_match(child, elements, new_path)
+                    if deeper_match is not None:
+                        result = deeper_match
+                
                 return result
             
         return None
