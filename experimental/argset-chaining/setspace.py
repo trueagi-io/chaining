@@ -48,6 +48,25 @@ class SetSpace:
             
         return None
     
+    def pretty_print(self, node: Optional[TrieNode] = None, prefix: str = "", is_last: bool = True) -> None:
+        """Pretty print the trie structure"""
+        if node is None:
+            node = self.root
+            print("SetSpace Trie:")
+        
+        # Print current node
+        connector = "└── " if is_last else "├── "
+        value_str = f" -> {node.value}" if node.value is not None else ""
+        print(f"{prefix}{connector}{value_str}")
+        
+        # Print children
+        children = list(node.children.items())
+        for i, (elem, child) in enumerate(children):
+            is_last_child = i == len(children) - 1
+            new_prefix = prefix + ("    " if is_last else "│   ")
+            print(f"{new_prefix}{connector}{elem}", end="")
+            self.pretty_print(child, new_prefix, is_last_child)
+
     def lookup(self, query: Set[str]) -> List[Tuple[frozenset, str]]:
         """
         Find minimal sets that together cover all elements in the query.
@@ -61,8 +80,6 @@ class SetSpace:
         
         while elements:
             elem = elements.pop()
-            print(elem)
-            print(elements)
             try:
                 match = self._find_best_match(self.root.children[elem], elements, set())
             except KeyError:
@@ -83,13 +100,18 @@ def test_setspace():
     
     # Add test sets
     space.add({'a', 'x'}, "ax_value")
-    space.add({'b'}, "x_value")
+    space.add({'b'}, "b_value")
+    space.add({'a', 'b', 'c'}, "abc_value")
+
+    # Print the trie structure
+    print("\nTrie Structure:")
+    space.pretty_print()
 
     # Test cases
     test_queries = [
-        {'a'},
-        {'a', 'x'},
-        {'a', 'b', 'x'}, # Should find ab_value and x_value
+        {'a', 'x'},      # Should find ax_value
+        {'b'},           # Should find b_value
+        {'a', 'b', 'c'}, # Should find abc_value
     ]
     
     for query in test_queries:
