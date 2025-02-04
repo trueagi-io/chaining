@@ -1,7 +1,7 @@
 from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from sortedcontainers import SortedSet, SortedDict
-from hyperon import Atom, SymbolAtom, MeTTa, OperationAtom
+from hyperon import Atom, SymbolAtom, ExpressionAtom, MeTTa, OperationAtom
 from hyperon.ext import register_atoms
 
 class TrieNode:
@@ -13,9 +13,10 @@ class SetSpace:
     def __init__(self):
         self.root = TrieNode()
     
-    def add(self, elements: List[SymbolAtom], value: Atom):
+    def add(self, expr: ExpressionAtom, value: Atom):
         """Add a set and its associated value to the trie"""
-        # Sort elements to ensure consistent insertion order and convert to strings
+        # Get elements from expression and sort them
+        elements = expr.get_children()
         sorted_elements = sorted(str(elem) for elem in elements)
         
         current = self.root
@@ -60,7 +61,7 @@ class SetSpace:
             new_prefix = prefix + ("    " if is_last else "│   ")
             self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
-    def lookup(self, query: List[SymbolAtom]) -> List[Atom]:
+    def lookup(self, query: ExpressionAtom) -> List[Atom]:
         """
         Find minimal sets that together cover all elements in the query.
         Returns list of (set, value) pairs.
@@ -68,7 +69,7 @@ class SetSpace:
         if not query:
             return []
         
-        elements = SortedSet(str(elem) for elem in query)
+        elements = SortedSet(str(elem) for elem in query.get_children())
         result = []
         
         while elements:
@@ -104,14 +105,14 @@ class SpaceManager:
     def get_space(self, name: SymbolAtom) -> Optional[SetSpace]:
         return self.spaces.get(str(name))
     
-    def add_to_space(self, space_name: SymbolAtom, elements: List[SymbolAtom], value: Atom) -> List[Atom]:
+    def add_to_space(self, space_name: SymbolAtom, elements: ExpressionAtom, value: Atom) -> List[Atom]:
         space = self.get_space(space_name)
         if space:
             space.add(elements, value)
             return [value]
         return []
     
-    def lookup_in_space(self, space_name: SymbolAtom, query: List[SymbolAtom]) -> List[Atom]:
+    def lookup_in_space(self, space_name: SymbolAtom, query: ExpressionAtom) -> List[Atom]:
         space = self.get_space(space_name)
         if space:
             return space.lookup(query)
@@ -122,8 +123,8 @@ MANAGER = SpaceManager()
 
 # Create operation atoms
 create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom', 'Atom'], unwrap=False)
-add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'List', 'Atom', 'Atom'], unwrap=False)
-lookup_atom = OperationAtom("lookup-in-space", MANAGER.lookup_in_space, ['Atom', 'List', 'List'], unwrap=False)
+add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
+lookup_atom = OperationAtom("lookup-in-space", MANAGER.lookup_in_space, ['Atom', 'Expression', 'List'], unwrap=False)
 
 @register_atoms
 def my_atoms():
