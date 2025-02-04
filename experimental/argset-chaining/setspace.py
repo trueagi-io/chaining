@@ -1,9 +1,10 @@
-from typing import Dict, List, Set, Tuple, Optional, Any
+from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from sortedcontainers import SortedSet, SortedDict
+from hyperon.atoms import Atom, SymbolAtom
 
 class TrieNode:
-    def __init__(self, value: Optional[str] = None):
+    def __init__(self, value: Optional[Atom] = None):
         self.value = value
         self.children: SortedDict[str, 'TrieNode'] = SortedDict()
 
@@ -11,7 +12,7 @@ class SetSpace:
     def __init__(self):
         self.root = TrieNode()
     
-    def add(self, elements: List[Any], value: Any):
+    def add(self, elements: List[SymbolAtom], value: Atom):
         """Add a set and its associated value to the trie"""
         # Sort elements to ensure consistent insertion order and convert to strings
         sorted_elements = sorted(str(elem) for elem in elements)
@@ -61,7 +62,7 @@ class SetSpace:
     def test(self):
              print("Hello World");
 
-    def lookup(self, query: List[Any]) -> List[str]:
+    def lookup(self, query: List[SymbolAtom]) -> List[Atom]:
         """
         Find minimal sets that together cover all elements in the query.
         Returns list of (set, value) pairs.
