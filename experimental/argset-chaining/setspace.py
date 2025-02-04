@@ -60,11 +60,16 @@ class SetSpace:
         result = []
         
         while elements:
-            match = self._find_best_match(self.root, elements, set())
+            elem = elements.pop()
+            print(elem)
             print(elements)
+            try:
+                match = self._find_best_match(self.root.children[elem], elements, set())
+            except KeyError:
+                return []
             
             if not match:
-                break
+                return []
                 
             match_set, match_value = match
             result.append((frozenset(match_set), match_value))
@@ -79,7 +84,7 @@ def test_setspace():
     # Add test sets
     space.add({'a', 'x'}, "ax_value")
     space.add({'b'}, "x_value")
-    
+
     # Test cases
     test_queries = [
         {'a'},
