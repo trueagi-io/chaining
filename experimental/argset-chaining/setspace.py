@@ -48,7 +48,7 @@ class SetSpace:
             
         return None
     
-    def pretty_print(self, node: Optional[TrieNode] = None, prefix: str = "", is_last: bool = True) -> None:
+    def pretty_print(self, node: Optional[TrieNode] = None, prefix: str = "", is_last: bool = True, elem: str = "") -> None:
         """Pretty print the trie structure"""
         if node is None:
             node = self.root
@@ -57,14 +57,14 @@ class SetSpace:
         # Print current node
         connector = "└── " if is_last else "├── "
         value_str = f" -> {node.value}" if node.value is not None else ""
-        print(f"{prefix}{connector}{value_str}")
+        print(f"{prefix}{connector}{elem}{value_str}")
         
         # Print children
         children = list(node.children.items())
-        for i, (elem, child) in enumerate(children):
+        for i, (child_elem, child) in enumerate(children):
             is_last_child = i == len(children) - 1
             new_prefix = prefix + ("    " if is_last else "│   ")
-            self.pretty_print(child, new_prefix + connector + elem, is_last_child)
+            self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
     def lookup(self, query: Set[str]) -> List[Tuple[frozenset, str]]:
         """
