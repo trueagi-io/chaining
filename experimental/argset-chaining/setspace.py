@@ -22,17 +22,12 @@ class SetSpace:
         
         current = self.root
         # Add intermediate nodes
-        for elem in sorted_elements[:-1]:
+        for elem in sorted_elements:
             if elem not in current.children:
                 current.children[elem] = TrieNode()
             current = current.children[elem]
-        
-        # Add final node with value
-        if sorted_elements:
-            last_elem = sorted_elements[-1]
-            if last_elem not in current.children:
-                current.children[last_elem] = TrieNode()
-            current.children[last_elem].value = value
+
+        current.value = value
     
     def _find_matches(self, node: TrieNode, remaining: Set[str], path: Set[str]) -> List[Tuple[Set[str], str]]:
         """Recursively find all matching sets in the trie"""
@@ -97,7 +92,8 @@ def test_setspace():
         {'x'},           # Should find x_value
         set(),           # Empty set
         {'y'},           # Non-existent element
-        {'a', 'x'}       # Should find a_value and x_value
+        {'a', 'x'},      # Should find a_value and x_value
+        {'a', 'b', 'x'}, # Should find ab_value and x_value
     ]
     
     for query in test_queries:
