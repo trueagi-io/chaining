@@ -41,12 +41,9 @@ class SetSpace:
                 result = (new_path, child.value) if child.value is not None else None
 
                 # Try to find a longer match with remaining elements
-                if elements:
-                    deeper_match = self._find_best_match(child, elements, new_path)
-                    if deeper_match is not None:
-                        result = deeper_match
+                deeper_match = self._find_best_match(child, elements, new_path)
                 
-                return result
+                return deeper_match or result
             
         return None
     
@@ -63,6 +60,7 @@ class SetSpace:
         
         while elements:
             match = self._find_best_match(self.root, elements, set())
+            print(elements)
             
             if not match:
                 break
