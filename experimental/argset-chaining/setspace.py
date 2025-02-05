@@ -121,14 +121,14 @@ class SpaceManager:
 MANAGER = SpaceManager()
 
 # Create operation atoms
-create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom'], unwrap=False)
-add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
-lookup_atom = OperationAtom("lookup-in-space", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
+create_space_atom = OperationAtom("create-setspace", MANAGER.create_space, ['Atom'], unwrap=False)
+add_atom = OperationAtom("add-to-setspace", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
+lookup_atom = OperationAtom("lookup-in-setspace", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 
 @register_atoms
 def my_atoms():
     return {
-        "create-space": create_space_atom,
-        "add-to-space": add_atom,
-        "lookup-in-space": lookup_atom
+        "create-setspace": create_space_atom,
+        "add-to-setspace": add_atom,
+        "lookup-in-setspace": lookup_atom
     }
