@@ -1,7 +1,8 @@
 from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
 from sortedcontainers import SortedSet, SortedDict
-from hyperon import Atom, SymbolAtom, ExpressionAtom, MeTTa, OperationAtom, E
+from hyperon import Atom, SymbolAtom, ExpressionAtom, MeTTa, OperationAtom, E, S
+import uuid
 from hyperon.ext import register_atoms
 
 class TrieNode:
@@ -93,10 +94,10 @@ class SpaceManager:
     def __init__(self):
         self.spaces: Dict[str, SetSpace] = {}
     
-    def create_space(self, name: SymbolAtom) -> List[Atom]:
-        space_name = str(name)
-        if space_name not in self.spaces:
-            self.spaces[space_name] = SetSpace()
+    def create_space(self) -> List[Atom]:
+        space_name = f"space_{uuid.uuid4().hex[:8]}"
+        name = S(space_name)
+        self.spaces[space_name] = SetSpace()
         return [name]
     
     def get_space(self, name: SymbolAtom) -> Optional[SetSpace]:
@@ -120,7 +121,7 @@ class SpaceManager:
 MANAGER = SpaceManager()
 
 # Create operation atoms
-create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom', 'Atom'], unwrap=False)
+create_space_atom = OperationAtom("create-space", MANAGER.create_space, ['Atom'], unwrap=False)
 add_atom = OperationAtom("add-to-space", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
 lookup_atom = OperationAtom("lookup-in-space", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 
