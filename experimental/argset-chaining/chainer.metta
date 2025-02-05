@@ -1,73 +1,77 @@
 !(import! &self setspace)
-
-;; Define Nat
-(: Nat Type)
-(: Z Nat)
-(: S (-> Nat Nat))
-
-;; Define <=
-(: <= (-> $a $a Bool))
-(= (<= $x $y) (or (< $x $y) (== $x $y)))
-
-;; Define cast functions between Nat and Number
-(: fromNumber (-> Number Nat))
-(= (fromNumber $n) (if (<= $n 0) Z (S (fromNumber (- $n 1)))))
-(: fromNat (-> Nat Number))
-(= (fromNat Z) 0)
-(= (fromNat (S $k)) (+ 1 (fromNat $k)))
-
-;; Custom fold function since the stdlib version has issues
-(= (myfold-atom $list $init $f)
-   (if-decons-expr $list $head $tail
-      (myfold-atom $tail ($f $init $head) $f)
-      $init))
-
-(= (traceid $x) (trace! $x $x))
-
-;;Concat 2 sets together
-(= (concat $list1 $list2)
-   (if (== (get-metatype $list1) Variable)
-     $list2
-     (if (== (get-metatype $list2) Variable)
-     $list1
-     (union-atom $list1 $list2))))
-
-(= (remove_rec $list $elem)
-   (if-decons-expr $list $head $tail
-      (unify $elem $head
-        ($head $tail)
-        (let ($res $ntail) (remove_rec $tail $elem) ($res (cons-atom $head $ntail))))
-      (() $list)
-))
-
-(= (overlap_ff ($left $intersection $right) $elem)
-   (let ($res $nright) (remove_rec $right $elem)
-     (if (== $res ())
-        ((cons-atom $elem $left) $intersection $nright)
-        ($left (cons-atom $res $intersection) $nright))))
-
-(= (overlap $list1 $list2)
-   (if (== (get-metatype $list1) Variable)
-     (() $list2 ())
-     (if (== (get-metatype $list2) Variable)
-       (() $list1 ())
-       (myfold-atom $list1 (() () $list2) overlap_ff))))
-
-(= (overlap2 $list1 $list2)
-   (if (== (get-metatype $list1) Variable)
-     (() () $list2)
-     (if (== (get-metatype $list2) Variable)
-       ($list1 () ())
-       (myfold-atom $list1 (() () $list2) overlap_ff))))
-
-;!(overlap ((: $a (-> () (A)))) ((: (f2 $a) (-> () (B))) (: (a) (-> () (A)))))
-
+!(import! &self utils)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(= (myunique $a) (if (== (get-metatype $a) Variable) $a (unique-atom $a)))
 
-(= (unique-union-atom $a $b) (let $res (concat $a $b) (myunique $res)))
+;;In this chainer our statements look like
+;(: $fset (-> $pset $cset))
+;; Where $fset is a set of function names
+;; $pset and $cset are sets of proof of the form (: $arg Type)
+;; in $pset $arg is always a variable
+;; in $cset its a combination of function names and arg vars from $pset
 
+;;To add a direct proof af a type use a function that as $pset == ()
+;;( (a) (-> () ((: (a) A))))
+;;in english the set of function (a) take no arguments/empty set
+;;and produce the set of proofs containg one element (: (a) A)
+;;A simple function from a to b looks like:
+;;( (f) (-> ((: $a A)) ((: (f $a) B))))
+
+;;This chainer requires 3 indecies to lookup atoms
+;;They can be created with the init-kb function
+(= (init-kb $kb)
+   (let* (($fs (create-setspace))
+          ($cs (new-space))
+          ($ps (new-space))
+          (() (add-atom $kb (functionSpace $fs)))
+          (() (add-atom $kb (conclusionSpace $cs)))
+          (() (add-atom $kb (parameterSpace $ps)))
+          )
+   ())
+)
+
+;;When adding an atom to the KB, it is first normalized
+;;Then it is added to the indexed spaces
+(= (add-to-kb $kb $atom)
+   (let* (($natom (normalize $atom))
+          ($fs (match $kb (functionSpace $fs) $fs))
+          ($cs (match $kb (conclusionSpace $cs) $cs))
+          ($ps (match $kb (parameterSpace $ps) $ps))
+          ((: $fset (-> $pset $cset)) $natom)
+          ($natom (add-to-setspace $fs $fset $natom))
+          ($_ (foldl-atom $cset () $accum $celem (let $_ $accum (add-atom $cs ($celem $natom)))))
+          ($_ (foldl-atom $pset () $accum $pelem (let $_ $accum (add-atom $ps ($pelem $natom)))))
+          )
+   ())
+)
+
+;;Lookup functions
+
+;;Get the combined set of atoms the minimally cover the query set
+(= (lookup-fset-in-kb $kb $query)
+   (match $kb (functionSpace $fs) (combine (lookup-in-setspace $fs $query))))
+
+;;Get the combined set of all atoms in the KB
+(= (lookup-all $kb)
+   (match $kb (functionSpace $fs) (combine (get-setspace-elements $fs))))
+
+;;Get all atoms that proof any conclusion in the query set
+(= (lookup-cset-in-kb $kb $query)
+   (match $kb (conclusionSpace $cs) (combine (foldl-atom $query () $accum $atom (concat $accum (collapse (match $cs ($atom $res) $res)))))))
+
+;;Get all atoms that use any parameter in the query set
+(= (lookup-pset-in-kb $kb $query)
+   (match $kb (parameterSpace $ps) (combine (foldl-atom $query () $accum $atom (concat $accum (collapse (match $ps ($atom $res) $res)))))))
+
+;;Normalize a statement (remove parameters that are part of the conclusion)
+(= (normalize (: $fset (-> $pset $cset)))
+   (let ($npset $_ $ncset) (overlap2 $pset $cset) (: $fset (-> $npset $cset))))
+
+;;Takes a list/expression of statements and combines them
+(= (combine $a) (normalize (myfold-atom1 $a unionStmt)))
+
+;;Takes 2 statements and combines them
+;;TODO should this also normalize the statements?
 (= (unionStmt $stmt1 $stmt2)
    (if (or (== (get-metatype $stmt1) Variable) (== $stmt1 ()))
      $stmt2
@@ -77,17 +81,6 @@
          (let (: $fset2 (-> $pset2 $cset2)) $stmt2
            (: (unique-union-atom $fset1 $fset2) (-> (unique-union-atom $pset1 $pset2) (unique-union-atom $cset1 $cset2))))))))
 
-(= (myfold-atom1 $list $f)
-   (if (== (get-metatype $list) Variable)
-     $list
-     (if-decons-expr $list $head $tail
-        (myfold-atom $tail $head $f)
-        $list)))
-
-;!(myfold-atom1 ((: (a) (-> () (A))) (: (b) (-> () (B)))) unionStmt)
-
-;!(myfold-atom1 ((: (a) (-> ((: $var X)) (A)))) unionStmt)
-
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -96,171 +89,75 @@
           $q                            ; Query
           $q))                          ; Result
 
-
-(= (bc $kb $depth_full (: $fset (-> $pset $cset)))
- (case (if (== (get-metatype $fset) Variable)
-           (unify $kb (: $fset (-> $pset $cset)) (: $fset (-> $pset $cset)) ()) 
-           (myfold-atom1 (traceid (lookup-fset-in-kb $kb $fset)) unionStmt))
-   (((: $uf (-> $up $uc))
-     (let ($nup $nupc $nuc) (trace! (Overlap $up $uc) (overlap2 $up $uc)) (: $uf (-> $nup $nuc)))
-    )
-    (() 
-     (let ($npset $_ $ncset) (trace! (NormalizeInput $pset $cset) (overlap2 $pset $cset))
-       (if (== $ncset ())
-        (: () (-> (()) ()))
-        ;Base Case
-        ;Recursive steps
-        (let* (((S $depth) $depth_full)
-
-               (debug (trace! (Query (: $fset (-> $npset $ncset))) debug))
-
-               (debug (trace! (TryMatch (map-atom $ncset $conclusion (: $fset (-> $matched_prms ($conclusion))))) debug))
-
-               ($mres (map-atom $ncset $conclusion (bc $kb $depth (sealed $fset (: $fset (-> $matched_prms ($conclusion)))))))
-
-               (debug (trace! (Mres $mres) debug))
-
-               ((: $mfset (-> $mpset $mcset)) (myfold-atom1 $mres unionStmt))
-
-               (debug (trace! (Match (: $mfset (-> $mpset $mcset))) debug))
-
-               ;(($mprms $_ ()) ((overlap (unifyproof $kb $depth)) $mpset $mcset))
-
-               (debug (trace! (Proof1 (: $fset (-> $pset $maset))) debug))
-
-               ((: $pfset (-> $ppset $pcset)) (traceid (bc $kb $depth (: $fset (-> $npset $mpset)))))
-
-               (debug (trace! (Proof2 (: $pfset (-> $ppset $pcset))) debug))
-   )
-(: (unique-union-atom $mfset $pfset) (-> (unique-union-atom $npset $ppset) $ncset)))))))))
+(= (withFset $kb (: $fset (-> $pset $cset)))
+   (let (: $ffset (-> $fpset $fcset)) (lookup-fset-in-kb $kb $fset) ;can't match $fset since order might be different
+   (let ($_pset $npset ()) (overlap $pset $fpset) ;check that we dont need more parameters than $pset and remove unneeded ones
+   (let (() $ncset $_cset) (overlap $cset $fcset) ;check if $cset is a subset of $fcset
+        (: $ffset (-> $npset $fcset))))))
 
 
+(= (bc $kb $depth_full $query)
+ (let $nquery (normalize $query) ;First normalize the query
+ (let (: $fset (-> $pset $cset)) $nquery ;Deconstruct the query
+ (if (and (== $cset ()) (== $pset ())) (: () (-> () ())) ;If the query is empty, return an empty statement
+ (if (and (and (== (get-metatype $fset) Variable) (== (get-metatype $cset) Variable)) (== (get-metatype $pset) Variable)) ;If all the sets are variables combine everything
+     (lookup-all $kb)
+ (if (== (get-metatype $fset) Expression) ;If we have a fixed sed of functions just get those
+     (withFset $kb $nquery)
+     (let* (($cmatched (if (and (== (get-metatype $cset) Expression) (not (== $cset ()))) (lookup-cset-in-kb $kb $cset) $cmatched))
+            ($pmatched (if (and (== (get-metatype $pset) Expression) (not (== $pset ()))) (lookup-pset-in-kb $kb $pset) $pmatched))
 
-;Sometimes we get $var#1234 in the output which causes the assert to fail
-(: myAssertEqual (-> Atom Atom Expression))
-(= (myAssertEqual $x $y)
-   (case $x
-    ((Empty (Error $x is empty missing $y))
-     ($out (unify $out $y () (Error $out should equal $y)))
-     )))
-!(bind! &kb (new-space))
+            ((: $mfset (-> $mpset $mcset)) (normalize (unionStmt $cmatched $pmatched)))
 
-!(add-atom &kb (: (b) (-> (: () ()) (B))))
-!(add-atom &kb (: (b_d) (-> (: $b (B)) (D))))
+            (($_pset $npset $ppset) (overlap2 $pset $mpset))
+            ((() $cset $pcset) (overlap2 $cset $mcset))
+           )
+           (unify $depth_full (S $depth) 
+            (let (: $pfset (-> $fpset $fcset)) (bc $kb $depth (: $fset (-> $pcset $ppset)))
+                 (: (unique-union-atom $mfset $pfset) (-> $npset (unique-union-atom $pcset (unique-union-atom $cset $fcset)))))
+            (if (== $ppset ()) (: $mfset (-> $npset $mcset)) (empty))
+            ))))))))
 
-;!(myAssertEqual (bc &kb Z (: $prf (-> $_ (B))))
-  ;(: (b) (-> $a (B))))
-;!(myAssertEqual (bc &kb Z (: $prf (-> (: $_ ()) (B)))) 
-  ;(: (b) (-> $a (B))))
-
-;!(myAssertEqual (bc &kb (S Z) (: $prf (-> (: $_ ()) (D)))) (: $prf (-> (: $_ ()) (D))))
-
-!(bind! &kb2 (new-space))
-
-!(add-atom &kb2 (: (a_c) (-> (: $a (A)) (C))))
-!(add-atom &kb2 (: (c_d) (-> (: $c (C)) (D))))
-
-;!(bc &kb2 (S Z) (: $prf (-> (: $a (A)) (D))))
-;!(bc &kb2 (S Z) (: (a_c c_d) (-> (: $a (A)) (D))))
-;!(bc &kb2 (S Z) (: (a_c c_d) $t))
-
-
-(= (init-kb $kb $fs $cs)
-   (let* (($fs (create-space $fs))
-          ($cs (create-space $cs))
-          (() (add-atom $kb (functionSpace $fs)))
-          (() (add-atom $kb (conclusionSpace $cs)))
-          )
-   ())
-)
-
-(= (add-to-kb $kb $atom)
-   (let* (($fs (match $kb (functionSpace $fs) $fs))
-          ($cs (match $kb (conclusionSpace $cs) $cs))
-          ((: $fset (-> $pset $cset)) $atom)
-          ($atom (add-to-space $fs $fset $atom))
-          ($atom (add-to-space $cs $cset $atom))
-          )
-   (add-atom $kb $atom))
-)
-
-(= (lookup-fset-in-kb $kb $query)
-   (match $kb (functionSpace $fs) (lookup-in-space $fs $query)))
-
-(= (lookup-cset-in-kb $kb $query)
-   (match $kb (conclusionSpace $cs) (lookup-in-space $cs $query)))
-          
 
 ;Some tests
-;!(bind! &s (new-space))
-;
-;!(init-kb &s fs cs)
-;
-;!(add-to-kb &s (: (f) (-> (: $pab (A B)) (C))))
-;!(add-to-kb &s (: (f2 a) (-> (: $b (B)) (D))))
-;!(add-to-kb &s (: (f3 a) (-> (: $b (B E)) (F))))
-;
-;!(add-to-kb &s (: (a) (-> (: () ()) (A))))
-;!(add-to-kb &s (: (b) (-> (: () ()) (B))))
+!(bind! &s (new-space))
 
-;!(myAssertEqual (lookup-fset-in-kb &s (f a))
-;  [(: (a) (-> (: () ()) (A)))
-;  ,(: (f) (-> (: $pab (A B)) (C)))])
+!(init-kb &s)
+
+!(add-to-kb &s (: (f) (-> ((: $a A) (: $b B)) ((: (f $a $b) C)))))
+!(add-to-kb &s (: (f2 a) (-> ((: $b B)) ((: (f2 a b) D)))))
+!(add-to-kb &s (: (f3 a) (-> ((: $b B) (: $e E)) ((: (f3 a $b $e) F)))))
+
+!(add-to-kb &s (: (a) (-> () ((: (a) A)))))
+!(add-to-kb &s (: (b) (-> () ((: (b) B)))))
 
 ; Basic type queries
-;!(assertEqual (bc &s Z (: $prf (-> $a (A))))
-;    (: (a) (-> (: () ()) (A))))
-;
-;!(assertEqual (bc &s (S (S Z)) (: $p (-> (: $_ ()) (C))))
-;    (: (f b a) (-> (: () ()) (C))))
-;
-;!(assertEqual (bc &s (S (S Z)) (: (f a b) $t))
-;    (: (a b f) (-> (: () ()) (C))))
-;
-;;; Partial application
-;!(assertEqual (bc &s (S (S Z)) (: $prf (-> (: $a (A)) (C))))
-;    (: (f b) (-> (: () (A)) (C))))
-;
-;!(myAssertEqual (bc &s (S (S Z)) (: (f b) $t))
-;    (: (b f) (-> (: () (A)) (C))))
-;;;
-;!(assertEqual (bc &s (S (S Z)) (: $prf (-> (: () ()) (D))))
-;    (: (f2 a b) (-> (: () ()) (D))))
-;!(myAssertEqual (bc &s (S (S Z)) (: (f2 a b) $t))
-;    (: (f2 a b) (-> (: () ()) (D))))
-;!(myAssertEqual (bc &s (S (S Z)) (: (f2 b a) $t))
-;    (: (f2 a b) (-> (: () ()) (D))))
-;;
-;!(assertEqual (bc &s (S (S Z)) (: $prf (-> (: $e (E)) (F))))
-;    (: (f3 a b) (-> (: () (E)) (F))))
-;!(assertEqual (bc &s (S (S Z)) (: (f3 a b) (-> (: $e (E)) (F))))
-;    (: (f3 a b) (-> (: () (E)) (F))))
-;!(myAssertEqual (bc &s (S (S Z)) (: (f3 a b) $t))
-;    (: (f3 a b) (-> (: () (E)) (F))))
+!(assertEqual (bc &s Z (: $fset (-> () ((: $_ A)))))
+    (: (a) (-> () ((: (a) A)))))
 
-!(bind! &k (new-space))
+!(assertEqual (bc &s (S (S Z)) (: $p (-> () ((: $_ C)))))
+    (: (f a b) (-> () ((: (f (a) (b)) C) (: (a) A) (: (b) B)))))
 
-!(init-kb &k kfs kcs)
+!(assertEqual (bc &s (S (S Z)) (: (f a b) $t))
+    (: (a b f) (-> () ((: (a) A) (: (b) B) (: (f (a) (b)) C)))))
 
-!(add-to-kb &k (: (a) (-> () A)))
-!(add-to-kb &k (: ((ab $a)) (-> (: $a (A)) (B))))
+;; Partial application
+!(assertEqual (bc &s (S (S Z)) (: $prf (-> ((: $a A)) ((: $c C)))))
+    (: (f b) (-> ((: $a A)) ((: (f $a (b)) C) (: (b) B)))))
 
-!(bc &k Z (: (a ab) $type))
-!(bc &k (S Z) (: $fset (-> () ((: $prf B)))))
+!(assertEqual (bc &s (S (S Z)) (: (f b) $t))
+    (: (b f) (-> ((: $a A)) ((: (b) B) (: (f $a (b)) C)))))
 
-;!(add-to-kb &k (: (f0) (-> ((: $a A) (: $b B)) ((: (f0 $a $b) C)))))
-;
-;!(add-to-kb &k (: (f1) (-> ((: $b B)) ((: (f1 $b) D)))))
-;
-;!(add-to-kb &k (: (f2) (-> ((: $a A)) ((: (f2 $a) B)))))
-;
-;!(add-to-kb &k (: (a) (-> () ((: (a) A)))))
-;
-;
-;!(bc &k Z (: (f0 f1 f2) $t))
-;
-;!(bc &k Z (: (a f2 f0 f1) $t))
-;
-;!(bc &k z (: $fste (-> ((: $a A)) $cset)))
+!(assertEqual (bc &s (S (S Z)) (: $prf (-> () ((: $d D)))))
+    (: (f2 a b) (-> () ((: (f2 a b) D) (: (b) B)))))
+!(assertEqual (bc &s (S (S Z)) (: (f2 a b) $t))
+    (: (f2 a b) (-> () ((: (f2 a b) D) (: (b) B)))))
+!(assertEqual (bc &s (S (S Z)) (: (f2 b a) $t))
+    (: (f2 a b) (-> () ((: (f2 a b) D) (: (b) B)))))
 
-
+!(assertEqual (bc &s (S (S Z)) (: $prf (-> ((: $e E)) ((: $f F)))))
+    (: (f3 a b) (-> ((: $e E)) ((: (f3 a (b) $e) F) (: (b) B)))))
+!(assertEqual (bc &s (S (S Z)) (: (f3 a b) (-> ((: $e E)) ((: $f F)))))
+    (: (f3 a b) (-> ((: $e E)) ((: (f3 a (b) $e) F) (: (b) B)))))
+!(assertEqual (bc &s (S (S Z)) (: (f3 a b) $t))
+    (: (f3 a b) (-> ((: $e E)) ((: (f3 a (b) $e) F) (: (b) B)))))
