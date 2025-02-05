@@ -64,19 +64,17 @@ class SetSpace:
 
     def get_all_elements(self) -> List[ExpressionAtom]:
         """Get all unique element combinations that have values"""
-        def collect_elements(node: TrieNode, current_path: List[str]) -> List[List[str]]:
+        def collect_values(node: TrieNode) -> List[Atom]:
             results = []
             if node.value is not None:
-                results.append(current_path[:])
+                results.append(node.value)
             
-            for elem, child in node.children.items():
-                current_path.append(elem)
-                results.extend(collect_elements(child, current_path))
-                current_path.pop()
+            for child in node.children.values():
+                results.extend(collect_values(child))
             return results
         
-        all_paths = collect_elements(self.root, [])
-        return [E(*[S(elem) for elem in path]) for path in all_paths]
+        values = collect_values(self.root)
+        return [E(*values)]
 
     def lookup(self, query: ExpressionAtom) -> List[Atom]:
         """
