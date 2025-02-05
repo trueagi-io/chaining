@@ -63,26 +63,36 @@ class SetSpace:
             self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
     def get_all_elements(self) -> List[ExpressionAtom]:
-        """Get all unique element combinations that have values, only returning longest paths"""
-        def collect_values(node: TrieNode, depth: int) -> List[Tuple[Atom, int]]:
+        """Get all unique element combinations that cover all elements with preference for longer paths"""
+        def collect_paths(node: TrieNode, current_path: Set[str]) -> List[Tuple[Set[str], Atom]]:
             results = []
             if node.value is not None:
-                results.append((node.value, depth))
+                results.append((current_path.copy(), node.value))
             
-            for child in node.children.values():
-                results.extend(collect_values(child, depth + 1))
+            for elem, child in node.children.items():
+                current_path.add(elem)
+                results.extend(collect_paths(child, current_path))
+                current_path.remove(elem)
             return results
         
-        # Get all values with their depths
-        values_with_depth = collect_values(self.root, 0)
+        # Get all paths and their values
+        all_paths = collect_paths(self.root, set())
+        if not all_paths:
+            return []
+            
+        # Sort by path length (descending)
+        all_paths.sort(key=lambda x: len(x[0]), reverse=True)
         
-        # Find maximum depth
-        max_depth = max(depth for _, depth in values_with_depth) if values_with_depth else 0
+        # Collect values that cover all elements
+        covered = set()
+        result_values = []
         
-        # Only keep values from the longest paths
-        longest_values = [value for value, depth in values_with_depth if depth == max_depth]
-        
-        return [E(*longest_values)]
+        for path_set, value in all_paths:
+            if not path_set.issubset(covered):
+                result_values.append(value)
+                covered.update(path_set)
+                
+        return [E(*result_values)]
 
     def lookup(self, query: ExpressionAtom) -> List[Atom]:
         """
