@@ -62,6 +62,22 @@ class SetSpace:
             new_prefix = prefix + ("    " if is_last else "│   ")
             self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
+    def get_all_elements(self) -> List[ExpressionAtom]:
+        """Get all unique element combinations that have values"""
+        def collect_elements(node: TrieNode, current_path: List[str]) -> List[List[str]]:
+            results = []
+            if node.value is not None:
+                results.append(current_path[:])
+            
+            for elem, child in node.children.items():
+                current_path.append(elem)
+                results.extend(collect_elements(child, current_path))
+                current_path.pop()
+            return results
+        
+        all_paths = collect_elements(self.root, [])
+        return [E(*[S(elem) for elem in path]) for path in all_paths]
+
     def lookup(self, query: ExpressionAtom) -> List[Atom]:
         """
         Find minimal sets that together cover all elements in the query.
@@ -116,6 +132,12 @@ class SpaceManager:
             results = space.lookup(query)
             return [E(*results)] if results else []
         return []
+    
+    def get_space_elements(self, space_name: SymbolAtom) -> List[ExpressionAtom]:
+        space = self.get_space(space_name)
+        if space:
+            return space.get_all_elements()
+        return []
 
 # Global SpaceManager instance
 MANAGER = SpaceManager()
@@ -124,11 +146,13 @@ MANAGER = SpaceManager()
 create_space_atom = OperationAtom("create-setspace", MANAGER.create_space, ['Atom'], unwrap=False)
 add_atom = OperationAtom("add-to-setspace", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
 lookup_atom = OperationAtom("lookup-in-setspace", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
+elements_atom = OperationAtom("get-setspace-elements", MANAGER.get_space_elements, ['Atom', 'List'], unwrap=False)
 
 @register_atoms
 def my_atoms():
     return {
         "create-setspace": create_space_atom,
         "add-to-setspace": add_atom,
-        "lookup-in-setspace": lookup_atom
+        "lookup-in-setspace": lookup_atom,
+        "get-setspace-elements": elements_atom
     }
