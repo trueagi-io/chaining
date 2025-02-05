@@ -146,7 +146,7 @@ MANAGER = SpaceManager()
 create_space_atom = OperationAtom("create-setspace", MANAGER.create_space, ['Atom'], unwrap=False)
 add_atom = OperationAtom("add-to-setspace", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
 lookup_atom = OperationAtom("lookup-in-setspace", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
-elements_atom = OperationAtom("get-setspace-elements", MANAGER.get_space_elements, ['Atom', 'List'], unwrap=False)
+elements_atom = OperationAtom("get-setspace-elements", MANAGER.get_space_elements, ['Atom', 'Expression'], unwrap=False)
 
 @register_atoms
 def my_atoms():
