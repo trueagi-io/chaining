@@ -63,18 +63,26 @@ class SetSpace:
             self.pretty_print(child, new_prefix, is_last_child, child_elem)
 
     def get_all_elements(self) -> List[ExpressionAtom]:
-        """Get all unique element combinations that have values"""
-        def collect_values(node: TrieNode) -> List[Atom]:
+        """Get all unique element combinations that have values, only returning longest paths"""
+        def collect_values(node: TrieNode, depth: int) -> List[Tuple[Atom, int]]:
             results = []
             if node.value is not None:
-                results.append(node.value)
+                results.append((node.value, depth))
             
             for child in node.children.values():
-                results.extend(collect_values(child))
+                results.extend(collect_values(child, depth + 1))
             return results
         
-        values = collect_values(self.root)
-        return [E(*values)]
+        # Get all values with their depths
+        values_with_depth = collect_values(self.root, 0)
+        
+        # Find maximum depth
+        max_depth = max(depth for _, depth in values_with_depth) if values_with_depth else 0
+        
+        # Only keep values from the longest paths
+        longest_values = [value for value, depth in values_with_depth if depth == max_depth]
+        
+        return [E(*longest_values)]
 
     def lookup(self, query: ExpressionAtom) -> List[Atom]:
         """
