@@ -55,13 +55,16 @@
 (= (lookup-all $kb)
    (match $kb (functionSpace $fs) (combine (get-setspace-elements $fs))))
 
+(= ((lookup_ff $s) $accum $elem)
+    (match $s ($elem $res) (cons-atom $res $accum)))
+
 ;;Get all atoms that proof any conclusion in the query set
 (= (lookup-cset-in-kb $kb $query)
-   (match $kb (conclusionSpace $cs) (combine (foldl-atom $query () $accum $atom (concat $accum (collapse (match $cs ($atom $res) $res)))))))
+   (match $kb (conclusionSpace $cs) (combine (myfold-atom $query () (lookup_ff $cs)))))
 
 ;;Get all atoms that use any parameter in the query set
 (= (lookup-pset-in-kb $kb $query)
-   (match $kb (parameterSpace $ps) (combine (foldl-atom $query () $accum $atom (concat $accum (collapse (match $ps ($atom $res) $res)))))))
+   (match $kb (parameterSpace $ps) (combine (myfold-atom $query () (lookup_ff $ps)))))
 
 ;;Normalize a statement (remove parameters that are part of the conclusion)
 (= (normalize (: $fset (-> $pset $cset)))
@@ -99,7 +102,7 @@
 (= (bc $kb $depth_full $query)
  (let $nquery (normalize $query) ;First normalize the query
  (let (: $fset (-> $pset $cset)) $nquery ;Deconstruct the query
- (if (and (== $cset ()) (== $pset ())) (: () (-> () ())) ;If the query is empty, return an empty statement
+ (if (== $cset ()) (: () (-> () ())) ;You can always proove the empty set
  (if (and (and (== (get-metatype $fset) Variable) (== (get-metatype $cset) Variable)) (== (get-metatype $pset) Variable)) ;If all the sets are variables combine everything
      (lookup-all $kb)
  (if (== (get-metatype $fset) Expression) ;If we have a fixed sed of functions just get those
@@ -136,7 +139,7 @@
     (: (a) (-> () ((: (a) A)))))
 
 !(assertEqual (bc &s (S (S Z)) (: $p (-> () ((: $_ C)))))
-    (: (f a b) (-> () ((: (f (a) (b)) C) (: (a) A) (: (b) B)))))
+    (: (f b a) (-> () ((: (f (a) (b)) C) (: (a) A) (: (b) B)))))
 
 !(assertEqual (bc &s (S (S Z)) (: (f a b) $t))
     (: (a b f) (-> () ((: (a) A) (: (b) B) (: (f (a) (b)) C)))))
@@ -161,3 +164,21 @@
     (: (f3 a b) (-> ((: $e E)) ((: (f3 a (b) $e) F) (: (b) B)))))
 !(assertEqual (bc &s (S (S Z)) (: (f3 a b) $t))
     (: (f3 a b) (-> ((: $e E)) ((: (f3 a (b) $e) F) (: (b) B)))))
+
+!(bind! &f1 (new-space))
+
+!(init-kb &f1)
+
+!(add-to-kb &f1 (: (f1) (-> () ((: (f1) A)))))
+!(add-to-kb &f1 (: (f2) (-> ((: $b B)) ((: $a A) (: (f2 $a $b) C)))))
+
+!(assertEqual (bc &f1 (S Z) (: $fset (-> () ((: $a A))))) (: (f1) (-> () ((: (f1) A)))))
+
+!(bind! &f2 (new-space))
+
+!(init-kb &f2)
+
+!(add-to-kb &f2 (: (f1) (-> ((: $a A)) ((: (f1 $a) B)))))
+!(add-to-kb &f2 (: (f2) (-> ((: $a A) (: $c C)) ((: (f2 $a $c) D)))))
+
+!(assertEqual (bc &f2 (S Z) (: $fset (-> ((: $a A)) $type))) (: (f1) (-> ((: $a A)) ((: (f1 $a) B)))))
