@@ -107,7 +107,10 @@ class SetSpace:
             try:
                 match = self._find_best_match(self.root.children[elem], elements, set())
             except KeyError:
-                return []
+                if partial:
+                    continue
+                else:
+                    return []
 
             if not match:
                 if partial:
@@ -153,7 +156,7 @@ class SpaceManager:
         space = self.get_space(space_name)
         if space:
             results = space.lookup(query, partial=True)
-            return [E(*results)] if results else [E()]
+            return [E(*results)] if results else [E(E())]
         return []
     
     def get_space_elements(self, space_name: SymbolAtom) -> List[ExpressionAtom]:
@@ -230,7 +233,8 @@ if __name__ == "__main__":
     partial_tests = [
         E(S("A"), S("B"), S("C")),  # Should return partial matches
         E(S("A"), S("D")),          # Should return A-Value
-        E(S("X"), S("Y"))           # Should return empty
+        E(S("X"), S("Y")),           # Should return empty
+        E(S("A"), S("B"))
     ]
     
     for test in partial_tests:
