@@ -148,6 +148,13 @@ class SpaceManager:
             results = space.lookup(query)
             return [E(*results)] if results else [E()]
         return []
+
+    def partial_lookup_in_space(self, space_name: SymbolAtom, query: ExpressionAtom) -> List[ExpressionAtom]:
+        space = self.get_space(space_name)
+        if space:
+            results = space.lookup(query, partial=True)
+            return [E(*results)] if results else [E()]
+        return []
     
     def get_space_elements(self, space_name: SymbolAtom) -> List[ExpressionAtom]:
         space = self.get_space(space_name)
@@ -168,6 +175,7 @@ MANAGER = SpaceManager()
 create_space_atom = OperationAtom("create-setspace", MANAGER.create_space, ['Atom'], unwrap=False)
 add_atom = OperationAtom("add-to-setspace", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
 lookup_atom = OperationAtom("lookup-in-setspace", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
+partial_lookup_atom = OperationAtom("partial-lookup-in-setspace", MANAGER.partial_lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 elements_atom = OperationAtom("get-setspace-elements", MANAGER.get_space_elements, ['Atom', 'Expression'], unwrap=False)
 pretty_print_atom = OperationAtom("pretty-print-setspace", MANAGER.pretty_print_space, ['Atom', 'Atom'], unwrap=False)
 
@@ -177,6 +185,7 @@ def my_atoms():
         "create-setspace": create_space_atom,
         "add-to-setspace": add_atom,
         "lookup-in-setspace": lookup_atom,
+        "partial-lookup-in-setspace": partial_lookup_atom,
         "get-setspace-elements": elements_atom,
         "pretty-print-setspace": pretty_print_atom
     }
@@ -215,3 +224,16 @@ if __name__ == "__main__":
     print("\nAll elements:")
     elements = MANAGER.get_space_elements(space)
     print(elements)
+    
+    # Test partial lookups
+    print("\nPartial lookup tests:")
+    partial_tests = [
+        E(S("A"), S("B"), S("C")),  # Should return partial matches
+        E(S("A"), S("D")),          # Should return A-Value
+        E(S("X"), S("Y"))           # Should return empty
+    ]
+    
+    for test in partial_tests:
+        result = MANAGER.partial_lookup_in_space(space, test)
+        print(f"\nPartial looking up: {test}")
+        print(f"Result: {result}")
