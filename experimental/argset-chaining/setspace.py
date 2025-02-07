@@ -181,3 +181,37 @@ def my_atoms():
         "get-setspace-elements": elements_atom,
         "pretty-print-setspace": pretty_print_atom
     }
+
+if __name__ == "__main__":
+    # Create a new space
+    [space] = MANAGER.create_space()
+    print(f"\nCreated space: {space}")
+    
+    # Add some test data
+    MANAGER.add_to_space(space, E(S("A"), S("B")), S("AB-Value"))
+    MANAGER.add_to_space(space, E(S("B"), S("C")), S("BC-Value"))
+    MANAGER.add_to_space(space, E(S("A"), S("C")), S("AC-Value"))
+    MANAGER.add_to_space(space, E(S("D"), S("E")), S("DE-Value"))
+    
+    print("\nSpace contents:")
+    MANAGER.pretty_print_space(space)
+    
+    # Test some lookups
+    print("\nLookup tests:")
+    tests = [
+        E(S("A"), S("B")),
+        E(S("B"), S("C")),
+        E(S("A"), S("B"), S("C")),
+        E(S("D"), S("E")),
+        E(S("A"), S("D"))  # Should fail
+    ]
+    
+    for test in tests:
+        result = MANAGER.lookup_in_space(space, test)
+        print(f"\nLooking up: {test}")
+        print(f"Result: {result}")
+    
+    # Get all elements
+    print("\nAll elements:")
+    elements = MANAGER.get_space_elements(space)
+    print(elements)
