@@ -154,6 +154,12 @@ class SpaceManager:
         if space:
             return space.get_all_elements()
         return []
+        
+    def pretty_print_space(self, space_name: SymbolAtom) -> List[Atom]:
+        space = self.get_space(space_name)
+        if space:
+            space.pretty_print()
+        return []
 
 # Global SpaceManager instance
 MANAGER = SpaceManager()
@@ -163,6 +169,7 @@ create_space_atom = OperationAtom("create-setspace", MANAGER.create_space, ['Ato
 add_atom = OperationAtom("add-to-setspace", MANAGER.add_to_space, ['Atom', 'Expression', 'Atom', 'Atom'], unwrap=False)
 lookup_atom = OperationAtom("lookup-in-setspace", MANAGER.lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 elements_atom = OperationAtom("get-setspace-elements", MANAGER.get_space_elements, ['Atom', 'Expression'], unwrap=False)
+pretty_print_atom = OperationAtom("pretty-print-setspace", MANAGER.pretty_print_space, ['Atom', 'Atom'], unwrap=False)
 
 @register_atoms
 def my_atoms():
@@ -170,5 +177,6 @@ def my_atoms():
         "create-setspace": create_space_atom,
         "add-to-setspace": add_atom,
         "lookup-in-setspace": lookup_atom,
-        "get-setspace-elements": elements_atom
+        "get-setspace-elements": elements_atom,
+        "pretty-print-setspace": pretty_print_atom
     }
