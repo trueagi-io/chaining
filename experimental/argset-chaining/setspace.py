@@ -94,16 +94,12 @@ class SetSpace:
                 
         return [E(*result_values)]
 
-    def lookup(self, query: ExpressionAtom) -> List[Atom]:
+    def lookup(self, query: ExpressionAtom, partial: bool = False) -> List[Atom]:
         """
         Find minimal sets that together cover all elements in the query.
         Returns list of (set, value) pairs.
         """
-        if not query:
-            return []
-        
         elements = SortedSet(str(elem) for elem in query.get_children())
-        print(f"elements: {elements}")
         result = []
         
         while elements:
@@ -114,7 +110,10 @@ class SetSpace:
                 return []
 
             if not match:
-                return []
+                if partial:
+                    continue
+                else:
+                    return []
                 
             match_set, match_value = match
             result.append(match_value)
@@ -188,6 +187,7 @@ if __name__ == "__main__":
     print(f"\nCreated space: {space}")
     
     # Add some test data
+    MANAGER.add_to_space(space, E(S("A")), S("A-Value"))
     MANAGER.add_to_space(space, E(S("A"), S("B")), S("AB-Value"))
     MANAGER.add_to_space(space, E(S("B"), S("C")), S("BC-Value"))
     MANAGER.add_to_space(space, E(S("A"), S("C")), S("AC-Value"))
