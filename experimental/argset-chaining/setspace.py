@@ -146,7 +146,7 @@ class SpaceManager:
         space = self.get_space(space_name)
         if space:
             results = space.lookup(query)
-            return [E(*results)] if results else []
+            return [E(*results)] if results else [E()]
         return []
     
     def get_space_elements(self, space_name: SymbolAtom) -> List[ExpressionAtom]:
