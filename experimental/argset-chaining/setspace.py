@@ -103,6 +103,7 @@ class SetSpace:
             return []
         
         elements = SortedSet(str(elem) for elem in query.get_children())
+        print(f"elements: {elements}")
         result = []
         
         while elements:
