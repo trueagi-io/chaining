@@ -14,8 +14,9 @@ class SetSpace:
     def __init__(self):
         self.root = TrieNode()
     
-    def add(self, expr: ExpressionAtom, value: Atom):
-        """Add a set and its associated value to the trie"""
+    def add(self, expr: ExpressionAtom, value: Atom) -> Optional[Atom]:
+        """Add a set and its associated value to the trie
+        Returns the old value if one existed, None otherwise"""
         # Get elements from expression and sort them
         elements = expr.get_children()
         sorted_elements = sorted(str(elem) for elem in elements)
@@ -27,7 +28,9 @@ class SetSpace:
                 current.children[elem] = TrieNode()
             current = current.children[elem]
 
+        old_value = current.value
         current.value = value
+        return old_value
     
     def _find_best_match(self, node: TrieNode, elements: SortedSet, current_path: Set[str]) -> Optional[Tuple[Set[str], str]]:
         """Find the best matching set starting from the current node"""
@@ -141,8 +144,8 @@ class SpaceManager:
     def add_to_space(self, space_name: SymbolAtom, elements: ExpressionAtom, value: Atom) -> List[Atom]:
         space = self.get_space(space_name)
         if space:
-            space.add(elements, value)
-            return [value]
+            old_value = space.add(elements, value)
+            return [old_value] if old_value else [value]
         return []
     
     def lookup_in_space(self, space_name: SymbolAtom, query: ExpressionAtom) -> List[ExpressionAtom]:
@@ -199,7 +202,13 @@ if __name__ == "__main__":
     print(f"\nCreated space: {space}")
     
     # Add some test data
-    MANAGER.add_to_space(space, E(S("A")), S("A-Value"))
+    print("\nTesting value overwriting:")
+    result1 = MANAGER.add_to_space(space, E(S("A")), S("A-Value"))
+    print(f"First add of A -> A-Value returns: {result1}")
+    
+    result2 = MANAGER.add_to_space(space, E(S("A")), S("New-A-Value"))
+    print(f"Second add of A -> New-A-Value returns old value: {result2}")
+    
     MANAGER.add_to_space(space, E(S("A"), S("B")), S("AB-Value"))
     MANAGER.add_to_space(space, E(S("B"), S("C")), S("BC-Value"))
     MANAGER.add_to_space(space, E(S("A"), S("C")), S("AC-Value"))
