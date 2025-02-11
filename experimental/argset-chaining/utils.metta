@@ -44,38 +44,21 @@
 ;;Remove $elem from set if it can be unified with an element in $list
 ;;Return the unified $elem and the remaining set
 
-(= (remove_rec $list $elem)
+(= (remove $list $elem)
    (if-decons-expr $list $head $tail
-      (unify $elem $head ($head $tail) (let ($res $ntail) (remove_rec $tail $elem) ($res (cons-atom $head $ntail))))
+      (unify $elem $head ($head $tail) (let ($res $ntail) (remove $tail $elem) ($res (cons-atom $head $ntail))))
       (() $list)
 ))
 
-;(= (remove_rec $list $elem)
-;   (if-decons-expr $list $head $tail
-;      (case (sealed $elem (unify $elem $head ($head $tail) (() ())))
-;      (
-;        ( (() ()) (let ($res $ntail) (remove_rec $tail $elem) ($res (cons-atom $head $ntail))))
-;        ( ($h $t) (superpose (($h $t) (let ($res $ntail) (remove_recf $tail $elem) ($res (cons-atom $head $ntail))))))
-;      ))
-;      (() $list)
-;))
-;
-;(= (remove_recf $list $elem)
-;   (if-decons-expr $list $head $tail
-;      (case (sealed $elem (unify $elem $head ($head $tail) (() ())))
-;      (
-;        ( (() ()) (let ($res $ntail) (remove_recf $tail $elem) ($res (cons-atom $head $ntail))))
-;        ( ($h $t) (superpose (($h $t) (let ($res $ntail) (remove_recf $tail $elem) ($res (cons-atom $head $ntail))))))
-;      ))
-;      (empty)
-;))
-;
-;!(remove_rec (a b a c) a)
-;!(remove_rec (a b a c) $v)
+(= (elem $elem $list)
+   (if-decons-expr $list $head $tail
+      (unify $elem $head ($head $list) (let ($res $ntail) (elem $tail $elem) ($res (cons-atom $head $ntail))))
+      (() $list)
+))
 
 ;;Helper function for overlap
 (= (overlap_ff ($left $intersection $right) $elem)
-   (let ($res $nright) (remove_rec $right $elem)
+   (let ($res $nright) (remove $right $elem)
      (if (== $res ())
         ((cons-atom $elem $left) $intersection $nright)
         ($left (cons-atom $res $intersection) $nright))))
@@ -104,5 +87,15 @@
 ;;Custom unique union function that works with variables
 (= (unique-union-atom $a $b) (let $res (concat $a $b) (myunique $res)))
 
-;!(overlap2 ($v) (a b))
-;!(overlap2 (a b) ($v))
+(= (merge_ff $list $elem)
+   (let ($res $nlist) (elem $right $elem)
+     (if (== $res ())
+        ($nlist)
+        (cons-atom $elem $list))))
+
+(= (merge-nodups $a $b)
+   (if (== (get-metatype $a) Variable)
+     $b
+     (if (== (get-metatype $b) Variable)
+       $a
+       (myfoldr-atom $a $b merge_ff))))
