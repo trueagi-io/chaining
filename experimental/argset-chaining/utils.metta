@@ -29,7 +29,7 @@
 
 (= (myfoldr-atom $list $init $f)
    (if-decons-expr $list $head $tail
-      ($f $head (myfoldr-atom $tail $init $f))
+      ($f (myfoldr-atom $tail $init $f) $head)
       $init))
 
 ;;Concat 2 sets together
@@ -43,17 +43,38 @@
 
 ;;Remove $elem from set if it can be unified with an element in $list
 ;;Return the unified $elem and the remaining set
+
 (= (remove_rec $list $elem)
    (if-decons-expr $list $head $tail
-      (unify $elem $head
-        ($head $tail)
-        (let ($res $ntail) (remove_rec $tail $elem) ($res (cons-atom $head $ntail))))
+      (unify $elem $head ($head $tail) (let ($res $ntail) (remove_rec $tail $elem) ($res (cons-atom $head $ntail))))
       (() $list)
 ))
 
+;(= (remove_rec $list $elem)
+;   (if-decons-expr $list $head $tail
+;      (case (sealed $elem (unify $elem $head ($head $tail) (() ())))
+;      (
+;        ( (() ()) (let ($res $ntail) (remove_rec $tail $elem) ($res (cons-atom $head $ntail))))
+;        ( ($h $t) (superpose (($h $t) (let ($res $ntail) (remove_recf $tail $elem) ($res (cons-atom $head $ntail))))))
+;      ))
+;      (() $list)
+;))
+;
+;(= (remove_recf $list $elem)
+;   (if-decons-expr $list $head $tail
+;      (case (sealed $elem (unify $elem $head ($head $tail) (() ())))
+;      (
+;        ( (() ()) (let ($res $ntail) (remove_recf $tail $elem) ($res (cons-atom $head $ntail))))
+;        ( ($h $t) (superpose (($h $t) (let ($res $ntail) (remove_recf $tail $elem) ($res (cons-atom $head $ntail))))))
+;      ))
+;      (empty)
+;))
+;
+;!(remove_rec (a b a c) a)
+;!(remove_rec (a b a c) $v)
 
 ;;Helper function for overlap
-(= (overlap_ff $elem ($left $intersection $right))
+(= (overlap_ff ($left $intersection $right) $elem)
    (let ($res $nright) (remove_rec $right $elem)
      (if (== $res ())
         ((cons-atom $elem $left) $intersection $nright)
@@ -83,3 +104,5 @@
 ;;Custom unique union function that works with variables
 (= (unique-union-atom $a $b) (let $res (concat $a $b) (myunique $res)))
 
+;!(overlap2 ($v) (a b))
+;!(overlap2 (a b) ($v))
