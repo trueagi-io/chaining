@@ -14,23 +14,23 @@
 ;; Traverse a trie node and collect values from nodes whose keys appear in the query.
 (: lookup-all-subsets-traverse (-> Expression Expression Expression))
 (= (lookup-all-subsets-traverse $node $query)
-   (match $node
-     ((trie $value $children)
-      (union-atom (if (== $value ())
-                   ()
-                   (list $value))
-       (lookup-all-subsets-children $children $query)))))
+   (unify $node (trie $value $children)
+          (union-atom (if (== $value ())
+                          ()
+                          (list $value))
+                      (lookup-all-subsets-children $children $query))
+          (error "lookup-all-subsets-traverse: pattern failed")))
 
 ;; Traverse the children list of a trie node.
 (: lookup-all-subsets-children (-> Expression Expression Expression))
 (= (lookup-all-subsets-children $children $query)
    (if (== $children ())
        ()
-       (match $children
-         ((cons $pair $rest)
-           (match $pair
-             ((list $key $child)
-               (if (elem $key $query)
-                   (append (lookup-all-subsets-traverse $child $query)
-                           (lookup-all-subsets-children $rest $query))
-                   (lookup-all-subsets-children $rest $query))))))))
+       (unify $children (cons $pair $rest)
+              (unify $pair (list $key $child)
+                     (if (elem $key $query)
+                         (append (lookup-all-subsets-traverse $child $query)
+                                 (lookup-all-subsets-children $rest $query))
+                         (lookup-all-subsets-children $rest $query))
+                     (error "lookup-all-subsets-children: inner pair pattern failed"))
+              (error "lookup-all-subsets-children: children pattern failed"))))
