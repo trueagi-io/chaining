@@ -128,6 +128,21 @@ class SetSpace:
         return result
 
 
+    def lookup_all_subsets(self, query: ExpressionAtom) -> List[Atom]:
+        """Find all trie nodes whose path is a subset of the query.
+        Returns list of values for all matching nodes.
+        """
+        query_set = set(str(elem) for elem in query.get_children())
+        results = []
+        def traverse(node: TrieNode):
+            for key, child in node.children.items():
+                if key in query_set:
+                    if child.value is not None:
+                        results.append(child.value)
+                    traverse(child)
+        traverse(self.root)
+        return results
+
 class SpaceManager:
     def __init__(self):
         self.spaces: Dict[str, SetSpace] = {}
@@ -173,6 +188,13 @@ class SpaceManager:
         if space:
             space.pretty_print()
         return []
+    
+    def lookup_all_subsets_in_space(self, space_name: SymbolAtom, query: ExpressionAtom) -> List[ExpressionAtom]:
+        space = self.get_space(space_name)
+        if space:
+            results = space.lookup_all_subsets(query)
+            return [E(*results)] if results else [E()]
+        return []
 
 # Global SpaceManager instance
 MANAGER = SpaceManager()
@@ -184,6 +206,7 @@ lookup_atom = OperationAtom("lookup-in-setspace", MANAGER.lookup_in_space, ['Ato
 partial_lookup_atom = OperationAtom("partial-lookup-in-setspace", MANAGER.partial_lookup_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 elements_atom = OperationAtom("get-setspace-elements", MANAGER.get_space_elements, ['Atom', 'Expression'], unwrap=False)
 pretty_print_atom = OperationAtom("pretty-print-setspace", MANAGER.pretty_print_space, ['Atom', 'Atom'], unwrap=False)
+lookup_all_subsets_atom = OperationAtom("lookup-all-subsets-in-setspace", MANAGER.lookup_all_subsets_in_space, ['Atom', 'Expression', 'Expression'], unwrap=False)
 
 @register_atoms
 def my_atoms():
@@ -193,7 +216,8 @@ def my_atoms():
         "lookup-in-setspace": lookup_atom,
         "partial-lookup-in-setspace": partial_lookup_atom,
         "get-setspace-elements": elements_atom,
-        "pretty-print-setspace": pretty_print_atom
+        "pretty-print-setspace": pretty_print_atom,
+        "lookup-all-subsets-in-setspace": lookup_all_subsets_atom
     }
 
 if __name__ == "__main__":
