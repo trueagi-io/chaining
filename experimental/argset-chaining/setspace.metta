@@ -6,6 +6,14 @@
 ;; and <children> is a expression of pairs.
 ;; Each pair is represented as: (<key> <child>), where <key> is a symbol and <child> is a trie node.
 
+;; Create a new setspace. With no arguments, returns an empty setspace.
+(: create-setspace (-> Expression))
+(= ((create-setspace) ())
+   (trie () ()))
+;; Alternatively, create a setspace with given children.
+(= ((create-setspace) ($children))
+   (trie () $children))
+
 ;; Main function: lookup_all_subsets
 (: lookup-all-subsets (-> Expression Expression Expression))
 (= (lookup-all-subsets $trie $query)
