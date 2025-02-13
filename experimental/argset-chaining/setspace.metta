@@ -64,13 +64,10 @@
 ;; Traverse the children list of a trie node.
 (: lookup-all-subsets-children (-> Expression Expression Expression))
 (= (lookup-all-subsets-children $children $query)
-   (if (== $children ())
-       ()
-       (unify $children (cons $pair $rest)
-              (unify $pair (list $key $child)
-                     (if (elem $key $query)
-                         (append (lookup-all-subsets-traverse $child $query)
-                                 (lookup-all-subsets-children $rest $query))
-                         (lookup-all-subsets-children $rest $query))
-                     (error "lookup-all-subsets-children: inner pair pattern failed"))
-              (error "lookup-all-subsets-children: children pattern failed"))))
+   (if-decons-expr $children $child_expr $rest_children
+      (let (child $key $child) $child_expr
+         (if (elem $key $query)
+             (append (lookup-all-subsets-traverse $child $query)
+                     (lookup-all-subsets-children $rest_children $query))
+             (lookup-all-subsets-children $rest_children $query)))
+      ()))
