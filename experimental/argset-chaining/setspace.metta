@@ -14,6 +14,21 @@
 (= ((create-setspace) ($children))
    (trie () $children))
 
+;; Insert function: insert-setspace
+(: insert-setspace (-> Expression Expression Expression Expression))
+(= (insert-setspace (trie $old_val $children) () $new_val)
+   (trie $new_val $children))
+(= (insert-setspace (trie $old_val $children) (cons $key $rest) $new_val)
+   (trie $old_val (insert-child $children $key $rest $new_val)))
+
+(: insert-child (-> Expression Expression Expression Expression Expression))
+(= (insert-child () $key $rest $new_val)
+   (cons (list $key (insert-setspace ((create-setspace)) $rest $new_val)) ()))
+(= (insert-child (cons (list $k $child) $rest_children) $key $rest $new_val)
+   (if (== $k $key)
+       (cons (list $k (insert-setspace $child $rest $new_val)) $rest_children)
+       (cons (list $k $child) (insert-child $rest_children $key $rest $new_val))))
+
 ;; Main function: lookup_all_subsets
 (: lookup-all-subsets (-> Expression Expression Expression))
 (= (lookup-all-subsets $trie $query)
