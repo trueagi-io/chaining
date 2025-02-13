@@ -1,33 +1,50 @@
-!(import &self utils)
+!(import! &self utils)
 ;; A pure MeTTa implementation of lookup_all_subsets for a trie-based set space.
 ;;
 ;; A trie node is represented as an expression: (trie <value> <children>)
 ;; where <value> is an optional atom (use () when there is no value),
 ;; and <children> is a expression of pairs.
-;; Each pair is represented as: (<key> <child>), where <key> is a symbol and <child> is a trie node.
+;; Each pair is represented as: (child <key> <child>), where <key> is a symbol and <child> is a trie node.
 
 ;; Create a new setspace. With no arguments, returns an empty setspace.
-(: create-setspace (-> Expression))
-(= ((create-setspace) ())
+(= (create-setspace)
    (trie () ()))
 ;; Alternatively, create a setspace with given children.
-(= ((create-setspace) ($children))
+(= ((create-setspace) $children)
    (trie () $children))
 
 ;; Insert function: insert-setspace
-(: insert-setspace (-> Expression Expression Expression Expression))
-(= (insert-setspace (trie $old_val $children) () $new_val)
-   (trie $new_val $children))
-(= (insert-setspace (trie $old_val $children) (cons $key $rest) $new_val)
-   (trie $old_val (insert-child $children $key $rest $new_val)))
+;(: insert-setspace (-> Expression Expression Expression Expression))
+(= (insert-setspace (trie $old_val $children) $keys $new_val)
+   (if-decons-expr $keys $key $rest
+      (trie $old_val (insert-child $children $key $rest $new_val))
+      (trie $new_val $children)))
 
-(: insert-child (-> Expression Expression Expression Expression Expression))
-(= (insert-child () $key $rest $new_val)
-   (cons (list $key (insert-setspace ((create-setspace)) $rest $new_val)) ()))
-(= (insert-child (cons (list $k $child) $rest_children) $key $rest $new_val)
-   (if (== $k $key)
-       (cons (list $k (insert-setspace $child $rest $new_val)) $rest_children)
-       (cons (list $k $child) (insert-child $rest_children $key $rest $new_val))))
+;(: insert-child (-> Expression Expression Expression Expression Expression))
+;(= (insert-child () $key $rest $new_val)
+;   (cons (list $key (insert-setspace (create-setspace) $rest $new_val)) ()))
+;(= (insert-child (cons (list $k $child) $rest_children) $key $rest $new_val)
+;   (if (== $k $key)
+;       (cons (list $k (insert-setspace $child $rest $new_val)) $rest_children)
+;       (cons (list $k $child) (insert-child $rest_children $key $rest $new_val))))
+
+(= (insert-child $children $key $rest $new_val)
+   (if-decons-expr $children $old_child $rest_children
+      (let (child $k $child) (trace! $old_child $old_child)
+      (if (== $k $key)
+        (let $new_child (child $k (insert-setspace $child $rest $new_val)) (cons-atom $new_child $rest_children))
+        (let $new_tail (insert-child $rest_children $key $rest $new_val) (cons-atom $old_child $new_tail))))
+   ((child $key (insert-setspace (create-setspace) $rest $new_val)))))
+
+
+!(insert-setspace (create-setspace) () A)
+
+!(let* ( ($s1 (create-setspace))
+         ($s2 (insert-setspace $s1 (a) A))
+         ($s3 (insert-setspace $s2 (b) B))
+         ($s4 (insert-setspace $s3 (b c) BC))
+       )
+   $s4)
 
 ;; Main function: lookup_all_subsets
 (: lookup-all-subsets (-> Expression Expression Expression))
