@@ -14,19 +14,10 @@
    (trie () $children))
 
 ;; Insert function: insert-setspace
-;(: insert-setspace (-> Expression Expression Expression Expression))
 (= (insert-setspace (trie $old_val $children) $keys $new_val)
    (if-decons-expr $keys $key $rest
       (trie $old_val (insert-child $children $key $rest $new_val))
-      (trie $new_val $children)))
-
-;(: insert-child (-> Expression Expression Expression Expression Expression))
-;(= (insert-child () $key $rest $new_val)
-;   (cons (list $key (insert-setspace (create-setspace) $rest $new_val)) ()))
-;(= (insert-child (cons (list $k $child) $rest_children) $key $rest $new_val)
-;   (if (== $k $key)
-;       (cons (list $k (insert-setspace $child $rest $new_val)) $rest_children)
-;       (cons (list $k $child) (insert-child $rest_children $key $rest $new_val))))
+      (trie (cons-atom $new_val $old_val) $children)))
 
 (= (insert-child $children $key $rest $new_val)
    (if-decons-expr $children $old_child $rest_children
@@ -37,37 +28,29 @@
    ((child $key (insert-setspace (create-setspace) $rest $new_val)))))
 
 
-!(insert-setspace (create-setspace) () A)
+;; Main function: lookup_all_subsets
+(= (lookup-all-subsets (trie $value $children) $query)
+   (let $recurse (lookup-all-subsets-children $children $query)
+   (union-atom $value $recurse)))
+
+;; Traverse the children list of a trie node.
+(= (lookup-all-subsets-children $children $query)
+   (if-decons-expr $children $child_expr $rest_children
+      (let (child $key $child) $child_expr
+         (if (elemB $key $query)
+             (let $a (lookup-all-subsets $child $query)
+             (let $b (lookup-all-subsets-children $rest_children $query)
+               (union-atom $a $b)))
+             (lookup-all-subsets-children $rest_children $query)))
+      ()))
+
+!(elemB a (a))
 
 !(let* ( ($s1 (create-setspace))
          ($s2 (insert-setspace $s1 (a) A))
          ($s3 (insert-setspace $s2 (b) B))
          ($s4 (insert-setspace $s3 (b c) BC))
+         ($r (lookup-all-subsets $s4 (b c)))
        )
-   $s4)
+   $r)
 
-;; Main function: lookup_all_subsets
-(: lookup-all-subsets (-> Expression Expression Expression))
-(= (lookup-all-subsets $trie $query)
-   (lookup-all-subsets-traverse $trie $query))
-
-;; Traverse a trie node and collect values from nodes whose keys appear in the query.
-(: lookup-all-subsets-traverse (-> Expression Expression Expression))
-(= (lookup-all-subsets-traverse $node $query)
-   (unify $node (trie $value $children)
-          (union-atom (if (== $value ())
-                          ()
-                          (list $value))
-                      (lookup-all-subsets-children $children $query))
-          (error "lookup-all-subsets-traverse: pattern failed")))
-
-;; Traverse the children list of a trie node.
-(: lookup-all-subsets-children (-> Expression Expression Expression))
-(= (lookup-all-subsets-children $children $query)
-   (if-decons-expr $children $child_expr $rest_children
-      (let (child $key $child) $child_expr
-         (if (elem $key $query)
-             (append (lookup-all-subsets-traverse $child $query)
-                     (lookup-all-subsets-children $rest_children $query))
-             (lookup-all-subsets-children $rest_children $query)))
-      ()))
