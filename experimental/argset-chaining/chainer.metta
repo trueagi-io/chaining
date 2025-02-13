@@ -87,14 +87,17 @@
           $q                            ; Query
           $q))                          ; Result
 
-(= (bc $kb $depth_full $query)
- (let $nquery (normalize $query) ;First normalize the query
- (let (-> $pset $cset) $nquery ;Deconstruct the query
+(= (bcn $kb $depth_full $query) (bc $kb $depth_full (normalize $query)))
+
+(= (bc $kb $depth_full (-> $pset $cset))
  (if (== $cset ()) (-> () ()) ;You can always proove the empty set
      (let* (;Lookup all combination of rules that proof our conclusions
-            (($cset $cmatched) (if (and (== (get-metatype $cset) Expression) (not (== $cset ()))) (lookup-cset-in-kb $kb $cset) ($cset $cmatched)))
+            (debug (trace! (Query (-> $pset $cset)) debug))
+            (($cset $cmatched) (if (== (get-metatype $cset) Expression) (lookup-cset-in-kb $kb $cset) ($cset $cmatched)))
+            (debug (trace! (Cmatched $cmatched) debug))
             ;Lookup all combinations of rules that contain our parameters
-            (($pset $pmatched) (if (and (== (get-metatype $pset) Expression) (not (== $pset ()))) (lookup-pset-in-kb $kb $pset) ($pset $pmatched)))
+            (($pset $pmatched) (if (== (get-metatype $pset) Expression) (lookup-pset-in-kb $kb $pset) ($pset $pmatched)))
+            (debug (trace! (Pmatched $pmatched) debug))
 
             ;Combine all the rules into one
             ((-> $mpset $mcset) (combine (merge-nodups $cmatched $pmatched)))
@@ -105,6 +108,8 @@
             ;$ppset is the set of parameters that are not covered (need to prove them)
             (($_pset $npset $ppset) (overlap2 $pset $mpset))
 
+            (debug (trace! (Psets $_pset $npset $ppset) debug))
+
             ;If there are no parameters to prove run the cpu functions
             ($mcset (if (== $ppset ()) (map-atom $mcset $s (runcpu $s)) $mcset))
            )
@@ -114,7 +119,7 @@
              (let (-> $fpset $fcset) (bc $kb $depth (-> (unique-union-atom $mcset $pset) $ppset))
              (let $mcset (map-atom $mcset $s (runcpu $s)) ;run cpu functions now that ppset is proven
                   (-> $npset (unique-union-atom $fcset $mcset))))
-             (if (== $ppset ()) (-> $npset $mcset) (empty))))))))
+             (if (== $ppset ()) (-> $npset $mcset) (empty))))))
 
 ;If $stmt is a CPU statement, then run the CPU function
 (= (runcpu $stmt)
@@ -130,48 +135,62 @@
 !(add-to-kb &s (-> () ((: a A))))
 !(add-to-kb &s (-> () ((: b B))))
 
+;!(let ($cs $ps) &s (add-atom $cs test))
+;!(let ($cs $ps) &s (println! $cs))
+;!(let ($cs $ps) &s (match $cs $a $a))
+
+;!(let ($cs $ps) &s ((lookup_ff $cs) (() ()) (: $a A)))
+
+;!(lookup-cset-in-kb &s ((: $a A)))
+
+!(bind! &start ((py-atom time.time)))
+
 ;; Basic type queries
-!(assertEqual (bc &s Z (-> () ((: $_ A))))
-    (-> () ((: a A))))
+;!(assertEqual (limit 1 (bc &s Z (-> () ((: $_ A)))))
+;    (-> () ((: a A))))
+!(bc &s Z (-> () ((: $_ A))))
 
-!(assertEqual (bc &s (S (S Z)) (-> () ((: $p C))))
-    (-> () ((: a A) (: b B) (: (f a b) C))))
+!(bind! &end ((py-atom time.time)))
+!(- &end &start)
 
-!(assertEqual (bc &s (S (S Z)) (-> () ((: (f a b) $t))))
-    (-> () ((: a A) (: b B) (: (f a b) C))))
+;!(assertEqual (bc &s (S (S Z)) (-> () ((: $p C))))
+;    (-> () ((: a A) (: b B) (: (f a b) C))))
 ;
-;;; Partial application
-!(assertEqual (bc &s (S (S Z)) (-> ((: $a A)) ((: $c C))))
-    (-> ((: $a A)) ((: b B) (: (f $a b) C))))
-
-!(assertEqual (bc &s (S Z) (-> $prms ((: (f $a b) $t))))
-    (-> () ((: a A) (: b B) (: (f a b) C))))
-
-!(assertEqual (bc &s (S (S Z)) (-> () ((: $d D))))
-    (-> () ((: b B) (: (f2 a b) D))))
-
-!(assertEqual (bc &s (S (S Z)) (-> $prms ((: (f2 a b) $t))))
-    (-> () ((: b B) (: (f2 a b) D))))
-
-!(assertEqual (bc &s (S (S Z)) (-> ((: $e E)) ((: $f F))))
-    (-> ((: $e E)) ((: b B) (: (f3 a b $e) F))))
-
-!(assertEqual (bc &s (S (S Z)) (-> ((: $e E)) ((: (f3 a b $e) $t))))
-    (-> ((: $e E)) ((: b B) (: (f3 a b $e) F))))
-
-!(bind! &f1 (init-kb))
-
-!(add-to-kb &f1 (-> () ((: (f1) A))))
-!(add-to-kb &f1 (-> ((: $b B)) ((: $a A) (: (f2 $a $b) C))))
-
-!(assertEqual (bc &f1 (S Z) (-> () ((: $a A)))) (-> () ((: (f1) A))))
-
-!(bind! &f2 (init-kb))
-
-!(add-to-kb &f2 (-> ((: $a A)) ((: (f1 $a) B))))
-!(add-to-kb &f2 (-> ((: $a A) (: $c C)) ((: (f2 $a $c) D))))
-
-!(assertEqual (bc &f2 (S Z) (-> ((: $a A)) $type)) (-> ((: $a A)) ((: (f1 $a) B))))
+;!(assertEqual (bc &s (S (S Z)) (-> () ((: (f a b) $t))))
+;    (-> () ((: a A) (: b B) (: (f a b) C))))
+;;
+;;;; Partial application
+;!(assertEqual (bc &s (S (S Z)) (-> ((: $a A)) ((: $c C))))
+;    (-> ((: $a A)) ((: b B) (: (f $a b) C))))
+;
+;!(assertEqual (bc &s (S Z) (-> $prms ((: (f $a b) $t))))
+;    (-> () ((: a A) (: b B) (: (f a b) C))))
+;
+;!(assertEqual (bc &s (S (S Z)) (-> () ((: $d D))))
+;    (-> () ((: b B) (: (f2 a b) D))))
+;
+;!(assertEqual (bc &s (S (S Z)) (-> $prms ((: (f2 a b) $t))))
+;    (-> () ((: b B) (: (f2 a b) D))))
+;
+;!(assertEqual (bc &s (S (S Z)) (-> ((: $e E)) ((: $f F))))
+;    (-> ((: $e E)) ((: b B) (: (f3 a b $e) F))))
+;
+;!(assertEqual (bc &s (S (S Z)) (-> ((: $e E)) ((: (f3 a b $e) $t))))
+;    (-> ((: $e E)) ((: b B) (: (f3 a b $e) F))))
+;
+;!(bind! &f1 (init-kb))
+;
+;!(add-to-kb &f1 (-> () ((: (f1) A))))
+;!(add-to-kb &f1 (-> ((: $b B)) ((: $a A) (: (f2 $a $b) C))))
+;
+;!(assertEqual (bc &f1 (S Z) (-> () ((: $a A)))) (-> () ((: (f1) A))))
+;
+;!(bind! &f2 (init-kb))
+;
+;!(add-to-kb &f2 (-> ((: $a A)) ((: (f1 $a) B))))
+;!(add-to-kb &f2 (-> ((: $a A) (: $c C)) ((: (f2 $a $c) D))))
+;
+;!(assertEqual (bc &f2 (S Z) (-> ((: $a A)) $type)) (-> ((: $a A)) ((: (f1 $a) B))))
 
 ;!(bind! &f3 (init-kb))
 ;
