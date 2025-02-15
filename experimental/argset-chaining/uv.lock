@@ -1,0 +1,49 @@
+version = 1
+requires-python = ">=3.10"
+
+[[package]]
+name = "argset-chaining"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "hyperon" },
+    { name = "sortedcontainers" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hyperon", specifier = ">=0.2.2" },
+    { name = "sortedcontainers", specifier = ">=2.4.0" },
+]
+
+[[package]]
+name = "hyperon"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/09/85c35f6db24280f298433a51aac5dd7a9e1e8d700a42bd83e62b10ae0776/hyperon-0.2.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:4d69f9decba2c17f28b76a6a3768a438cb029ad8167450cae7eee5e288667a5d", size = 5369800 },
+    { url = "https://files.pythonhosted.org/packages/3a/2e/9be433228459431efc02af523182369e64ab3d1bf52c00ed1e14839fa099/hyperon-0.2.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:7ca0a8844b566ada7e4d369446306d874793d773fc67eb2b79636a1176014133", size = 5376142 },
+    { url = "https://files.pythonhosted.org/packages/8e/f2/e4c59cdc193181a311603ddbc5b2eacb8443bae104179582b3a5c02b0ee0/hyperon-0.2.2-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:fc5293ce562d63d20f33296ab8075c091ede412f4b62be989c6f00fde502f103", size = 5526162 },
+    { url = "https://files.pythonhosted.org/packages/86/c0/c63f002045ce2fe81e17418059c09d203a7e27de92c5eef0f4c94728a30c/hyperon-0.2.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9e2169ca656c9ac9000e03839ffa988c3fa5fa6f436b22900e6fbc9d48fac940", size = 5628037 },
+    { url = "https://files.pythonhosted.org/packages/e6/92/3bed12199e273b3be3d0f37d88241117f4745de645b439d775312b44b029/hyperon-0.2.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:10690fe8b509bc632b98ede83b69428fff14738cdfdd33fe5e48bec8137044eb", size = 5369838 },
+    { url = "https://files.pythonhosted.org/packages/3d/7b/1c2d22a0bf22713d4c1779bd94347bc302fcbbf1690e326c174c9c246b48/hyperon-0.2.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:ffa9c3255e5b57852ba7bc8cc6a15c7ae3220f19c11c7100972002e45a6d9944", size = 5376170 },
+    { url = "https://files.pythonhosted.org/packages/96/c2/87b162cb58fd016ccb220dbd8475cc83c2798eeff4d6bb34532f42a4f88b/hyperon-0.2.2-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b7bcb27b21309de5312f3d81d46ad65afe800d7e210d5cd3ce2c821ac1aa48b1", size = 5526017 },
+    { url = "https://files.pythonhosted.org/packages/67/25/db9d20e5b17a01f3d9156b8ba6e68e6adb166e9c4e392291a000a8a7b5ca/hyperon-0.2.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f105eefe6eea7a01caa6a3c3f29ce50b8f5ea921930c4a8fa77ec749a034182e", size = 5627862 },
+    { url = "https://files.pythonhosted.org/packages/4f/c1/3f1c789b0d4b46312267786ec7b23cabf4ba3a8ec13b1f117a73f8c58b8b/hyperon-0.2.2-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:9b51b82b3046b85576f308062c78fbe26873379fb79671531f08b7f1e69dfa65", size = 5374477 },
+    { url = "https://files.pythonhosted.org/packages/90/65/692664838b14ac185fa2c5b7e127d17b4ee8381cf29f7d86820a7c68ebb7/hyperon-0.2.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:14b7b092872be2f897e3a14dc9c32023c12c1490c4ba9fba62d03cc12e9188f0", size = 5376371 },
+    { url = "https://files.pythonhosted.org/packages/43/73/7157675bd97776a2cbb6de26ce47c3bbf81305263be9facb733478455c2b/hyperon-0.2.2-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:bb4a457fd8f0e407263a21f9e83bb2fefaba451d7ede360811479a94e490afb3", size = 5526840 },
+    { url = "https://files.pythonhosted.org/packages/0b/0e/b7057d2c3812157b1533ef661b266604142593c3cdf352ae7bc3c459b9de/hyperon-0.2.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ddd5fe3bc8eab42ae26f7987482574b3de4a8fe1d78a66e7b6f6a6dde71a0559", size = 5628127 },
+    { url = "https://files.pythonhosted.org/packages/c3/32/6d69deba42ae008e381530ce65cae10ed37845b01f07a3f0de397da9c3d8/hyperon-0.2.2-pp310-pypy310_pp73-macosx_10_9_x86_64.whl", hash = "sha256:9db307f4d622c199245894b834a32dc1c63cc1617f0c6b39a66453b10a4a53c7", size = 5370487 },
+    { url = "https://files.pythonhosted.org/packages/1f/64/ac812381a47167095526cfa29f48dd05ea5b35fb7459a0c9d5932326dc28/hyperon-0.2.2-pp310-pypy310_pp73-macosx_11_0_arm64.whl", hash = "sha256:7e3fbd18ed16e5c52f9491de337ee0b1134c60dadc92dbc50b9e1d17ff65d045", size = 5376426 },
+    { url = "https://files.pythonhosted.org/packages/e8/fe/80940efdf08488419f1bd85494097bea1ddfdd704a014c82d9d88d52f883/hyperon-0.2.2-pp310-pypy310_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:9fc68027ab457e97a723b16582b00633061aa012e0356f003c8324ceb9e6f7bf", size = 5527273 },
+    { url = "https://files.pythonhosted.org/packages/ea/ee/d7ce03e835eccddfee593c206516912a1f057c6dea9d88bd8885dc05fbd9/hyperon-0.2.2-pp310-pypy310_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d5340bca1f61abc880e14e70ecdb5e962cfb3984b230d5a1b767cd2b580772ca", size = 5629029 },
+]
+
+[[package]]
+name = "sortedcontainers"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/c4/ba2f8066cceb6f23394729afe52f3bf7adec04bf9ed2c820b39e19299111/sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88", size = 30594 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/46/9cb0e58b2deb7f82b84065f37f3bffeb12413f947f9388e4cac22c4621ce/sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0", size = 29575 },
+]
