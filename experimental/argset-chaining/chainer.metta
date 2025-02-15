@@ -1,5 +1,5 @@
 !(import! &self utils)
-!(import! &self setspace)
+!(import! &self setspace2)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -21,7 +21,7 @@
 ;;They can be created with the init-kb function
 (= (init-kb)
    (let* (($cs (new-space))
-          ($ps (create-setspace))
+          ($ps (new-state (create-setspace)))
           )
    ($cs $ps))
 )
@@ -33,9 +33,11 @@
           ((-> $pset $cset) $nstmt)
           ($_ (foldl-atom $cset () $accum $celem (let $_ $accum (add-atom $cs ($celem $nstmt)))))
           ;($_ (foldl-atom $pset () $accum $pelem (let $_ $accum (add-atom $ps ($pelem $nstmt)))))
-          (add-atom $ps ($pset $nstmt))
+          ($ss (get-state $ps))
+          ($ns (insert-setspace $ss $pset $nstmt))
+          ($res (change-state! $ps $ns))
           )
-   ())
+   (Okay))
 )
 
 ;;Lookup functions
@@ -55,9 +57,11 @@
 
 ;This could be smarter we could combine stuff
 
-(= (lookup-pset-in-kb ($cs $ps) $query) (combine (lookup-all-subsets $ps $query)))
+(= (lookup-pset-in-kb ($cs $ps) $query)
+   (let $ss (get-state $ps) (combine (lookup-all-subsets $ss $query))))
 
 ;;Normalize a statement (remove parameters that are part of the conclusion)
+(= (normalize ()) ())
 (= (normalize (-> $pset $cset))
    (let $pset (if (== (get-metatype $pset) Variable) (()) $pset)
    (let $cset (if (== (get-metatype $cset) Variable) ($ccls) $cset)
@@ -73,132 +77,108 @@
      $stmt2
      (if (or (== (get-metatype $stmt2) Variable) (== $stmt2 ()))
        $stmt1
-       (let (-> $pset1 $cset1) $stmt1
-         (let (-> $pset2 $cset2) $stmt2
+       (let (-> $pset1 $cset1) (tracem stmt1 $stmt1)
+         (let (-> $pset2 $cset2) (tracem stmt2 $stmt2)
            (-> (unique-union-atom $pset1 $pset2) (concat $cset1 $cset2)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
-(: bc (-> $a                            ; Knowledge base space
-          Nat                           ; Maximum depth
-          $q                            ; Query
-          $q))                          ; Result
-
-(= (bcn $kb $depth_full $query) (bc $kb $depth_full (normalize $query)))
-
 (= (bcp $kb $depth_full (-> $pset $cset))
  (if-decons-expr $cset $ccls $ctail
   (let*
    ((debug (trace! (bcp $ccls $ctail) debug))
     ((-> $ppset $pcset) (bc $kb $depth_full (-> $pset $ccls)))
-    (($ncset $_cset $nctail) (overlap2 $pcset $ctail))
-    ($npset (concat $pset $pcset))
-    ((-> $rpset $rcset) (bcp $kb $depth_full (-> $npset $nctail)))
+    ;(debug (trace! (Proof (-> $ppset $pcset)) debug))
    )
-  (normalize (unionStmt (-> $ppset $pcset) (-> $rpset $rcset)))
+   (if (== $ctail ()) ;Don't recurse if there is nothing left to do
+    (-> $ppset $pcset)
+    (let* 
+     ((($ncset $_cset $nctail) (overlap2 $pcset $ctail))
+      ($npset (concat $pset $pcset))
+      ;(debug (trace! (NPset $npset) debug))
+      ((-> $rpset $rcset) (bcp $kb $depth_full (-> $npset $nctail)))
+      ;(debug (trace! (Proof2 (-> $rpset $rcset)) debug))
+     )
+     (normalize (unionStmt (-> $ppset $pcset) (-> $rpset $rcset)))
+    )
+   )
   )
-  ;$cset is empty move 
-  (fc $kb $depth_full (-> $pset $cset))
+  ;$cset is empty nothing to do
+  (-> $var $cset)
  )
 )
 
 (= (bc $kb $depth_full (-> $pset $ccls))
  (let* ;Go step backwards
-  (($ccls (-> $lc_pset $lc_cset)) (lookup-ccls $kb $ccls)
-   (debug (trace! (lc $lc_pset $lc_cset) debug))
+  ((($ccls (-> $lc_pset $lc_cset)) (lookup-ccls $kb $ccls))
+   (debug (trace! (lc (-> $lc_pset $lc_cset)) debug))
    (($_pset $opset $ppset) (overlap2 $pset $lc_pset))
+   ;(debug (trace! (overlap2 $_pset $opset $ppset) debug))
   )
   ;Alternate to a forward step
-  (if (== $ppset ())
+  (if (== $ppset (()))
     (-> $lc_pset $lc_cset)
-    (fc $kb $depth_full (-> (concat $pset $lc_cset) $ppset))
+    (let (-> $a $b)
+         ;(bcp $kb $depth_full (-> $pset $ppset))
+         (fc $kb $depth_full (-> $pset $ppset)) ;Add $lc_set?
+         (normalize (unionStmt (-> $lc_pset $lc_cset) (-> $a $b)))
+    )
   )
  )
 )
 
 (= (fc $kb $depth_full (-> $pset $cset))
  (let* ;Go step forwards
-  ((($pset (-> $lp_pset $lp_cset)) (lookup-pset-in-kb $kb $pset)) ;Should we add the $lc_set to the lookup?
-   (($_cset $ocset $pcset) (overlap $lc_cset $cset))
+  ((debug (trace! (fc (-> $pset $cset)) debug))
+   (debug (trace! (lookup-pset-in-kb $kb $pset) debug))
+   ((-> $lp_pset $lp_cset) (lookup-pset-in-kb $kb $pset)) ;TODO unification with $pset possible?
+   (debug (trace! (lp (-> $lp_pset $lp_cset)) debug))
+   (debug (trace! (overlapPre $lp_cset $cset) debug))
+   (($_cset $ocset $pcset) (overlap $lp_cset $cset))
+   (debug (trace! (overlap $_cset $ocset $pcset) debug))
 
-   ($npset (concat $pset $lp_set))
+   ($npset (concat $pset $lp_cset))
   )
   (unify $depth_full (S $depth) ;Check if we can search deeper
-   (if (== $pcset ()) ;If $pcset is empty we can move forward if it's not we try to prove it
-    (fc $kb $depth (-> $npset $cset))
-    (bcp $kb $depth (-> $npset $pcset)))
-   (-> $lp_pset $lc_cset))
+   (if (== (get-metatype $cset) Variable) ;If $cset is a variable just keep going forward
+    (fc $kb $depth (-> $npset $pcset))
+    (if (tracem =pc (== $pcset ())) ;If $pcset is empty we solved the problem otherwise we try to prove it
+      (-> $lp_pset $lp_cset)
+      (bcp $kb $depth (-> $npset $pcset))
+    )
+   )
+   (if (== $pcset ()) ;If $pcset is empty we can return what we have
+     (-> $lp_pset $lp_cset)
+     Empty 
+   )
+  )
  )
 )
-
-(= (bc_old $kb $depth_full (-> $pset $cset))
- (if (== $cset ()) (-> () ()) ;You can always proove the empty set
-     (let* (;Lookup all combination of rules that proof our conclusions
-            (debug (trace! (Query (-> $pset $cset)) debug))
-            (($cset $cmatched) (if (== (get-metatype $cset) Expression) (lookup-cset-in-kb $kb $cset) ($cset $cmatched)))
-            (debug (trace! (Cmatched $cmatched) debug))
-            ;Lookup all combinations of rules that contain our parameters
-            ($pset (if (== (get-metatype $pset) Variable) (()) $pset))
-            (($pset $pmatched) (if (== (get-metatype $pset) Expression) (lookup-pset-in-kb $kb $pset) ($pset $pmatched)))
-            (debug (trace! (Pmatched $pmatched) debug))
-
-            ;Combine all the rules into one
-            ((-> $mpset $mcset) (combine (merge-nodups $cmatched $pmatched)))
-
-            ;Check which parameters are covered
-            ;$_pset we could use but don't need
-            ;$npset is the set of parameters that are covered
-            ;$ppset is the set of parameters that are not covered (need to prove them)
-            (($_pset $npset $ppset) (overlap2 $pset $mpset))
-
-            (debug (trace! (Psets $_pset $npset $ppset) debug))
-
-            ;If there are no parameters to prove run the cpu functions
-            ($mcset (if (== $ppset ()) (map-atom $mcset $s (runcpu $s)) $mcset))
-           )
-           (unify $depth_full (S $depth) ;Check if we can search deeper
-             ;Now we try to prove ppset we know we can use pset for that
-             ;But we can also use mcset since if ppset is proven we know mcset is proven
-             (let (-> $fpset $fcset) (bc_old $kb $depth (-> (unique-union-atom $mcset $pset) $ppset))
-             (let $mcset (map-atom $mcset $s (runcpu $s)) ;run cpu functions now that ppset is proven
-                  (-> $npset (unique-union-atom $fcset $mcset))))
-             (if (== $ppset ()) (-> $npset $mcset) (empty))))))
 
 ;If $stmt is a CPU statement, then run the CPU function
 ;(= (runcpu $stmt)
 ;   (unify $stmt (: (CPU $f $args) (CPU $res)) (: (CPU $f $args) (CPU (cons-atom $f $args))) $stmt))
 
 ;Some tests
-!(bind! &s (init-kb))
+;!(bind! &s (init-kb))
 
-!(add-to-kb &s (-> ((: $a A) (: $b B)) ((: (f $a $b) C))))
-!(add-to-kb &s (-> ((: $b B)) ((: (f2 a $b) D))))
-!(add-to-kb &s (-> ((: $b B) (: $e E)) ((: (f3 a $b $e) F))))
+;!(add-to-kb &s (-> ((: $a A) (: $b B)) ((: (f $a $b) C))))
+;!(add-to-kb &s (-> ((: $b B)) ((: (f2 a $b) D))))
+;!(add-to-kb &s (-> ((: $b B) (: $e E)) ((: (f3 a $b $e) F))))
 
-!(add-to-kb &s (-> () ((: a A))))
-!(add-to-kb &s (-> () ((: b B))))
+;!(add-to-kb &s (-> (()) ((: a A))))
+;!(add-to-kb &s (-> (()) ((: b B))))
 
-;!(let ($cs $ps) &s (add-atom $cs test))
-;!(let ($cs $ps) &s (println! $cs))
-;!(let ($cs $ps) &s (match $cs $a $a))
-
-;!(let ($cs $ps) &s ((lookup_ff $cs) (() ()) (: $a A)))
-
-;!(lookup-cset-in-kb &s ((: $a A)))
-
-!(bind! &start ((py-atom time.time)))
+;!(bind! &start ((py-atom time.time)))
 
 ;; Basic type queries
-;!(assertEqual (limit 1 (bc &s Z (-> () ((: $_ A)))))
+;!(assertEqual (limit 1 )
 ;    (-> () ((: a A))))
+;!(bcp &s Z (-> $args ((: $a A) (: $b B))))
 
-!(lookup-ccls &s (: $_ A))
-
-!(bcp &s Z (-> () ((: $_ A))))
-
-!(bind! &end ((py-atom time.time)))
-!(- &end &start)
+;!(bind! &end ((py-atom time.time)))
+;!(- &end &start)
 
 ;!(assertEqual (bc &s (S (S Z)) (-> () ((: $p C))))
 ;    (-> () ((: a A) (: b B) (: (f a b) C))))
@@ -249,22 +229,3 @@
 ;
 ;!(assertEqual (bc &f3 (S (S Z)) (-> ((: $a A)) ((: $d D))))
 ;   (-> () ((: $a A))))
-
-;Benchmark
-;!(bind! &b (init-kb))
-
-;!(add-to-kb &b (-> (()) ((: $a A))))
-;!(add-to-kb &b (-> ((: $a A)) ((: (f0 $a) B))))
-;!(add-to-kb &b (-> ((: $b B)) ((: (f1 $b) C))))
-;!(add-to-kb &b (-> ((: $c C)) ((: (f2 $c) D))))
-;!(add-to-kb &b (-> ((: $d D)) ((: (f3 $d) E))))
-;!(add-to-kb &b (-> ((: $e E)) ((: (f4 $e) F))))
-;!(add-to-kb &b (-> ((: $f F)) ((: (f5 $f) G))))
-;!(add-to-kb &b (-> ((: $g G)) ((: (f6 $g) H))))
-;!(add-to-kb &b (-> ((: $h H)) ((: (f7 $h) I))))
-;!(add-to-kb &b (-> ((: $i I)) ((: (f8 $i) J))))
-;!(add-to-kb &b (-> ((: $j J)) ((: (f9 $j) K))))
-
-;!(bc &b (fromNumber 0) (-> (()) $ccls))
-;!(bc &b (fromNumber 2) (-> $args ((: $d D))))
-;!(bc &b (fromNumber 4) (-> ((: $a A)) ((: $k K))))
