@@ -21,12 +21,11 @@
 
 (= (insert-child $children $key $rest $new_val)
    (if-decons-expr $children $old_child $rest_children
-      (let (child $k $child) (trace! $old_child $old_child)
-      (if (== $k $key)
+      (let (child $k $child) $old_child
+      (if (=alpha $k $key)
         (let $new_child (child $k (insert-setspace $child $rest $new_val)) (cons-atom $new_child $rest_children))
         (let $new_tail (insert-child $rest_children $key $rest $new_val) (cons-atom $old_child $new_tail))))
    ((child $key (insert-setspace (create-setspace) $rest $new_val)))))
-
 
 ;; Main function: lookup_all_subsets
 (= (lookup-all-subsets (trie $value $children) $query)
@@ -46,11 +45,11 @@
 
 !(elemB a (a))
 
-!(let* ( ($s1 (create-setspace))
+!(time (let* ( ($s1 (create-setspace))
          ($s2 (insert-setspace $s1 (a) A))
          ($s3 (insert-setspace $s2 (b) B))
          ($s4 (insert-setspace $s3 (b c) BC))
          ($r (lookup-all-subsets $s4 (b c)))
        )
-   $r)
+   $r))
 

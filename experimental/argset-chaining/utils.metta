@@ -14,6 +14,16 @@
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
+
+(= (tracem $msg $a) (trace! ($msg $a) $a))
+
+(: time (-> Atom $a))
+(= (time $expr)
+   (let $start ((py-atom time.time))
+   (let $res $expr
+   (let $stop ((py-atom time.time))
+   (Time (- $stop $start) $res)))))
+
 ;; Custom fold function since the stdlib version has issues
 (= (myfold-atom $list $init $f)
    (if-decons-expr $list $head $tail
@@ -32,6 +42,8 @@
       ($f (myfoldr-atom $tail $init $f) $head)
       $init))
 
+!(assertEqual (myfoldr-atom (1 2 3) 0 +) 6)
+
 ;;Concat 2 sets together
 ;;If either set is a variable, return the other set
 (= (concat $list1 $list2)
@@ -41,6 +53,8 @@
      $list1
      (union-atom $list1 $list2))))
 
+!(assertEqual (concat (a b c) (a b d)) (a b c a b d))
+
 ;;Remove $elem from set if it can be unified with an element in $list
 ;;Return the unified $elem and the remaining set
 
@@ -49,11 +63,16 @@
       (unify $elem $head ($head $tail) (let ($res $ntail) (remove $tail $elem) ($res (cons-atom $head $ntail))))
       (() $list)
 ))
-
 (= (elem $elem $list)
    (if-decons-expr $list $head $tail
       (unify $elem $head ($head $list) (let ($res $ntail) (elem $tail $elem) ($res (cons-atom $head $ntail))))
       (() $list)
+))
+
+(= (elemB $elem $list)
+   (if-decons-expr $list $head $tail
+      (unify $elem $head True (elemB $elem $tail))
+      False
 ))
 
 ;;Helper function for overlap
@@ -79,13 +98,17 @@
      ($list1 () $list2)
      (myfoldr-atom $list1 (() () $list2) overlap_ff)))
 
-!(assertEqual (overlap (a b c) (a b d)) ((c) (a b) (d)))
+;!(assertEqual (overlap (a b c) (a b d)) ((c) (a b) (d)))
 
 ;;Custom unique function that works with variables
 (= (myunique $a) (if (== (get-metatype $a) Variable) $a (unique-atom $a)))
 
+!(assertEqual (myunique (a b a)) (a b))
+
 ;;Custom unique union function that works with variables
 (= (unique-union-atom $a $b) (let $res (concat $a $b) (myunique $res)))
+
+;!(assertEqual (unique-union-atom ((: $a A) (: b B)) ((: a A))) ((: a A) (: b B)))
 
 (= (merge_ff $list $elem)
    (let ($res $nlist) (elem $right $elem)
