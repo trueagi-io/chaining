@@ -46,9 +46,10 @@
 ;;Normalize a statement (remove premises that are part of the conclusion)
 (= (normalize ()) ())
 (= (normalize ($pset ⊢ $cset))
-   (let $pset (if (is-variable $pset) () $pset)
-   (let $cset (if (is-variable $cset) ($ccls) $cset)
-   (let ($npset $_ $ncset) (overlap2 $pset $cset) ($npset ⊢ $cset)))))
+   (let $pset (tracem p (if (is-variable $pset) () $pset))
+   (if (is-variable $cset)
+     ($pset ⊢ ($ccls))
+     (let ($npset $_ $ncset) (overlap2 $pset $cset) ($npset ⊢ $cset)))))
 
 ;;Takes a list/expression of statements and combines them
 (= (combine $a) (normalize (myfold-atom1 $a unionStmt)))
@@ -77,7 +78,7 @@
 ;Backward chainer for a set of conclusions
 (= (bcset $kb $depth_full ($pset ⊢ $cset))
  (if-decons-expr $cset $ccls $ctail
-  (let ($ppset ⊢ $pcset) (bcsingle $kb $depth_full ($pset ⊢ $ccls))
+  (let ($ppset ⊢ $pcset) (bcsingle $kb $depth_full (tracem q ($pset ⊢ $ccls)))
    (if (== $ctail ()) ;Don't recurse if there is nothing left to do
     ($ppset ⊢ $pcset)
     (let* 
@@ -101,6 +102,7 @@
 (= (bcsingle $kb $depth_full ($pset ⊢ $ccls))
  (let* ;Go step backwards
   ((($ccls ($lc_pset ⊢ $lc_cset)) (lookup-ccls $kb $ccls)) ;Get rule to prove $ccls
+   (debug (trace! ($lc_pset $lc_cset) debug))
    (($_pset $opset $ppset) (overlap2 $pset $lc_pset)) ;Check if we have already prooved $lc_pset
    ($npset (concat $opset $ppset))
   )
