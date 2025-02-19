@@ -111,17 +111,17 @@
 
         ;Otherwise we need to create a superposition where we remove the conclusion and where we don't
         ;Make sure the unification of premise and conclusion happens inside the superposition to not affect the other alternative
-        (superpose ((let $premise $head ($head $tail)) (let ($res $ntail) (remove3 $tail $premise) ($res (cons-atom $head $ntail)))))
+        (superpose ((let $premise $head ($head $tail)) (let ($res $ntail) (removePrf $tail $premise) ($res (cons-atom $head $ntail)))))
      ))
      ;If it is not unifiable, recurse on the tail
-     (let ($res $ntail) (remove3 $tail $premise) ($res (cons-atom $head $ntail)))
+     (let ($res $ntail) (removePrf $tail $premise) ($res (cons-atom $head $ntail)))
   )
   ;Ccls list is empty
   (() $ccls)
  )
 )
 
-!(assertEqual (remove3 ((: $a2 A) (: $b B)) (: $a A)) ((: $a2 A) ((: $b B))))
+!(assertAlphaEqual (removePrf ((: $a2 A) (: $b B)) (: $a A)) ((: $a2 A) ((: $b B))))
 
 ;Check if an element is in a list based on unification
 ;Return the unified element and the remaining list
@@ -141,7 +141,7 @@
 
 ;;Helper function for overlap
 (= (overlap_ff ($left $intersection $right) $elem)
-   (let ($res $nright) (remove3 $right $elem)
+   (let ($res $nright) (removePrf $right $elem)
      (if (== $res ())
        ((cons-atom $elem $left) $intersection $right)
        ($left (cons-atom $res $intersection) $nright))))
@@ -165,11 +165,11 @@
 !(assertAlphaEqual (overlap2 ((: $a A)) ((: $a2 A) (: $b B))) (() ((: $a A)) ((: $b B))))
 
 ;;Custom unique function that works with variables
-(= (myunique $a) (if (== (get-metatype $a) Variable) $a (unique-atom $a)))
+(= (myunique $a) (if (is-variable $a) $a (unique-atom $a)))
 
 !(assertEqual (myunique (a b a)) (a b))
 
 ;;Custom unique union function that works with variables
 (= (unique-union-atom $a $b) (let $res (concat $a $b) (myunique $res)))
 
-!(assertEqual (unique-union-atom ((: $a A) (: b B)) ((: a A))) ((: a A) (: b B)))
+!(assertEqual (unique-union-atom ((: a A) (: b B)) ((: $a A))) ((: a A) (: b B)))
