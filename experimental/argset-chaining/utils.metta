@@ -98,6 +98,20 @@
       (() $list)
 ))
 
+(= (remove= $list $elem)
+   (if-decons-expr $list $head $tail
+      (if (== $elem $head) (remove= $tail $elem) (let $ntail (remove= $tail $elem) (cons-atom $head $ntail)))
+      $list
+))
+
+(= (unique= $list)
+   (if-decons-expr $list $head $tail
+      (let $ntail (unique= (remove= $tail $head)) (cons-atom $head $ntail))
+      $list
+))
+
+!(assertEqual (unique= ((: $a A) (: $a A) (: $b A))) ((: $a A) (: $b A)))
+
 ;;Check if 3 Atoms are unifiable without modifying them
 (= (=unify $a $b) (sealed ($a $b) (unify $a $b True False)))
 
@@ -165,11 +179,11 @@
 !(assertAlphaEqual (overlap2 ((: $a A)) ((: $a2 A) (: $b B))) (() ((: $a A)) ((: $b B))))
 
 ;;Custom unique function that works with variables
-(= (myunique $a) (if (is-variable $a) $a (unique-atom $a)))
+(= (myunique $a) (if (is-variable $a) $a (unique= $a)))
 
 !(assertEqual (myunique (a b a)) (a b))
 
 ;;Custom unique union function that works with variables
 (= (unique-union-atom $a $b) (let $res (concat $a $b) (myunique $res)))
 
-!(assertEqual (unique-union-atom ((: a A) (: b B)) ((: $a A))) ((: a A) (: b B)))
+!(assertEqual (unique-union-atom ((: $a A) (: b B)) ((: $a A))) ((: $a A) (: b B)))

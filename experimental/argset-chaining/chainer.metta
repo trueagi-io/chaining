@@ -22,12 +22,15 @@
    ($cs $ps))
 )
 
+(= (show-cs ($cs $ps)) (match $cs $a $a))
+(= (show-ps ($cs $ps)) (sstostring (get-state $ps)))
+
 ;;When adding an atom to the KB, it is first normalized
 ;;Then it is added to the indexed spaces
-(= (add-to-kb ($cs $ps) $stmt)
-   (let* (($nstmt (normalize $stmt))
+(= (add-to-kb ($cs $ps) $nstmt)
+   (let* (;($nstmt (normalize $stmt))
           (($pset ⊢ $cset) $nstmt)
-          ($_ (foldl-atom $cset () $accum $celem (let $_ $accum (add-atom $cs ($celem $nstmt)))))
+          ($_ (foldl-atom $cset () $accum $celem (let $_ $accum (if (=unify $celem (: (CPU $f $args) (CPU $res))) () (add-atom $cs ($celem $nstmt))))))
           ($ss (get-state $ps))
           ($ns (insert-setspace $ss $pset $nstmt))
           ($res (change-state! $ps $ns))
@@ -46,10 +49,10 @@
 ;;Normalize a statement (remove premises that are part of the conclusion)
 (= (normalize ()) ())
 (= (normalize ($pset ⊢ $cset))
-   (let $pset (if (is-variable $pset) () $pset)
+   ;(let $pset (if (is-variable $pset) () $pset)
    (if (is-variable $cset)
      ($pset ⊢ ($ccls))
-     (let ($npset $_ $ncset) (overlap2 $pset $cset) ($npset ⊢ $cset)))))
+     (let ($npset $_ $ncset) (overlap2 $pset $cset) ($npset ⊢ $cset))))
 
 ;;Takes a list/expression of statements and combines them
 (= (combine $a) (normalize (myfold-atom1 $a unionStmt)))
@@ -78,7 +81,7 @@
 ;Backward chainer for a set of conclusions
 (= (bcset $kb $depth_full ($pset ⊢ $cset))
  (if-decons-expr $cset $ccls $ctail
-  (let ($ppset ⊢ $pcset) (bcsingle $kb $depth_full ($pset ⊢ $ccls))
+  (let ($ppset ⊢ $pcset) (bcs $ppset $pcset) (bcsingle $kb $depth_full ($pset ⊢ $ccls))
    (if (== $ctail ()) ;Don't recurse if there is nothing left to do
     ($ppset ⊢ $pcset)
     (let* 
@@ -98,6 +101,8 @@
  )
 )
 
+
+
 ;Backward chainer for a single conclusion
 (= (bcsingle $kb $depth_full ($pset ⊢ $ccls))
  (let* ;Go step backwards
@@ -107,112 +112,35 @@
   )
   ;Alternate to a forward step
   (if (== $ppset ()) ;Nothing lef to prove runcpu and return
-    (let $lc_cset (map-atom $lc_cset $elem (runcpu $elem))
+    (let $lc_cset (runcpu $lc_cset)
       ($npset ⊢ $lc_cset)
     )
     ;Premises left to prove
-    (let* (
-      ((S $depth) $depth_full) ;Make sure we can go deeper
-      (($a ⊢ $b) (bcset $kb $depth_full ($pset ⊢ $ppset))) ;Proof the premises
-      ($lc_cset (map-atom $lc_cset $elem (runcpu $elem))) ;Run the CPU function
-      )
-      (normalize (unionStmt ($npset ⊢ $lc_cset) ($a ⊢ $b)))
+    (unify $depth_full (S $depth)
+      (let* (
+         (($a ⊢ $b) (bcset $kb $depth ($pset ⊢ $ppset))) ;Proof the premises
+         ($lc_cset (runcpu $lc_cset))
+         )
+         (normalize (unionStmt ($npset ⊢ $lc_cset) ($a ⊢ $b)))
+       )
+       (if (is-variable $pset)
+        ($npset ⊢ $lc_cset)
+        Emtpy)
     )
+    ;(let* (
+    ;  ((S $depth) $depth_full) ;Make sure we can go deeper
+    ;  (($a ⊢ $b) (bcset $kb $depth_full ($pset ⊢ $ppset))) ;Proof the premises
+    ;  ($lc_cset (map-atom $lc_cset $elem (runcpu $elem))) ;Run the CPU function
+    ;  )
+    ;  (normalize (unionStmt ($npset ⊢ $lc_cset) ($a ⊢ $b)))
+    ;)
   )
  )
 )
 
-;If $stmt is a CPU statement, then run the CPU function
-(= (runcpu $stmt)
-   (unify $stmt (: (CPU $f $args) (CPU $res)) (: (CPU $f $args) (CPU (cons-atom $f $args))) $stmt))
-
-!(bind! &cpu (init-kb))
-
-!(add-to-kb &cpu (() ⊢ ((: a1 (A 1)))))
-!(add-to-kb &cpu (() ⊢ ((: a2 (A 2)))))
-
-!(add-to-kb &cpu (((: $a1 (A $v1)) (: $a2 (A $v2))) ⊢ ((: (CPU + ($v1 $v2)) (CPU $v3)) (: (b $a1 $a2) (B $v3)))))
-
-!(assertEqualToResult (bc &cpu (S Z) (() ⊢ ((: $b (B $v)))))
-   ((() ⊢ ((: (CPU + (2 2)) (CPU 4)) (: (b a2 a2) (B 4)) (: a2 (A 2)) (: a2 (A 2))))
-    (() ⊢ ((: (CPU + (2 1)) (CPU 3)) (: (b a2 a1) (B 3)) (: a2 (A 2)) (: a1 (A 1))))
-    (() ⊢ ((: (CPU + (1 2)) (CPU 3)) (: (b a1 a2) (B 3)) (: a1 (A 1)) (: a2 (A 2))))
-    (() ⊢ ((: (CPU + (1 1)) (CPU 2)) (: (b a1 a1) (B 2)) (: a1 (A 1)) (: a1 (A 1))))))
-
-;;Some tests
-!(bind! &s (init-kb))
-
-!(add-to-kb &s (((: $a A) (: $b B)) ⊢ ((: (f $a $b) C))))
-!(add-to-kb &s (((: $b B)) ⊢ ((: (f2 a $b) D))))
-!(add-to-kb &s (((: $b B) (: $e E)) ⊢ ((: (f3 a $b $e) F))))
-
-!(add-to-kb &s (() ⊢ ((: a A))))
-!(add-to-kb &s (() ⊢ ((: b B))))
-
-; Basic type queries
-!(assertEqual (bc &s Z (() ⊢ ((: $a A)))) (() ⊢ ((: a A))))
-
-!(assertEqual (bc &s Z (() ⊢ ((: $a A)(: $b B)))) (() ⊢ ((: a A)(: b B))))
-
-!(assertEqual (bc &s (S (S Z)) (() ⊢ ((: $p C))))
-    (() ⊢ ((: (f a b) C) (: a A) (: b B))))
-
-!(assertEqual (bc &s (S (S Z)) (() ⊢ ((: (f a b) $t))))
-    (() ⊢ ((: (f a b) C) (: a A) (: b B))))
-
-;Partial application
-!(assertEqual (bc &s (S (S Z)) (((: $a A)) ⊢ ((: $c C))))
-     (((: $a A)) ⊢ ((: (f $a b) C) (: b B))))
-
-!(assertEqual (bc &s (S Z) (() ⊢ ((: (f $a b) $t))))
-    (() ⊢ ((: (f a b) C) (: a A) (: b B))))
-
-!(assertEqual (bc &s (S (S Z)) (() ⊢ ((: $d D))))
-    (() ⊢ ((: (f2 a b) D) (: b B))))
-
-!(assertEqual (bc &s (S (S Z)) (() ⊢ ((: (f2 a b) $t))))
-    (() ⊢ ((: (f2 a b) D) (: b B))))
-
-!(assertEqual (bc &s (S (S Z)) (((: $e E)) ⊢ ((: $f F))))
-    (((: $e E)) ⊢ ((: (f3 a b $e) F) (: b B))))
-
-!(assertEqual (bc &s (S (S Z)) (((: $e E)) ⊢ ((: (f3 a b $e) $t))))
-    (((: $e E)) ⊢ ((: (f3 a b $e) F) (: b B))))
-
-!(bind! &f1 (init-kb))
-
-!(add-to-kb &f1 (() ⊢ ((: (f1) A))))
-!(add-to-kb &f1 (((: $b B)) ⊢ ((: $a A) (: (f2 $a $b) C))))
-
-!(assertEqual (bc &f1 (S Z) (() ⊢ ((: $a A)))) (() ⊢ ((: (f1) A))))
-
-!(bind! &f2 (init-kb))
-
-!(add-to-kb &f2 (((: $a A)) ⊢ ((: (f1 $a) B))))
-!(add-to-kb &f2 (((: $a A) (: $c C)) ⊢ ((: (f2 $a $c) D))))
-
-!(assertEqual (bc &f2 (S Z) (((: $a A)) ⊢ $type)) (((: $a A)) ⊢ ((: (f1 $a) B))))
-
-!(bind! &f3 (init-kb))
-
-!(add-to-kb &f3 (((: $a A)) ⊢ ((: (f2 $a) B))))
-!(add-to-kb &f3 (((: $z Z)) ⊢ ((: (f2 $a) B))))
-!(add-to-kb &f3 (((: $a A) (: $b B)) ⊢ ((: (f3 $a $b) C))))
-!(add-to-kb &f3 (((: $a A) (: $x X)) ⊢ ((: (ff $a $x) Y))))
-!(add-to-kb &f3 (((: $c C)) ⊢ ((: (f4 $c) D))))
-
-!(assertEqual (bc &f3 (S (S Z)) (((: $a A)) ⊢ ((: $d D))))
-   (((: $a A)) ⊢ ((: (f4 (f3 $a (f2 $a))) D) (: (f3 $a (f2 $a)) C) (: (f2 $a) B))))
-
-!(bind! &b (init-kb))
-
-!(add-to-kb &b (((: $a A)) ⊢ ((: (ab $a) B))))
-!(add-to-kb &b (((: $b B)) ⊢ ((: (bc $b) C))))
-!(add-to-kb &b (((: $c C)) ⊢ ((: (cd $c) D))))
-!(add-to-kb &b (((: $d D)) ⊢ ((: (de $d) E))))
-!(add-to-kb &b (((: $e E)) ⊢ ((: (ef $e) F))))
-!(add-to-kb &b (((: $f F)) ⊢ ((: (fg $f) G))))
-!(add-to-kb &b (((: $g G)) ⊢ ((: (gh $g) H))))
-
-!(time (bcset &b (fromNumber 3) (((: $a A)) ⊢ ((: $f D)))))
-
+(= (runcpu $stmts)
+ (if-decons-expr $stmts $stmt $rest
+   (let $stmt (unify $stmt (: (CPU $f $args) (CPU $res)) (if (is-closed $args) (: (CPU $f $args) (CPU (cons-atom $f $args))) $stmt) $stmt)
+   (let $rest (runcpu $rest)
+     (cons-atom $stmt $rest)))
+   $stmts))
