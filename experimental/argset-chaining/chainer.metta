@@ -81,7 +81,7 @@
 ;Backward chainer for a set of conclusions
 (= (bcset $kb $depth_full ($pset ⊢ $cset))
  (if-decons-expr $cset $ccls $ctail
-  (let ($ppset ⊢ $pcset) (bcs $ppset $pcset) (bcsingle $kb $depth_full ($pset ⊢ $ccls))
+  (let ($ppset ⊢ $pcset) (bcsingle $kb $depth_full ($pset ⊢ $ccls))
    (if (== $ctail ()) ;Don't recurse if there is nothing left to do
     ($ppset ⊢ $pcset)
     (let* 
