@@ -1,0 +1,4 @@
+.aider*
+.env
+experimental/argset-chaining/__pycache__
+experimental/argset-chaining/.python-version
