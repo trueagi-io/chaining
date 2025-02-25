@@ -1,7 +1,3 @@
-;; Define <=
-(: <= (-> $a $a Bool))
-(= (<= $x $y) (or (< $x $y) (== $x $y)))
-
 ;; Define Nat
 (: Nat Type)
 (: Z Nat)
