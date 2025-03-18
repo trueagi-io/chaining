@@ -146,19 +146,19 @@
 
 ;; Rule 1 of [Hamilton] p. 73.
 ;; https://us.metamath.org/mpeuni/ax-mp.html
-!(add-atom &kb (: ax-mp (-> $𝜑 (-> ($𝜑 → $𝜓) $𝜓))))
+!(add-atom &kb (: ax-mp (-> $𝜑 (→ $𝜑 $𝜓) $𝜓)))
 
 ;; Axiom Simp. Axiom A1 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-1.html
-!(add-atom &kb (: ax-1 ($𝜑 → ($𝜓 → $𝜑))))
+!(add-atom &kb (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom Frege. Axiom A2 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-2.html
-!(add-atom &kb (: ax-2 (($𝜑 → ($𝜓 → $𝜒)) → (($𝜑 → $𝜓) → ($𝜑 → $𝜒)))))
+!(add-atom &kb (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 
 ;; Axiom Transp. Axiom A3 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-3.html
-!(add-atom &kb (: ax-3 (((¬ $𝜑) → (¬ $𝜓)) → ($𝜓 → $𝜑))))
+!(add-atom &kb (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;;;;;;;;;;
 ;; Test ;;
