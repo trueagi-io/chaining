@@ -119,6 +119,16 @@
           ((: $prfarg $prms)
            (bc $kb $env $k (: $prfarg $prms))))
      (: ($prfabs $prfarg) $thrm)))
+;; Binary proof application
+(= (bc $kb $env (S $k) (: ($prfabs $prfarg1 $prfarg2) $thrm))
+   (let* (;; Recurse on binary rule
+          ((: $prfabs (-> $prms1 $prms2 $thrm))
+           (bc $kb $env $k (: $prfabs (-> $prms1 $prms2 $thrm))))
+          ;; Recurse on premise 1
+          ((: $prfarg1 $prms1) (bc $kb $env $k (: $prfarg1 $prms1)))
+          ;; Recurse on premise 2
+          ((: $prfarg2 $prms2) (bc $kb $env $k (: $prfarg2 $prms2))))
+     (: ($prfabs $prfarg1 $prfarg2) $thrm)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge base ;;
