@@ -164,21 +164,51 @@
 ;; Test ;;
 ;;;;;;;;;;
 
-
+;; Test subgoal of https://us.metamath.org/mpeuni/mp2.html
+;;
+;; Note that variables have been replaced by symbols to force them to
+;; be different which considerably prunes the search space.
+!(bc &kb
+     (Cons (: mp2.1 𝜑)
+           (Cons (: mp2.2 𝜓)
+                 (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                       Nil)))
+     (fromNumber 1)
+     (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
+     ;; (: $prf (→ 𝜓 𝜒)))
 
 ;; Test https://us.metamath.org/mpeuni/mp2.html
-;; !(bc &kb
-;;      (Cons (: mp2.1 $𝜑)
-;;            (Cons (: mp2.2 $𝜓)
-;;                  (Cons (: mp2.3 ($𝜑 → ($𝜓 → $𝜒)))
-;;                        Nil)))
-;;      (fromNumber 2)
-;;      (: $prf $𝜒))
-
+;;
+;; Note that variables have been replaced by symbols to force them to
+;; be different which considerably prunes the search space.
 !(bc &kb
-     Nil
-     (fromNumber 0)
-     (: $prf (-> $𝜑                       ; mp2.1
-                 (-> $𝜓                   ; mp2.2
-                     (-> ($𝜑 → ($𝜓 → $𝜒)) ; mp2.3
-                         $𝜒)))))          ; mp2
+     (Cons (: mp2.1 𝜑)
+           (Cons (: mp2.2 𝜓)
+                 (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                       Nil)))
+     (fromNumber 2)
+     (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
+     ;; (: $prf 𝜒))
+
+;; Test https://us.metamath.org/mpeuni/mp2b.html
+;;
+;; Note that variables have been replaced by symbols to force them to
+;; be different which considerably prunes the search space.
+!(bc &kb
+     (Cons (: mp2b.1 𝜑)
+           (Cons (: mp2b.2 (→ 𝜑 𝜓))
+                 (Cons (: mp2b.3 (→ 𝜓 𝜒))
+                       Nil)))
+     (fromNumber 2)
+     (: (ax-mp (ax-mp mp2b.1 mp2b.2) mp2b.3) 𝜒))
+     ;; (: $prf 𝜒))
+
+;; Test https://us.metamath.org/mpeuni/a1i.html
+;;
+;; Note that variables have been replaced by symbols to force them to
+;; be different which considerably prunes the search space.
+!(bc &kb
+     (Cons (: a1i.1 𝜑) Nil)
+     (fromNumber 1)
+     (: (ax-mp a1i.1 ax-1) (→ 𝜓 𝜑)))
+     ;; (: $prf (→ 𝜓 𝜑)))
