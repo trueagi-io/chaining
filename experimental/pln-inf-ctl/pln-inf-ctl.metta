@@ -120,6 +120,9 @@
 ;; Monolith ;;
 ;;;;;;;;;;;;;;
 
+;; NEXT: create non-deterministic eb (evaluate branch) function that
+;;       returns a score and function to apply.
+
 ;; For now implement a polylithic way just to test that it works
 (= (bc $env $depth (: $prf $thrm))
    (bc-env $env (: $prf $thrm)))
