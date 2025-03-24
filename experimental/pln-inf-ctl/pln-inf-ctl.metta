@@ -35,6 +35,29 @@
 (: Nil (List $a))
 (: Cons (-> $a (List $a) (List $a)))
 
+;; Build a list from an expression, containing all the sub-expressions
+;; as elements of the list.
+(: fromExpression (-> Expression (List $a)))
+(= (fromExpression $expr) (if (== $expr ())
+                              Nil
+                              (let* (($head (car-atom $expr))
+                                     ($tail (cdr-atom $expr)))
+                                (Cons $head (fromExpression $tail)))))
+
+;; Return the maximum between two value given a certain less than
+;; predicate.
+(: maxWith (-> (-> $a $a Bool) $a $a Bool))
+(: (= maxWith $tl $x $y) (if ($tl $x $y) $y $x))
+
+;; Return a maximum element of a non empty list, given a certain less
+;; than predicate.
+(: List.maxElementWith (-> (-> $a $a Bool) (List $a) $a))
+(= (List.maxElementWith $tl (Cons $head $tail))
+   (case $tail
+     (Nil $head)
+     ($else (let $met (List.maxElementWith $lt $tail)
+              (maxWith $tl $head $met)))))
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
 ;;;;;;;;;;;;;;;;;;;;;
