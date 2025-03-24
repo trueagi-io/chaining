@@ -84,6 +84,158 @@
   ((B A)
    (D C)))
 
+;;;;;;;;;;;;;;;;;;
+;; Delayed Call ;;
+;;;;;;;;;;;;;;;;;;
+
+;; Data structure to carry around function calls without running them.
+;; The DCall.runARITY method is used to run a DCall on demand.
+
+;; Parameterized type representing a delayed call of a certain type
+;; signature, operator followed by operands
+(: DCall (-> Type    ; Output type of a nullary operator
+             Type))
+(: DCall (-> Type    ; Input type of first operand
+             type    ; Output type of a unary operator
+             Type))
+(: DCall (-> Type    ; Input type of first operand
+             Type    ; Input type of second operand
+             type    ; Output type of a unary operator
+             Type))
+(: DCall (-> Type    ; Input type of first operand
+             Type    ; Input type of second operand
+             Type    ; Input type of third operand
+             type    ; Output type of a unary operator
+             Type))
+
+;; DCall data constructors
+(: MkDCall (-> (-> $a) (DCall $a)))                            ; Nullary
+(: MkDCall (-> (-> $a $b) $a (DCall $a $b)))                   ; Unary
+(: MkDCall (-> (-> $a $b $c) $a $b (DCall $a $b $c)))          ; Binary
+(: MkDCall (-> (-> $a $b $c $d) $a $b $c (DCall $a $b $c $d))) ; Ternary
+
+;; Run a nullary DCall
+(: DCall.run0 (-> (DCall $a) $a))
+(= (DCall.run0 (MkDCall $f)) ($f))
+;; Run a unary DCall
+(: DCall.run1 (-> (DCall $a $b) $b))
+(= (DCall.run1 (MkDCall $f $x)) ($f $x))
+;; Run a binary DCall
+(: DCall.run2 (-> (DCall $a $b $c) $c))
+(= (DCall.run2 (MkDCall $f $x $y)) ($f $x $y))
+;; Run a ternary DCall
+(: DCall.run3 (-> (DCall $a $b $c $d) $d))
+(= (DCall.run3 (MkDCall $f $x $y $z)) ($f $x $y $z))
+
+;;;;;;;;;;;;;;;;
+;; Test DCall ;;
+;;;;;;;;;;;;;;;;
+
+(: foo (-> Number))
+(= (foo) 42)
+(: bar (-> Bool String))
+(= (bar $x) (if $x "True" "False"))
+(: baz (-> String Number Bool))
+(= (baz $x $y) (and (== $x "abc") (== $y 42)))
+(: qux (-> Number Bool String Atom))
+(= (qux $x $y $z) (R $x $y $z))
+
+;; Test foo wrapped in a DCall
+!(assertEqual
+  (DCall.run0 (MkDCall foo))
+  42)
+
+;; Test bar wrapped in a DCall
+!(assertEqual
+  (DCall.run1 (MkDCall bar True))
+  "True")
+
+;; Test baz wrapped in a DCall
+!(assertEqual
+  (DCall.run2 (MkDCall baz "abc" 42))
+  True)
+
+;; Test qux wrapped in a DCall
+!(assertEqual
+  (DCall.run3 (MkDCall qux 42 True "abc"))
+  (R 42 True "abc"))
+
+;;;;;;;;;;;;;;;;;;;;
+;; Estimate DCall ;;
+;;;;;;;;;;;;;;;;;;;;
+
+;; Data structure containing a value estimating the probability of
+;; success associated to a DCall
+
+;; Parameterized type representing a pair of estimate and assocated
+;; delayed call of a certain type signature, operator followed by
+;; operands
+(: EDCall (-> Type    ; Output type of a nullary operator
+              Type))
+(: EDCall (-> Type    ; Input type of first operand
+              type    ; Output type of a unary operator
+              Type))
+(: EDCall (-> Type    ; Input type of first operand
+              Type    ; Input type of second operand
+              type    ; Output type of a unary operator
+              Type))
+(: EDCall (-> Type    ; Input type of first operand
+              Type    ; Input type of second operand
+              Type    ; Input type of third operand
+              type    ; Output type of a unary operator
+              Type))
+
+;; EDCall data constructors
+(: MkEDCall (-> Number     ; Estimate
+                (DCall $a) ; Nullary DCall
+                (EDCall $a)))
+(: MkEDCall (-> Number        ; Estimate
+                (DCall $a $b) ; Unary DCall
+                (EDCall $a $b)))
+(: MkEDCall (-> Number           ; Estimate
+                (DCall $a $b $c) ; Binary DCall
+                (EDCall $a $b $c)))
+(: MkEDCall (-> Number              ; Estimate
+                (DCall $a $b $c $d) ; Ternary DCall
+                (EDCall $a $b $c $d)))
+
+;; Less than predicate over EDCall objects of same signature.  Compare
+;; their estimates.
+(: EDCall.lt0 (-> (EDCall $a) (EDCall $a) Bool))
+(= (EDCall.lt0 (MkEDCall $le (MkDCall $lf))
+               (MkEDCall $re (MkDCall $rf)))
+   (< $le $re))
+(: EDCall.lt1 (-> (EDCall $a $b) (EDCall $a $b) Bool))
+(= (EDCall.lt1 (MkEDCall $le (MkDCall $lf $lx))
+               (MkEDCall $re (MkDCall $rf $rx)))
+   (< $le $re))
+(: EDCall.lt2 (-> (EDCall $a $b $c) (EDCall $a $b $c) Bool))
+(= (EDCall.lt2 (MkEDCall $le (MkDCall $lf $lx $ly))
+               (MkEDCall $re (MkDCall $rf $rx $ry)))
+   (< $le $re))
+(: EDCall.lt3 (-> (EDCall $a $b $c $d) (EDCall $a $b $c $d) Bool))
+(= (EDCall.lt3 (MkEDCall $le (MkDCall $lf $lx $ly $lz))
+               (MkEDCall $re (MkDCall $rf $rx $ry $rz)))
+   (< $le $re))
+
+;; Test EDCall
+!(assertEqual
+  (EDCall.lt0 (MkEDCall 0.9 (MkDCall foo))
+              (MkEDCall 0.2 (MkDCall foo)))
+  False)
+!(assertEqual
+  (EDCall.lt1 (MkEDCall 0.3 (MkDCall bar False))
+              (MkEDCall 0.6 (MkDCall bar True)))
+  True)
+!(assertEqual
+  (EDCall.lt2 (MkEDCall 0.4 (MkDCall baz "abc" 42))
+              (MkEDCall 0.5 (MkDCall baz "def" 24)))
+  True)
+!(assertEqual
+  (EDCall.lt3 (MkEDCall 0.2 (MkDCall qux 42 True "abc"))
+              (MkEDCall 0.1 (MkDCall qux 24 False "def")))
+  False)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
 ;; ;; Backward chainer ;; ;;
