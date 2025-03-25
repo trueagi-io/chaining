@@ -260,22 +260,28 @@
 ;;;;;;;;;;;;;;;;
 
 ;; Match the environment
-(= (bc-env $env (: $prf $thrm))
+(: bc-env (-> (List $a) Nat $a $a))
+(= (bc-env $env $depth (: $prf $thrm))
    (match' $env (: $prf $thrm) (: $prf $thrm)))
 
 ;; Axiom Simp. Axiom A1 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-1.html
-(= (bc-ax-1 (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+(: bc-ax-1 (-> (List $a) Nat $a $a))
+(= (bc-ax-1 $env $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
    (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom Frege. Axiom A2 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-2.html
-(= (bc-ax-2 (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+(: bc-ax-2 (-> (List $a) Nat $a $a))
+(= (bc-ax-2 $env
+            $depth
+            (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
    (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 
 ;; Axiom Transp. Axiom A3 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-3.html
-(= (bc-ax-3 (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+(: bc-ax-3 (-> (List $a) Nat $a $a))
+(= (bc-ax-3 $env $depth (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
    (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -284,6 +290,7 @@
 
 ;; Rule 1 of [Hamilton] p. 73.
 ;; https://us.metamath.org/mpeuni/ax-mp.html
+(: bc-ax-mp (-> (List $a) Nat $a $a))
 (= (bc-ax-mp $env (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (let* (;; Recurse on premise 1
           ((: $prfarg1 $𝜑) (bc $env $k (: $prfarg1 $𝜑)))
@@ -295,20 +302,36 @@
 ;; Monolith ;;
 ;;;;;;;;;;;;;;
 
-;; NEXT: create non-deterministic eb (evaluate branch) function that
-;;       returns a score and function to apply.
-
-;; For now implement a polylithic way just to test that it works
 (= (bc $env $depth (: $prf $thrm))
-   (bc-env $env (: $prf $thrm)))
-(= (bc $env $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (bc-ax-1 (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
-(= (bc $env $depth (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (bc-ax-2 (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
-(= (bc $env $depth (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (bc-ax-3 (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
-(= (bc $env (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (bc-ax-mp $env (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓)))
+   (let $estimates (collapse (ebc $env $depth (: $prf $thrm)))
+     (List.maxElementWith EDCall.lt (fromExpression $estimates))))
+
+;; Define backward chainer estimate.  It mirrors the backward chainer
+;; code, but outputs an EDCall, meaning a branch and its estimate of
+;; success, instead of directly taking the branch.
+(: ebc (-> (List $a)                      ; Environment
+           Nat                            ; Depth
+           $a                             ; Query
+           (EDCall (List $a) Nat $a $a))) ; EDCall
+
+;; Estimate of matching the environment.  NEXT: the estimate should be
+;; calculated for each matching result.
+(= (ebc $env $depth (: $prf $thrm))
+   (MkEDCall (random-float &rng 0 1)    ; Random for now
+             (MkDCall bc-env $env $depth (: $prf $thrm))))
+
+;; Estimate of Axiom A1
+(= (ebc $env $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkEDCall (random-float &rng 0 1)    ; Random for now
+             (MkDCall bc-env $env $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))))
+
+;;
+(= (bc-estimate $env $depth (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (bc-estimate-ax-2 (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
+(= (bc-estimate $env $depth (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (bc-estimate-ax-3 (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
+(= (bc-estimate $env (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+   (bc-estimate-ax-mp $env (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓)))
 
 ;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;; ;;
