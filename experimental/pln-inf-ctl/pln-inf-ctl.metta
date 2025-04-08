@@ -337,6 +337,66 @@
 (= (EDCall.run4 (MkEDCall $estimate (MkDCall $f $x $y $z $w)))
    ($f $x $y $z $w))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Convert backward chainer query to PLN ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Convert the arguments of backward chainer call to a PLN statement
+;; such that its truth value reflects how likely the holes in the
+;; call, which are the environment, the query and its surrounding
+;; premises can be filled within the provided depth.
+;;
+;; So for instance, if the backward chainer call is
+;;
+;; (bc (Cons (: a1i.1 𝜑) Nil)
+;;     Nil
+;;     (fromNumber 1)
+;;     (: $prf (→ 𝜓 𝜑)))
+;;
+;; thus
+;;
+;; - the environment is (Cons (: a1i.1 𝜑) Nil)
+;; - the query is (: $prf (→ 𝜓 𝜑))
+;; - the surrounsing premises are Nil
+;; - the depth 1
+;;
+;; would be converted into the following PLN query
+;;
+;; (∃z (Θ (Cons (_:_ _a1i.1_ _𝜑_) PC) z (_→_ _𝜓_ _𝜑_)) ∧ (depth_lte z 1))
+;;
+;; where
+;;
+;; - z is the first De Bruijn index,
+;;
+;; - all symbols of the logic have been dropped to the object level
+;;   (or mesa level), by being surrounded with _.  So for instance, :
+;;   becomes _:_, a1i.1 becomes _a1i.1_, → becomes _→_, etc.
+;;
+;; - The ternary predicate Θ is a PLN predicate representing the
+;;   relationship between Theory, Proof and Theorem, in this
+;;   respective argument order.  It is also a partial function mapping
+;;   its first two arguments, Theory and Proof to the third one,
+;;   Theorem.  Meaning, given a theory and a proof, there is at most
+;;   one corresponding theorem.  It is partial because not all proof
+;;   terms are actually well formed proofs.
+;;
+;; - The binary predicate depth_lte is true iff the depth of the first
+;;   argument is equal or below the number provided as second
+;;   argument.
+;;
+;; Informally, the PLN statement above should be read as
+;;
+;; There exists a proof z of (→ 𝜓 𝜑), with a maximum depth of 1,
+;; within theory (Cons (: a1i.1 𝜑) PC).
+;;
+;; where the theory includes the static theory PC and its environment
+;; (: a1i.1 𝜑).  Note that in this experiment the static part of the
+;; theory is hardcoded in the backward chainer.  In general the theory
+;; must be completely provided, but here, for the sake of simplicity
+;; we will simply hide its description under the symbol PC, which
+;; stands for Propositional Calculus.
+(: toPLN (-> (List $a) (List $a) Nat $a $b))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
 ;; ;; Backward chainer ;; ;;
