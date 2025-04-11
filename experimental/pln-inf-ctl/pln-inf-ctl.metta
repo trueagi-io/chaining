@@ -36,6 +36,43 @@
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
+;;;;;;;;;;;;;;;;;;;;;
+;; De Bruijn Index ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Define DeBruijn type
+(: DeBruijn Type)
+
+;; Define DeBruijn constructors
+(: z DeBruijn)                        ; Zero
+(: s (-> DeBruijn DeBruijn))          ; Successor
+
+;; Converters
+(: DeBruijn.fromNat (-> Nat DeBruijn))
+(= (DeBruijn.fromNat Z) z)
+(= (DeBruijn.fromNat (S $k)) (s (DeBruijn.fromNat $k)))
+
+;;;;;;;;;;;
+;; Maybe ;;
+;;;;;;;;;;;
+
+;; Define Maybe type
+(: Maybe (-> $a Type))
+(: Nothing (Maybe $a))
+(: Just (-> $a (Maybe $a)))
+
+;;;;;;;;;;
+;; Pair ;;
+;;;;;;;;;;
+
+;; Pair type and constructor
+(: Pair (-> $a $b Type))
+(: MkPair (-> $a $b (Pair $a $b)))
+
+;; Pair access functions
+(: fst (-> (Pair $a $b) $a))
+(: snd (-> (Pair $a $b) $b))
+
 ;;;;;;;;;;;
 ;; Until ;;
 ;;;;;;;;;;;
@@ -92,6 +129,45 @@
      ((Nil $head)
       ($else (let $met (List.maxElementWith $lt $tail)
                (maxWith $lt $head $met))))))
+
+;; Fold a List from right to left
+(: List.foldr (-> (-> $a $b $b) $b (List $a) $b))
+(= (List.foldr $f $i Nil) $i)
+(= (List.foldr $f $i (Cons $h $t)) ($f $h (List.foldr $f $i $t)))
+
+;; Fold a List from left to right
+(: List.foldl (-> (-> $b $a $b) $b (List $a) $b))
+(= (List.foldl $f $i Nil) $i)
+(= (List.foldl $f $i (Cons $h $t)) (List.foldl $f ($f $i $h) $t))
+
+;; Define List.append (concatenate two lists).
+(: List.append (-> (List $a) (List $a) (List $a)))
+(= (List.append $xs $ys) (List.foldr Cons $ys $xs))
+
+;; Test List.append
+!(assertEqual
+  (List.append (Cons a (Cons b Nil)) (Cons c (Cons d Nil)))
+  (Cons a (Cons b (Cons c (Cons d Nil)))))
+
+;; Define List.appendElem that appends an element at the end of a
+;; list.
+(: List.appendElem (-> (List $a) $a (List $a)))
+(= (List.appendElem $xs $x) (List.append $xs (Cons $x Nil)))
+
+;; Define List.elemIndex that returns the index of an element in a
+;; List, if it exists.
+(: List.elemIndex (-> $a (List $a) (Maybe Nat)))
+(= (List.elemIndex $x Nil) Nothing)
+(= (List.elemIndex $x (Cons $head $tail))
+   (if (== $x $head)
+       (Just Z)
+       (case (List.elemIndex $x $tail)
+         (((Just $k) (Just (S $k)))
+          (Nothing Nothing)))))
+
+;; Test List.elemIndex
+!(assertEqual (List.elemIndex 42 (Cons 0 (Cons 1 Nil))) Nothing)
+!(assertEqual (List.elemIndex 42 (Cons 0 (Cons 42 Nil))) (Just (S Z)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
@@ -337,14 +413,36 @@
 (= (EDCall.run4 (MkEDCall $estimate (MkDCall $f $x $y $z $w)))
    ($f $x $y $z $w))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Convert backward chainer query to PLN ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;
+;; PLN ;;
+;;;;;;;;;
 
-;; Convert the arguments of backward chainer call to a PLN statement
+;; The vocabulary of PLN is defined as follows
+;;
+;; - Boolean connectors are ∧, ∨, ¬.  Note that these Boolean
+;;   connectors are in fact pointwise predicate connectors.  So that
+;;   (∧ P Q) is a predicate resulting from the pointwise conjunction
+;;   of P and Q, themselves predicates.
+;;
+;; - Boolean constants ⊥ and ⊤, are also pointwise predicates
+;;   corresponding respectively to the predicate that returns always
+;;   False and the predicate that returns always True.  Please do not
+;;   confuse ⊤ and T.  ⊤ is the top predicate, while T is an upper
+;;   case letter of the Latin alphabet.  Before you start cursing me
+;;   to no end for that decision, please consider that the type
+;;   checker will be able to catch your potential typos.
+;;
+;; NEXT: define the PLN type, with PLN.Judgement, PLN.Statement and
+;; PLN.Term.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Convert backward chainer call to PLN ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Convert the arguments of a backward chainer call to a PLN judgement
 ;; such that its truth value reflects how likely the holes in the
-;; call, which are the environment, the query and its surrounding
-;; premises can be filled within the provided depth.
+;; arguments of the call (the environment, the query and its
+;; surrounding premises) can be filled within the provided depth.
 ;;
 ;; So for instance, if the backward chainer call is
 ;;
@@ -395,7 +493,70 @@
 ;; must be completely provided, but here, for the sake of simplicity
 ;; we will simply hide its description under the symbol PC, which
 ;; stands for Propositional Calculus.
-(: toPLN (-> (List $a) (List $a) Nat $a $b))
+(: toPLN (-> (List $a)                  ; Theory
+             (List $a)                  ; Surrounding premises
+             Nat                        ; Maximum Depth
+             $a                         ; Query
+             PLN.Judgement))            ; PLN judgement
+(= (toPLN $thry $ctx $depth (: $prf $thrm))
+   NEXT)
+
+;; Like toPLN but takes the query and the surrounding premises all at
+;; once, called context.  It does not take other parameters like
+;; depth.  Additionally, it takes a list of variables encountered so
+;; far in the context that has been consumed.  It outputs a pair of
+;; list of all variables encountered so far and a PLN proposition as a
+;; conjunction of Θ propositions.
+(: contextToPLN (-> (List $a)                   ; Theory
+                    (List Variable)             ; Variables so far
+                    (List $a)                   ; Context
+                    (Pair (List Variable) PLN.Statement))) ; Variables
+                                                           ; and PLN
+                                                           ; statement
+(= (contextToPLN $thry $vars Nil)
+   (MkPair $vars ))
+(= (contextToPLN $thry $vars (Cons $head $tail))
+   (let* (;; Turn the head into an atomic Θ proposition
+          ((MkPair $nvars $headpln) (queryToPLN $thry $vars $head))
+          ;; Turn the tail into a conjunction of Θ propositions
+          ((MkPair $nnvars $tailpln) (contextToPLN $thry $nvars $tail)))
+     (MkPair $nnvars (∧ $headpln $tailpln))))
+
+;; Like contextToPLN but only takes a single query in argument
+;; alongside a list of variables so far encountered.  It returns a
+;; pair of list of variables encountered so far and a PLN statement
+;; corresponding to a Θ atomic proposition.
+(: queryToPLN (-> (List $a)                   ; Theory
+                  (List Variable)             ; Variables encountered so far
+                  $a                          ; Query
+                  (Pair (List Variable) PLN.Statement))) ; Variables
+                                                         ; and PLN
+                                                         ; statement
+(= (queryToPLN $thry $vars (: $prf $thrm))
+   (let* (;; Convert proof into PLN term, and accumulate new variables
+          ((MkPair $nvars $prfpln) (proofToPLN $vars $prf))
+          ;; Convert type into PLN term, and accumulate new variables
+          ((MkPair $nnvars $thrmpln) (typeToPLN $nvars $thrm)))
+     (MkPair $nnvars (Θ $thry $prfpln $thrmpln))))
+
+;; Like queryToPLN but takes a proof (or part thereof) in argument
+;; alongside a list of variables so far encountered.  It outputs a
+;; pair of variables encountered so far and a PLN term.
+(: proofToPLN (-> (List Variable)       ; Variables encountered so far
+                  $a                    ; Proof
+                  (Pair (List Variable PLN.Term)) ; Variables and PLN
+                                                  ; term
+(= (proofToPLN $vars $prf)
+   NEXT)
+
+;; Like proofToPLN but takes a type (or part thereof) in argument
+;; alongside a list of variables so far encountered.
+(: typeToPLN (-> (List Variable)       ; Variables encountered so far
+                  $a                   ; Type
+                  (Pair (List Variable) PLN.Term))  ; Variables and
+                                                    ; PLN term
+(= (typeToPLN $vars $thrm)
+   NEXT)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
