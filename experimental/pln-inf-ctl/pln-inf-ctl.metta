@@ -40,17 +40,15 @@
 ;; De Bruijn Index ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; Define DeBruijn type
+;; Define DeBruijn type and constructors.
 (: DeBruijn Type)
+(: z DeBruijn)
+(: s (-> DeBruijn DeBruijn))
 
-;; Define DeBruijn constructors
-(: z DeBruijn)                        ; Zero
-(: s (-> DeBruijn DeBruijn))          ; Successor
-
-;; Converters
-(: DeBruijn.fromNat (-> Nat DeBruijn))
-(= (DeBruijn.fromNat Z) z)
-(= (DeBruijn.fromNat (S $k)) (s (DeBruijn.fromNat $k)))
+;; Convert Nat to DeBruijn
+(: toDeBruijn (-> Nat DeBruijn))
+(= (toDeBruijn Z) z)
+(= (toDeBruijn (S $k)) (s (toDeBruijn $k)))
 
 ;;;;;;;;;;;
 ;; Maybe ;;
@@ -168,6 +166,19 @@
 ;; Test List.elemIndex
 !(assertEqual (List.elemIndex 42 (Cons 0 (Cons 1 Nil))) Nothing)
 !(assertEqual (List.elemIndex 42 (Cons 0 (Cons 42 Nil))) (Just (S Z)))
+
+;; Define List.isElem that return True if the given element is present
+;; in the given list
+;; NEXT: make sure it is used at all
+(: List.isElem (-> $a (List $a) Bool))
+(= (List.isElem $x $xs) (case (List.elemIndex $x $xs)
+                          (((Just $idx) True)
+                           (Nothing False))))
+
+;; Define List.length
+(: List.length (-> (List $a) Nat))
+(= (List.length Nil) Z)
+(= (List.length (Cons $head $tail)) (S (List.length $tail)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
@@ -417,23 +428,94 @@
 ;; PLN ;;
 ;;;;;;;;;
 
-;; The vocabulary of PLN is defined as follows
+;; Define PLN TruthValue type and its constructor MkSimpleTruthValue
+(: PLN.TruthValue Type)
+(: PLN.MkSimpleTruthValue (-> Number    ; Strength
+                              Number    ; Confidence
+                              PLN.TruthValue))
+
+;; Define PLN Term type.  PLN terms are expressions defining the
+;; objects that the PLN predicates can take in input.  To not be
+;; confused with PLN connectors such as ∧ and constants such ⊥, PLN
+;; terms are surrounded by underscore characters when needed.  So for
+;; instance a formula
 ;;
-;; - Boolean connectors are ∧, ∨, ¬.  Note that these Boolean
-;;   connectors are in fact pointwise predicate connectors.  So that
-;;   (∧ P Q) is a predicate resulting from the pointwise conjunction
-;;   of P and Q, themselves predicates.
+;; (∧ P Q)
 ;;
-;; - Boolean constants ⊥ and ⊤, are also pointwise predicates
-;;   corresponding respectively to the predicate that returns always
-;;   False and the predicate that returns always True.  Please do not
-;;   confuse ⊤ and T.  ⊤ is the top predicate, while T is an upper
-;;   case letter of the Latin alphabet.  Before you start cursing me
-;;   to no end for that decision, please consider that the type
-;;   checker will be able to catch your potential typos.
+;; can be represented at the object level as
 ;;
-;; NEXT: define the PLN type, with PLN.Judgement, PLN.Statement and
-;; PLN.Term.
+;; (_∧_ _P_ _Q_)
+;;
+;; We need to do that because in this experiment we reason about Θ, a
+;; ternary predicate relating theories, proofs and theorems, thus we
+;; need a way to represent them at the object level.
+(: PLN.Term Type)
+
+;; Define PLN Term DeBruijn index constructors at the object level.
+(: PLN.Term.DeBruijn Type)
+(: _z_ PLN.Term.DeBruijn)
+(: _s_ (-> PLN.Term.DeBruijn PLN.Term.DeBruijn))
+
+;; Make sure that _z_ and _s_ can be typed as PLN.Term as well
+(: _z_ PLN.Term)
+(: _s_ (-> PLN.Term.DeBruijn PLN.Term))
+
+;; Define PLN Term logical connectors at the object level.  NEXT:
+;; support PLN.Term.DeBruijn.
+(: _∧_ (-> PLN.Term PLN.Term PLN.Term))
+(: _∨_ (-> PLN.Term PLN.Term PLN.Term))
+(: _¬_ (-> PLN.Term PLN.Term))
+
+;; Define PLN Statement type.  A PLN statement represents a predicate
+;; or conditioned predicate.
+(: PLN.Statement Type)
+
+;; Define PLN Statement constructors ∧, ∨, ¬.  Note that these
+;; connectors represent in fact pointwise predicate connectors.  So
+;; that (∧ P Q) is a predicate resulting from the pointwise
+;; conjunction of P and Q, themselves predicates.
+(: ∧ (-> PLN.Statement PLN.Statement PLN.Statement))
+(: ∨ (-> PLN.Statement PLN.Statement PLN.Statement))
+(: ¬ (-> PLN.Statement PLN.Statement))
+
+;; Define PLN Statement constants ⊥ and ⊤, which are also pointwise
+;; predicates corresponding respectively to the predicate that returns
+;; always False and the predicate that returns always True.  Please do
+;; not confuse ⊤ and T.  ⊤ is the top predicate, while T is an upper
+;; case letter of the Latin alphabet.  Before you start cursing me to
+;; no end for that decision, please consider that the type checker
+;; will be able to catch your potential typos.
+(: ⊤ PLN.Statement)
+(: ⊥ PLN.Statement)
+
+;; Define PLN Statement existential quantifier ∃.  For now we avoid
+;; concerns about its semantics, including the interval aspect
+;; explained in the PLN book.  Since Θ is deterministic anyway, let's
+;; see how far we can go with a crisp version of this quantifier.
+;; NEXT: DeBruijn or PLN.DeBruijn?
+(: ∃ (-> DeBruijn PLN.Statement PLN.Statement))
+
+;; Define PLN Statement constructors from a set of primitive
+;; predicates.  For now only Θ, a ternary predicate representing the
+;; relationship between theory, proof and theorem, is used.  A theory
+;; is a collection of axioms and inference rules, for now encoded as a
+;; list of PLN terms.  Even though Θ is completely deterministic, it
+;; is treated as probabilistic to cope with the insufficient knowledge
+;; and resources about it.  Indeed, Θ is semi-computable at best, thus
+;; it is pointless to hope we can ever know everything about.  For
+;; that reason, Θ (or any other PLN predicates) has the following
+;; underlying type signature
+;;
+;; Θ : Theory -> Proof -> Theorem -> Ω -> Bool
+;;
+;; where Ω is the sample space of the underlying probability space.
+(: Θ (-> (List PLN.Term) PLN.Term PLN.Term PLN.Statement))
+
+;; Define PLN judgement type and its constructor.  A judgement is a
+;; PLN statement alonside its assigned truth value, constructed with
+;; the ≞ connector.
+(: PLN.Judgement Type)
+(: ≞ (-> PLN.Statement PLN.TruthValue PLN.Judgement))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert backward chainer call to PLN ;;
@@ -455,12 +537,12 @@
 ;;
 ;; - the environment is (Cons (: a1i.1 𝜑) Nil)
 ;; - the query is (: $prf (→ 𝜓 𝜑))
-;; - the surrounsing premises are Nil
+;; - the surrounding premises are Nil
 ;; - the depth 1
 ;;
 ;; would be converted into the following PLN query
 ;;
-;; (∃z (Θ (Cons (_:_ _a1i.1_ _𝜑_) PC) z (_→_ _𝜓_ _𝜑_)) ∧ (depth_lte z 1))
+;; (∃ z (Θ (Cons (_:_ _a1i.1_ _𝜑_) PC) z (_→_ _𝜓_ _𝜑_)) ∧ (depth_lte z 1))
 ;;
 ;; where
 ;;
@@ -493,13 +575,34 @@
 ;; must be completely provided, but here, for the sake of simplicity
 ;; we will simply hide its description under the symbol PC, which
 ;; stands for Propositional Calculus.
+;;
+;; NEXT: support depth.
 (: toPLN (-> (List $a)                  ; Theory
              (List $a)                  ; Surrounding premises
              Nat                        ; Maximum Depth
              $a                         ; Query
              PLN.Judgement))            ; PLN judgement
-(= (toPLN $thry $ctx $depth (: $prf $thrm))
-   NEXT)
+(= (toPLN $thry $ctx $depth (: $prf $type))
+   (let* (;; Turn the context into a PLN statement
+          ((MkPair $vars $plnctx) (contextToPLN $thry Nil $ctx))
+          ;; Turn the query into a PLN statement
+          ((MkPair $nvars $plnstm) (queryToPLN $thry $vars (: $prf $type))))
+     ;; Wrap existential quantifiers around conjunction of query and context
+     (variablesToPLN (List.length $nvars) (∧ $plnstm $plnctx))))
+
+;; Given a number of variables and a PLN statement containing De
+;; Bruijn indices corresponding to these variables, wrap existential
+;; quantifiers around the given PLN statement.
+(: variablesToPLN (-> Nat             ; Number of variables
+                      PLN.Statement   ; PLN statement to be
+                                      ; existentially quantified
+                      PLN.STatement)) ; Resulting PLN statement
+(= (variablesToPLN Z $plnstm) $plnstm)
+(= (variablesToPLN (S $k) $plnstm)
+   (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm)))
+
+;; Convert a theory in PLN format
+NEXT
 
 ;; Like toPLN but takes the query and the surrounding premises all at
 ;; once, called context.  It does not take other parameters like
@@ -514,7 +617,7 @@
                                                            ; and PLN
                                                            ; statement
 (= (contextToPLN $thry $vars Nil)
-   (MkPair $vars ))
+   (MkPair $vars ⊤))
 (= (contextToPLN $thry $vars (Cons $head $tail))
    (let* (;; Turn the head into an atomic Θ proposition
           ((MkPair $nvars $headpln) (queryToPLN $thry $vars $head))
@@ -544,19 +647,99 @@
 ;; pair of variables encountered so far and a PLN term.
 (: proofToPLN (-> (List Variable)       ; Variables encountered so far
                   $a                    ; Proof
-                  (Pair (List Variable PLN.Term)) ; Variables and PLN
-                                                  ; term
+                  (Pair (List Variable PLN.Term)))) ; Variables and PLN
+                                                    ; term
 (= (proofToPLN $vars $prf)
-   NEXT)
+   (case (get-metatype $prf)
+     (;; If the proof is a variable, return the corresponding DeBruijn
+      ;; index and update the list variables if necessary.
+      (Variable (variableToPLN $vars $prf))
+      ;; If the proof is a symbol, return its corresponding PLN object
+      (Symbol (MkPair $vars (symbolToPLN $prf)))
+      ;; If the proof is an expression, recurse
+      (Expression (if-decons-expr $prf $hdprf $tlprf
+                                  ;; Non-empty expression
+                                  (let* (;; Call proofToPLN on head
+                                         ((MkPair $nvars $hdpln)
+                                          (proofToPLN $vars $hdprf))
+                                         ;; Call proofToPLN on tail
+                                         ((MkPair $nnvars $tlpln)
+                                          (proofToPLN $nvars $tlprf))
+                                         ;; Cons result
+                                         ($prfpln (cons-atom $hdpln $tlpln)))
+                                    (MkPair $nnvars $prfpln))
+                                  ;; Empty expression
+                                  (MkPair $vars ()))))))
 
 ;; Like proofToPLN but takes a type (or part thereof) in argument
 ;; alongside a list of variables so far encountered.
 (: typeToPLN (-> (List Variable)       ; Variables encountered so far
                   $a                   ; Type
-                  (Pair (List Variable) PLN.Term))  ; Variables and
-                                                    ; PLN term
-(= (typeToPLN $vars $thrm)
-   NEXT)
+                  (Pair (List Variable) PLN.Term)))  ; Variables and
+                                                     ; PLN term
+(= (typeToPLN $vars $type)
+   (case (get-metatype $type)
+     (;; If the type is a variable, check if it is in $vars, if it is
+      ;; then return its corresponding De Bruijn index, otherwise,
+      ;; append it first, then return its De Bruijn index.
+      (Variable (variableToPLN $vars $type))
+      ;; If the type is a symbol, return its corresponding PLN object
+      (Symbol (MkPair $vars (symbolToPLN $type)))
+      ;; If the type is an expression, recurse
+      (Expression (if-decons-expr $type $hdty $tlty
+                                  ;; Non-empty expression
+                                  (let* (;; Call typeToPLN on head
+                                         ((MkPair $nvars $hdpln)
+                                          (typeToPLN $vars $hdty))
+                                         ;; Call typeToPLN on tail
+                                         ((MkPair $nnvars $tlpln)
+                                          (typeToPLN $nvars $tlty))
+                                         ;; Cons result
+                                         ($typln (cons-atom $hdpln $tlpln)))
+                                    (MkPair $nnvars $typln))
+                                  ;; Empty expression
+                                  (MkPair $vars ()))))))
+
+;; Turn a variable into its corresponding DeBruijn index and update
+;; the list of encountered variables if necessary.
+(: variableToPLN (-> (List Variable)    ; Variables encountered so far
+                     Variable           ; Variable
+                     (Pair (List Variable) PLN.Term)))
+(= (variableToPLN $vars $var)
+   (case (List.elemIndex $var $vars)
+     (((Just $idx) (MkPair $vars $idx))
+      (Nothing (MkPair (List.appendElem $vars $var)
+                       (s (toDeBruijn (List.length $vars))))))))
+
+;; Turn a symbol, proof or type into its corresponding PLN term.  It
+;; could probably be simplified by automatically adding underscored
+;; around any symbol, but I feel it's better for now to exhaustively
+;; enumerate all supported symbols for the sake of clarity.
+(: symbolToPLN (-> Symbol PLN.Term))
+;; Axioms
+(= (symbolToPLN ax-1) _ax-1_)
+(= (symbolToPLN ax-2) _ax-2_)
+(= (symbolToPLN ax-3) _ax-3_)
+;; Inference rules
+(= (symbolToPLN ax-mp) _ax-mp_)
+;; Hypothesis
+(= (symbolToPLN mp2.1) _mp2.1_)
+(= (symbolToPLN mp2.2) _mp2.2_)
+(= (symbolToPLN mp2.3) _mp2.3_)
+(= (symbolToPLN mp2b.1) _mp2b.1_)
+(= (symbolToPLN mp2b.2) _mp2b.2_)
+(= (symbolToPLN mp2b.3) _mp2b.3_)
+(= (symbolToPLN a1i.1) _a1i.1_)
+;; Connectors
+(= (symbolToPLN →) _→_)
+(= (symbolToPLN ¬) _¬_)
+;; Formula
+(= (symbolToPLN 𝜑) _𝜑_)
+(= (symbolToPLN 𝜓) _𝜓_)
+(= (symbolToPLN 𝜒) _𝜒_)
+
+;; !(assertEqual
+  !(toPLN (Cons (: a1i.1 𝜑) PC) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
