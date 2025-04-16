@@ -167,18 +167,22 @@
 !(assertEqual (List.elemIndex 42 (Cons 0 (Cons 1 Nil))) Nothing)
 !(assertEqual (List.elemIndex 42 (Cons 0 (Cons 42 Nil))) (Just (S Z)))
 
-;; Define List.isElem that return True if the given element is present
-;; in the given list
-;; NEXT: make sure it is used at all
-(: List.isElem (-> $a (List $a) Bool))
-(= (List.isElem $x $xs) (case (List.elemIndex $x $xs)
-                          (((Just $idx) True)
-                           (Nothing False))))
-
 ;; Define List.length
 (: List.length (-> (List $a) Nat))
 (= (List.length Nil) Z)
 (= (List.length (Cons $head $tail)) (S (List.length $tail)))
+
+;; Define List.map
+(: List.map (-> (-> $a $b) (List $a) (List $b)))
+(= (List.map $f Nil) Nil)
+(= (List.map $f (Cons $x $xs)) (Cons ($f $x) (List.map $f $xs)))
+
+;; Test List.map
+(: List.map.test.foo (-> Number Number))
+(= (List.map.test.foo $x) (+ 1 $x))
+!(assertEqual
+  (List.map List.map.test.foo (Cons 1 (Cons 2 (Cons 3 Nil))))
+  (Cons 2 (Cons 3 (Cons 4 Nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
@@ -460,11 +464,32 @@
 (: _z_ PLN.Term)
 (: _s_ (-> PLN.Term.DeBruijn PLN.Term))
 
+;; Define axiom and inference rule names as PLN terms
+(: _ax-1_ PLN.Term)
+(: _ax-2_ PLN.Term)
+(: _ax-3_ PLN.Term)
+(: _ax-mp_ PLN.Term)
+(: _mp2.1_ PLN.Term)
+(: _mp2.2_ PLN.Term)
+(: _mp2.3_ PLN.Term)
+(: _mp2b.1_ PLN.Term)
+(: _mp2b.2_ PLN.Term)
+(: _mp2b.3_ PLN.Term)
+(: _a1i.1_ PLN.Term)
+(: _PC_ PLN.Term)
+(: _𝜑_ PLN.Term)
+(: _𝜓_ PLN.Term)
+(: _𝜒_ PLN.Term)
+
 ;; Define PLN Term logical connectors at the object level.  NEXT:
 ;; support PLN.Term.DeBruijn.
+(: _→_ (-> PLN.Term PLN.Term PLN.Term))
 (: _∧_ (-> PLN.Term PLN.Term PLN.Term))
 (: _∨_ (-> PLN.Term PLN.Term PLN.Term))
 (: _¬_ (-> PLN.Term PLN.Term))
+
+;; Define typing relationship at the object level.
+(: _:_ (-> PLN.Term PLN.Term PLN.Term))
 
 ;; Define PLN Statement type.  A PLN statement represents a predicate
 ;; or conditioned predicate.
@@ -516,6 +541,57 @@
 ;; the ≞ connector.
 (: PLN.Judgement Type)
 (: ≞ (-> PLN.Statement PLN.TruthValue PLN.Judgement))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Reduce PLN statements ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Reduce PLN statement.  For now it only supports neutral element
+;; elimination.
+(: PLN.reduce (-> PLN.Statement PLN.Statement))
+(= (PLN.reduce $stm)
+   (case (get-metatype $stm)
+     ((Symbol $stm)
+      (Grounded $stm)
+      (Expression (case $stm
+                    (;; Nullary
+                     (() ())
+                     ;; Unary
+                     (($x) ((PLN.reduce $x)))
+                     ;; Binary
+                     (($x $y) ((PLN.reduce $x) (PLN.reduce $y)))
+                     ;; Ternary
+                     ;; →
+                     ((→ $x ⊤) ⊤)
+                     ((→ ⊤ $x) (PLN.reduce $x))
+                     ((→ $x ⊥) (¬ (PLN.reduce $x)))
+                     ((→ ⊥ $x) ⊤)
+                     ;; ∧
+                     ((∧ $x ⊤) (PLN.reduce $x))
+                     ((∧ ⊤ $x) (PLN.reduce $x))
+                     ((∧ ⊥ $x) ⊥)
+                     ((∧ $x ⊥) ⊥)
+                     ;; ∨
+                     ((∨ $x ⊤) ⊤)
+                     ((∨ ⊤ $x) ⊤)
+                     ((∨ $x ⊥) (PLN.reduce $x))
+                     ((∨ ⊥ $x) (PLN.reduce $x))
+                     ;; Other ternary
+                     (($x $y $z) ((PLN.reduce $x)
+                                  (PLN.reduce $y)
+                                  (PLN.reduce $z)))
+                     ;; Quaternary
+                     (($x $y $z $w) ((PLN.reduce $x)
+                                     (PLN.reduce $y)
+                                     (PLN.reduce $z)
+                                     (PLN.reduce $w)))
+                     ;; Otherwise
+                     ($else (Error $stm "Not supported in PLN.reduce")))))
+      ($else (Error (get-metatype $stm) "Not supported in PLN.reduce")))))
+
+!(assertEqual
+  (PLN.reduce (∧ (Θ _PC_ z _𝜑_) ⊤))
+  (Θ _PC_ z _𝜑_))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert backward chainer call to PLN ;;
@@ -586,9 +662,11 @@
    (let* (;; Turn the context into a PLN statement
           ((MkPair $vars $plnctx) (contextToPLN $thry Nil $ctx))
           ;; Turn the query into a PLN statement
-          ((MkPair $nvars $plnstm) (queryToPLN $thry $vars (: $prf $type))))
-     ;; Wrap existential quantifiers around conjunction of query and context
-     (variablesToPLN (List.length $nvars) (∧ $plnstm $plnctx))))
+          ((MkPair $nvars $plnstm) (queryToPLN $thry $vars (: $prf $type)))
+          ;; Build the conjunction of query and context and reduce it
+          ($plnred (PLN.reduce (∧ $plnstm $plnctx))))
+     ;; Wrap existential quantifiers around the reduced PLN statement
+     (variablesToPLN (List.length $nvars) $plnred)))
 
 ;; Given a number of variables and a PLN statement containing De
 ;; Bruijn indices corresponding to these variables, wrap existential
@@ -602,7 +680,32 @@
    (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm)))
 
 ;; Convert a theory in PLN format
-NEXT
+(: theoryToPLN (-> (List $a) (List PLN.Term)))
+(= (theoryToPLN $thry) (List.map typingToPLN $thry))
+
+;; Convert a typing relationship in PLN format.  It is meant to be
+;; called by theoryToPLN thus does not require to update variables as
+;; it is assumed that theories have no holes in them (it is an
+;; interesting thought to allow holes in theories though).  It is also
+;; why the converter outputs a PLN term instead of a PLN statement,
+;; because the output is meant to exist at the object level, as a data
+;; point of Θ.
+(: typingToPLN (-> $a PLN.Term))
+(= (typingToPLN $tyr)
+   (case (get-metatype $tyr)
+     ((Symbol (symbolToPLN $tyr))
+      (Expression
+       (if-decons-expr $tyr $hdtyr $tltyr
+                       ;; Non-empty expression
+                       (let* (;; Call typingToPLN on head
+                              ($hdpln (typingToPLN $hdtyr))
+                              ;; Call typeToPLN on tail
+                              ($tlpln (typingToPLN $tltyr)))
+                         ;; Cons result
+                         (cons-atom $hdpln $tlpln))
+                       ;; Empty expression
+                       ()))
+      ($else (Error $tyr "Case not supported in typingToPLN")))))
 
 ;; Like toPLN but takes the query and the surrounding premises all at
 ;; once, called context.  It does not take other parameters like
@@ -636,11 +739,13 @@ NEXT
                                                          ; and PLN
                                                          ; statement
 (= (queryToPLN $thry $vars (: $prf $thrm))
-   (let* (;; Convert proof into PLN term, and accumulate new variables
+   (let* (;; Convert theory into PLN term
+          ($thrypln (theoryToPLN $thry))
+          ;; Convert proof into PLN term, and accumulate new variables
           ((MkPair $nvars $prfpln) (proofToPLN $vars $prf))
           ;; Convert type into PLN term, and accumulate new variables
           ((MkPair $nnvars $thrmpln) (typeToPLN $nvars $thrm)))
-     (MkPair $nnvars (Θ $thry $prfpln $thrmpln))))
+     (MkPair $nnvars (Θ $thrypln $prfpln $thrmpln))))
 
 ;; Like queryToPLN but takes a proof (or part thereof) in argument
 ;; alongside a list of variables so far encountered.  It outputs a
@@ -707,15 +812,19 @@ NEXT
                      (Pair (List Variable) PLN.Term)))
 (= (variableToPLN $vars $var)
    (case (List.elemIndex $var $vars)
-     (((Just $idx) (MkPair $vars $idx))
+     (((Just $idx) (MkPair $vars (toDeBruijn $idx)))
       (Nothing (MkPair (List.appendElem $vars $var)
-                       (s (toDeBruijn (List.length $vars))))))))
+                       (toDeBruijn (List.length $vars)))))))
 
 ;; Turn a symbol, proof or type into its corresponding PLN term.  It
 ;; could probably be simplified by automatically adding underscored
 ;; around any symbol, but I feel it's better for now to exhaustively
 ;; enumerate all supported symbols for the sake of clarity.
 (: symbolToPLN (-> Symbol PLN.Term))
+;; Place holder for propositional calculus
+(= (symbolToPLN PC) _PC_)
+;; Typing relationship
+(= (symbolToPLN :) _:_)
 ;; Axioms
 (= (symbolToPLN ax-1) _ax-1_)
 (= (symbolToPLN ax-2) _ax-2_)
@@ -738,8 +847,50 @@ NEXT
 (= (symbolToPLN 𝜓) _𝜓_)
 (= (symbolToPLN 𝜒) _𝜒_)
 
-;; !(assertEqual
-  !(toPLN (Cons (: a1i.1 𝜑) PC) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+;; Test typingToPLN
+!(assertEqual
+  (typingToPLN (: a1i.1 𝜑))
+  (_:_ _a1i.1_ _𝜑_))
+!(assertEqual
+  (typingToPLN PC)
+  _PC_)
+
+;; Test theoryToPLN
+!(assertEqual
+  (theoryToPLN Nil)
+  Nil)
+!(assertEqual
+  (theoryToPLN (Cons PC Nil))
+  (Cons _PC_ Nil))
+!(assertEqual
+  (theoryToPLN (Cons (: a1i.1 𝜑) Nil))
+  (Cons (_:_ _a1i.1_ _𝜑_) Nil))
+!(assertEqual
+  (theoryToPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)))
+  (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)))
+
+;; Test variableToPLN
+!(assertEqual
+  (variableToPLN Nil $prf)
+  (MkPair (Cons $prf Nil) z))
+!(assertEqual
+  (variableToPLN (Cons $prf Nil) $prf)
+  (MkPair (Cons $prf Nil) z))
+
+;; Test proofToPLN
+!(assertEqual
+  (proofToPLN Nil $prf)
+  (MkPair (Cons $prf Nil) z))
+
+;; Test queryToPLN
+!(assertEqual
+  (queryToPLN Nil Nil (: $prf (→ 𝜓 𝜑)))
+  (MkPair (Cons $prf Nil) (Θ Nil z (_→_ _𝜓_ _𝜑_))))
+
+;; Test toPLN
+!(assertEqual
+  (toPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+  (∃ z (Θ (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)) z (_→_ _𝜓_ _𝜑_))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
