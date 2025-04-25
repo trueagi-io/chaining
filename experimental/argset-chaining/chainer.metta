@@ -121,7 +121,7 @@
       (let* (
          (($a ⊢ $b) (bcset $kb $depth ($pset ⊢ $ppset))) ;Proof the premises
          ;(($npcset $_ppset ()) (tracem (o2 $b $ppset) (overlap2 $b $ppset)))
-         ($rc2 (cpu2 $lc_cset) (runcpu $lc_cset))
+         ($rc2 (runcpu $lc_cset))
          )
          (normalize (unionStmt ($lc_pset ⊢ $lc_cset) ($a ⊢ $b)))
        )
