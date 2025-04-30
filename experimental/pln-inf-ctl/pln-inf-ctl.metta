@@ -250,6 +250,9 @@
 (: MkDCall (-> (-> $a $b $c $d $e)
                $a $b $c $d
                (DCall $a $b $c $d $e)))                ; Quaternary
+(: MkDCall (-> (-> $a $b $c $d $e $f)
+               $a $b $c $d $e
+               (DCall $a $b $c $d $e $f)))             ; Quinary
 
 ;; Run a nullary DCall
 (: DCall.run0 (-> (DCall $a) $a))
@@ -266,6 +269,9 @@
 ;; Run a Quaternary DCall
 (: DCall.run4 (-> (DCall $a $b $c $d $e) $e))
 (= (DCall.run4 (MkDCall $f $x $y $z $w)) ($f $x $y $z $w))
+;; Run a Quinary DCall
+(: DCall.run5 (-> (DCall $a $b $c $d $e $f) $f))
+(= (DCall.run5 (MkDCall $g $x $y $z $w $v)) ($g $x $y $z $w $v))
 
 ;;;;;;;;;;;;;;;;
 ;; Test DCall ;;
@@ -280,7 +286,9 @@
 (: qux (-> Number Bool String Atom))
 (= (qux $x $y $z) (R $x $y $z))
 (: quux (-> Number Bool String Number Atom))
-(= (quux $x $y $z $w) (S $x $y $z $w))
+(= (quux $x $y $z $w) (RS $x $y $z $w))
+(: corge (-> Number Bool String Number Bool Atom))
+(= (corge $x $y $z $w $v) (T $x $y $z $w $v))
 
 ;; Test foo wrapped in a DCall
 !(assertEqual
@@ -302,10 +310,15 @@
   (DCall.run3 (MkDCall qux 42 True "abc"))
   (R 42 True "abc"))
 
-;; Test qux wrapped in a DCall
+;; Test quux wrapped in a DCall
 !(assertEqual
   (DCall.run4 (MkDCall quux 42 True "abc" 42))
-  (S 42 True "abc" 42))
+  (RS 42 True "abc" 42))
+
+;; Test corge wrapped in a DCall
+!(assertEqual
+  (DCall.run5 (MkDCall corge 42 True "abc" 42 False))
+  (T 42 True "abc" 42 False))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Estimate DCall ;;
@@ -354,6 +367,9 @@
 (: MkEDCall (-> Number                 ; Estimate
                 (DCall $a $b $c $d $e) ; Quaternary DCall
                 (EDCall $a $b $c $d $e)))
+(: MkEDCall (-> Number                    ; Estimate
+                (DCall $a $b $c $d $e $f) ; Quinary DCall
+                (EDCall $a $b $c $d $e $f)))
 
 ;; Less than predicate over EDCall objects of same signature.  Compare
 ;; their estimates.
@@ -377,6 +393,10 @@
 (= (EDCall.lt4 (MkEDCall $le (MkDCall $lf $lx $ly $lz $lw))
                (MkEDCall $re (MkDCall $rf $rx $ry $rz $rw)))
    (< $le $re))
+(: EDCall.lt5 (-> (EDCall $a $b $c $d $e $f) (EDCall $a $b $c $d $e $f) Bool))
+(= (EDCall.lt5 (MkEDCall $le (MkDCall $lg $lx $ly $lz $lw $lf))
+               (MkEDCall $re (MkDCall $rg $rx $ry $rz $rw $rf)))
+   (< $le $re))
 
 ;; Test EDCall
 !(assertEqual
@@ -399,6 +419,10 @@
   (EDCall.lt4 (MkEDCall 0.2 (MkDCall quux 42 True "abc" 42))
               (MkEDCall 0.3 (MkDCall quux 24 False "def" 24)))
   True)
+!(assertEqual
+  (EDCall.lt5 (MkEDCall 0.6 (MkDCall corge 42 True "abc" 42 True))
+              (MkEDCall 0.3 (MkDCall corge 24 False "def" 24 False)))
+  False)
 
 ;; Test taking the max of two EDCalls
 (: EDCalls.test.foo (-> $a $b $c $c))
@@ -427,6 +451,10 @@
 (: EDCall.run4 (-> (EDCall $a $b $c $d $e) $e))
 (= (EDCall.run4 (MkEDCall $estimate (MkDCall $f $x $y $z $w)))
    ($f $x $y $z $w))
+;; Run a quinary EDCall
+(: EDCall.run5 (-> (EDCall $a $b $c $d $e $f) $f))
+(= (EDCall.run5 (MkEDCall $estimate (MkDCall $g $x $y $z $w $v)))
+   ($g $x $y $z $w $v))
 
 ;;;;;;;;;
 ;; PLN ;;
