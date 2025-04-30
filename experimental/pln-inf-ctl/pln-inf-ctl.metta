@@ -1011,43 +1011,66 @@
 ;; probability is selected.
 ;;
 ;; NEXT: detail exactly inputs and output.
-(: bc (-> (List $a)                     ; Environment
-          (List $a)                     ; Surrounding premises
-          Nat                           ; Maximum depth
-          $a                            ; Query
-          $a))                          ; Result
+(: bc (-> Control   ; Estimator
+          (List $a) ; Environment
+          (List $a) ; Surrounding premises
+          Nat       ; Maximum depth
+          $a        ; Query
+          $a))      ; Result
 
 ;;;;;;;;;;;;;;;;
 ;; Base cases ;;
 ;;;;;;;;;;;;;;;;
 
 ;; Match the environment
-(: bc-env (-> (List $a) (List $a) Nat $a $a))
-(= (bc-env $env $ctx $depth (: $prf $thrm))
-   (trace! (® bc-env $ctx $depth (: $prf $thrm))
+(: bc-env (-> Control                   ; Estimator
+              (List $a)                 ; Environment
+              (List $a)                 ; Surrounding premises
+              Nat                       ; Maximum depth
+              $a                        ; Query
+              $a))                      ; Result
+(= (bc-env $ctl $env $ctx $depth (: $prf $thrm))
+   (trace! (👁 bc-env $ctl $ctx $depth (: $prf $thrm))
    (match' $env (: $prf $thrm) (: $prf $thrm))))
 
 ;; Axiom Simp. Axiom A1 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-1.html
-(: bc-ax-1 (-> (List $a) (List $a) Nat $a $a))
-(= (bc-ax-1 $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (® bc-ax-1 $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+(: bc-ax-1 (-> Control                   ; Estimator
+               (List $a)                 ; Environment
+               (List $a)                 ; Surrounding premises
+               Nat                       ; Maximum depth
+               $a                        ; Query
+               $a))                      ; Result
+(= (bc-ax-1 $ctl $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (trace! (👁 bc-ax-1 $ctl $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
    (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
 
 ;; Axiom Frege. Axiom A2 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-2.html
-(: bc-ax-2 (-> (List $a) (List $a) Nat $a $a))
-(= (bc-ax-2 $env $ctx $depth
+(: bc-ax-2 (-> Control                   ; Estimator
+               (List $a)                 ; Environment
+               (List $a)                 ; Surrounding premises
+               Nat                       ; Maximum depth
+               $a                        ; Query
+               $a))                      ; Result
+(= (bc-ax-2 $ctl $env $ctx $depth
             (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (® bc-ax-2 $ctx $depth (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (trace! (👁 bc-ax-2 $ctl $ctx $depth
+              (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
    (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
 
 ;; Axiom Transp. Axiom A3 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-3.html
-(: bc-ax-3 (-> (List $a) (List $a) Nat $a $a))
-(= (bc-ax-3 $env $depth $ctx
+(: bc-ax-3 (-> Control                   ; Estimator
+               (List $a)                 ; Environment
+               (List $a)                 ; Surrounding premises
+               Nat                       ; Maximum depth
+               $a                        ; Query
+               $a))                      ; Result
+(= (bc-ax-3 $ctl $env $depth $ctx
             (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (® bc-ax-3 $ctx $depth (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (trace! (👁 bc-ax-3 $ctx $depth
+              (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
    (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -1056,18 +1079,25 @@
 
 ;; Rule 1 of [Hamilton] p. 73.
 ;; https://us.metamath.org/mpeuni/ax-mp.html
-(: bc-ax-mp (-> (List $a) (List $a) Nat $a $a))
-(= (bc-ax-mp $env $ctx (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (® bc-ax-mp $ctx (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+(: bc-ax-mp (-> Control                   ; Estimator
+                (List $a)                 ; Environment
+                (List $a)                 ; Surrounding premises
+                Nat                       ; Maximum depth
+                $a                        ; Query
+                $a))                      ; Result
+(= (bc-ax-mp $ctl $env $ctx (S $k)
+             (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+   (trace! (👁 bc-ax-mp $ctl $ctx (S $k)
+              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (let* (;; Recurse on premise 1
           ((: $prfarg1 $𝜑)
-           (bc $env
+           (bc $ctl $env
                ;; Add premise 2 in context
                (Cons (: $prfarg2 (→ $𝜑 $𝜓)) $ctx)
                $k (: $prfarg1 $𝜑)))
           ;; Recurse on premise 2
           ((: $prfarg2 (→ $𝜑 $𝜓))
-           (bc $env
+           (bc $ctl $env
                ;; Add premise 1 in context
                (Cons (: $prfarg1 $𝜑) $ctx)
                $k (: $prfarg2 (→ $𝜑 $𝜓)))))
@@ -1080,61 +1110,102 @@
 ;; Define backward chainer estimate.  It mirrors the backward chainer
 ;; code, but outputs an EDCall, meaning a branch and its estimate of
 ;; success, instead of directly taking the branch.
-(: bce (-> (List $a)                      ; Environment
-           (List $a)                      ; Surrounding premises
-           Nat                            ; Depth
-           $a                             ; Query
-           (EDCall (List $a) (List $a) Nat $a $a))) ; EDCall
+(: bce (-> Control   ; Estimator
+           (List $a) ; Environment
+           (List $a) ; Surrounding premises
+           Nat       ; Depth
+           $a        ; Query
+           (EDCall Control (List $a) (List $a) Nat $a $a))) ; EDCall
 
-;; Estimate of matching the environment.  NEXT: the estimate should
-;; probably be calculated for each matching result.
-(= (bce $env $ctx $depth (: $prf $thrm))
-   (MkEDCall (random-float &rng 0 1)    ; NEXT: replace by PLN
-             (MkDCall bc-env $env $ctx $depth (: $prf $thrm))))
+;; Estimate of environment.  NEXT: the estimate should probably be
+;; calculated for each matching result.
+(= (bce (MkControl $est) $env $ctx $depth (: $prf $thrm))
+   (trace! (👁 bce-env (MkControl $est) $env $ctx $depth (: $prf $thrm))
+   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
+             (MkDCall bc-env (MkControl $est) $env $ctx $depth
+                      (: $prf $thrm)))))
 
 ;; Estimate of Axiom A1
-(= (bce $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (MkEDCall (random-float &rng 0 1)    ; NEXT: replace by PLN
-             (MkDCall bc-ax-1 $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))))
+(= (bce (MkControl $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (trace! (👁 bce-ax-1 (MkControl $est) $env $ctx $depth
+              (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
+             (MkDCall bc-ax-1 (MkControl $est) $env $ctx $depth
+                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Axiom A2
-(= (bce $env $ctx $depth
+(= (bce (MkControl $est) $env $ctx $depth
         (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (MkEDCall (random-float &rng 0 1)    ; NEXT: replace by PLN
-             (MkDCall bc-ax-2 $env $ctx $depth
-                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))))
+   (trace! (👁 bce-ax-2 (MkControl $est) $env $ctx $depth
+              (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
+   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
+             (MkDCall bc-ax-2 (MkControl $est) $env $ctx $depth
+                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))))
 
 ;; Estimate of Axiom A3
-(= (bce $env $ctx $depth
+(= (bce (MkControl $est) $env $ctx $depth
         (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (MkEDCall (random-float &rng 0 1)    ; NEXT: replace by PLN
-             (MkDCall bc-ax-3 $env $ctx $depth
-                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))))
+   (trace! (👁 bce-ax-3 (MkControl $est) $env $ctx $depth
+              (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))
+   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
+             (MkDCall bc-ax-3 (MkControl $est) $env $ctx $depth
+                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Rule 1 (modus ponens)
-(= (bce $env $ctx (S $k)
+(= (bce (MkControl $est) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (MkEDCall (random-float &rng 0 1)    ; NEXT: replace by PLN
-             (MkDCall bc-ax-mp $env $ctx (S $k)
-                      (: (ax-mp $prfarg1 $prfarg2) $𝜓))))
+   (trace! (👁 bce-ax-mp (MkControl $est) $env $ctx (S $k)
+              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
+             (MkDCall bc-ax-mp (MkControl $est) $env $ctx (S $k)
+                      (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
 
 ;;;;;;;;;;;;;;
 ;; Monolith ;;
 ;;;;;;;;;;;;;;
 
 ;; See above for its type signature and comment
-(= (bc $env $ctx $depth (: $prf $thrm))
-   (trace! (® bc $ctx $depth (: $prf $thrm))
-   (let* (($edcalls (collapse (bce $env $ctx $depth (: $prf $thrm))))
+(= (bc (MkControl $est) $env $ctx $depth (: $prf $thrm))
+   (trace! (👁 bc $ctx $depth (: $prf $thrm))
+   (let* (($edcalls (collapse (bce (MkControl $est) $env $ctx $depth (: $prf $thrm))))
           ($edcall_seq (List.fromExpression $edcalls))
-          ($best_edcall (List.maxElementWith EDCall.lt4 $edcall_seq)))
-     (EDCall.run4 $best_edcall))))
+          ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq)))
+     (EDCall.run5 $best_edcall))))
+
+;;;;;;;;;;;;;;;;;
+;; PLN Chainer ;;
+;;;;;;;;;;;;;;;;;
+
+;; For now PLN chaining is greedy, without inference control.  That is
+;; because we first want to make sure PLN-based inference control
+;; works at all.  In other words, to begin with we focus on making the
+;; inference control accurate, not necessarily efficient.
+
+(: pln-bc (-> $a             ; PLN knowledge base
+              Nat            ; Maximum depth
+              PLN.Judgment   ; PLN judgement with holes.  Normally,
+                             ; only one hole on the truth value.
+              PLN.Judgment)) ; PLN judgement without hole
+
+;; Udf axiom takes any PLN statement and associate the judgement with
+;; the undefined truth value, with strength 1 and confidence 0,
+;; corresponding to complete unknown.
+(= (pln-bc &pln-kb $depth (: Udf $prf (≞ $pln-stm (PLN.MkSTV 1 0))))
+   (: Udf (≞ $pln-stm (PLN.MkSTV 1 0))))
 
 ;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;; ;;
 ;; ;; Test ;; ;;
 ;; ;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test Random Control ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(: rnd-estimate (-> (List $a) (List $a) Nat $a Number))
+(= (rnd-estimate $env $ctx $depth $query) (random-float &rng 0 1))
+!(bind! &rnd-ctl (MkControl rnd-estimate))
 
 ;; In order to reproduce the tests, the random seed needs to be set
 ;; just right, and it becomes harder and harder to find a seed that
@@ -1146,7 +1217,8 @@
 ;; (= (bc.test.mp2.p $n)
 ;;    (trace! (® bc.test.mp2.p $n)
 ;;    (let () (set-random-seed &rng $n)
-;;         (case (bc (Cons (: mp2.1 𝜑)
+;;         (case (bc &rnd-ctl
+;;                   (Cons (: mp2.1 𝜑)
 ;;                         (Cons (: mp2.2 𝜓)
 ;;                               (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
 ;;                                     Nil)))
@@ -1162,7 +1234,7 @@
 ;; Test ax-3
 !(set-random-seed &rng 1)
 !(assertEqual
-  (bc Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+  (bc &rnd-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
   (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
 
 ;; Test subgoal of https://us.metamath.org/mpeuni/mp2.html
@@ -1171,7 +1243,8 @@
 ;; be different which considerably prunes the search space.
 !(set-random-seed &rng 0)
 !(assertEqual
-  (bc (Cons (: mp2.1 𝜑)
+  (bc &rnd-ctl
+      (Cons (: mp2.1 𝜑)
             (Cons (: mp2.2 𝜓)
                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
                         Nil)))
@@ -1186,7 +1259,8 @@
 ;; be different which considerably prunes the search space.
 !(set-random-seed &rng 84)
 !(assertEqual
-  (bc (Cons (: mp2.1 𝜑)
+  (bc &rnd-ctl
+      (Cons (: mp2.1 𝜑)
             (Cons (: mp2.2 𝜓)
                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
                         Nil)))
@@ -1198,7 +1272,8 @@
 ;; Test https://us.metamath.org/mpeuni/mp2b.html
 !(set-random-seed &rng 363)
 !(assertEqual
-  (bc (Cons (: mp2b.1 𝜑)
+  (bc &rnd-ctl
+      (Cons (: mp2b.1 𝜑)
             (Cons (: mp2b.2 (→ 𝜑 𝜓))
                   (Cons (: mp2b.3 (→ 𝜓 𝜒))
                         Nil)))
@@ -1213,7 +1288,8 @@
 ;; be different which considerably prunes the search space.
 !(set-random-seed &rng 4)
 !(assertEqual
-  (bc (Cons (: a1i.1 𝜑) Nil)
+  (bc &rnd-ctl
+      (Cons (: a1i.1 𝜑) Nil)
       Nil
       (fromNumber 1)
       (: $prf (→ 𝜓 𝜑)))
