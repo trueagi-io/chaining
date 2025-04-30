@@ -457,15 +457,30 @@
 (= (EDCall.run5 (MkEDCall $estimate (MkDCall $g $x $y $z $w $v)))
    ($g $x $y $z $w $v))
 
+;;;;;;;;;;;;;
+;; Control ;;
+;;;;;;;;;;;;;
+
+;; Control structure holding the inference control, parameterized by
+;; the query language.  For now it merely holds a function to estimate
+;; the probability of success of a particular branch.
+(: Control (-> $a Type))
+(MkControl (-> (-> (List $a)            ; Environment
+                   (List $a)            ; Context
+                   Nat                  ; Depth
+                   $a                   ; Query
+                   Number)              ; Estimate
+               (Control $a)))
+
 ;;;;;;;;;
 ;; PLN ;;
 ;;;;;;;;;
 
 ;; Define PLN TruthValue type and its constructor MkSimpleTruthValue
 (: PLN.TruthValue Type)
-(: PLN.MkSimpleTruthValue (-> Number    ; Strength
-                              Number    ; Confidence
-                              PLN.TruthValue))
+(: PLN.MkSTV (-> Number    ; Strength
+                 Number    ; Confidence
+                 PLN.TruthValue))
 
 ;; Define PLN Term type.  PLN terms are expressions defining the
 ;; objects that the PLN predicates can take in input.  To not be
