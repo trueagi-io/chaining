@@ -494,12 +494,17 @@
 ;;
 ;; (_∧_ _P_ _Q_)
 ;;
-;; We need to do that because in this experiment we reason about Θ, a
+;; We need to do that because in this experiment we reason about 𝛩, a
 ;; ternary predicate relating theories, proofs and theorems, thus we
 ;; need a way to represent them at the object level.
 (: PLN.Term Type)
 
-;; Define PLN Term DeBruijn index constructors at the object level.
+;; Make sure that z and s can be typed as PLN.Term as well
+(: z PLN.Term)
+(: s (-> DeBruijn PLN.Term))
+
+;; Define PLN Term DeBruijn index constructors, used in quantifiers at
+;; the object level.
 (: PLN.Term.DeBruijn Type)
 (: _z_ PLN.Term.DeBruijn)
 (: _s_ (-> PLN.Term.DeBruijn PLN.Term.DeBruijn))
@@ -559,26 +564,26 @@
 
 ;; Define PLN Statement existential quantifier ∃.  For now we avoid
 ;; concerns about its semantics, including the interval aspect
-;; explained in the PLN book.  Since Θ is deterministic anyway, let's
+;; explained in the PLN book.  Since 𝛩 is deterministic anyway, let's
 ;; see how far we can go with a crisp version of this quantifier.
 ;; NEXT: DeBruijn or PLN.DeBruijn?
 (: ∃ (-> DeBruijn PLN.Statement PLN.Statement))
 
 ;; Define PLN Statement constructors from a set of primitive
-;; predicates.  For now only Θ, a ternary predicate representing the
+;; predicates.  For now only 𝛩, a ternary predicate representing the
 ;; relationship between theory, proof and theorem, is used.  A theory
 ;; is a collection of axioms and inference rules, for now encoded as a
-;; list of PLN terms.  Even though Θ is completely deterministic, it
+;; list of PLN terms.  Even though 𝛩 is completely deterministic, it
 ;; is treated as probabilistic to cope with the insufficient knowledge
-;; and resources about it.  Indeed, Θ is semi-computable at best, thus
+;; and resources about it.  Indeed, 𝛩 is semi-computable at best, thus
 ;; it is pointless to hope we can ever know everything about.  For
-;; that reason, Θ (or any other PLN predicates) has the following
+;; that reason, 𝛩 (or any other PLN predicates) has the following
 ;; underlying type signature
 ;;
-;; Θ : Theory -> Proof -> Theorem -> Ω -> Bool
+;; 𝛩 : Theory -> Proof -> Theorem -> Ω -> Bool
 ;;
 ;; where Ω is the sample space of the underlying probability space.
-(: Θ (-> (List PLN.Term) PLN.Term PLN.Term PLN.Statement))
+(: 𝛩 (-> (List PLN.Term) PLN.Term PLN.Term PLN.Statement))
 
 ;; Define PLN judgement type and its constructor.  A judgement is a
 ;; PLN statement alonside its assigned truth value, constructed with
@@ -625,17 +630,32 @@
                                   (PLN.reduce $y)
                                   (PLN.reduce $z)))
                      ;; Quaternary
+                     ((𝛩 $x $y $z) $stm)
+                     ;; Other quaternary
                      (($x $y $z $w) ((PLN.reduce $x)
                                      (PLN.reduce $y)
                                      (PLN.reduce $z)
                                      (PLN.reduce $w)))
+                     ;; Quinary
+                     (($x $y $z $w $v) ((PLN.reduce $x)
+                                        (PLN.reduce $y)
+                                        (PLN.reduce $z)
+                                        (PLN.reduce $w)
+                                        (PLN.reduce $v)))
                      ;; Otherwise
                      ($else (Error $stm "Not supported in PLN.reduce")))))
       ($else (Error (get-metatype $stm) "Not supported in PLN.reduce")))))
 
+;; Test PLN.reduce
 !(assertEqual
-  (PLN.reduce (∧ (Θ _PC_ z _𝜑_) ⊤))
-  (Θ _PC_ z _𝜑_))
+  (PLN.reduce ⊤)
+  ⊤)
+!(assertEqual
+  (PLN.reduce (𝛩 (Cons _PC_ Nil) z _𝜑_))
+  (𝛩 (Cons _PC_ Nil) z _𝜑_))
+!(assertEqual
+  (PLN.reduce (∧ (𝛩 (Cons _PC_ Nil) z _𝜑_) ⊤))
+  (𝛩 (Cons _PC_ Nil) z _𝜑_))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert backward chainer call to PLN ;;
@@ -662,7 +682,7 @@
 ;;
 ;; would be converted into the following PLN query
 ;;
-;; (∃ z (Θ (Cons (_:_ _a1i.1_ _𝜑_) PC) z (_→_ _𝜓_ _𝜑_)) ∧ (depth_lte z 1))
+;; (∃ z (𝛩 (Cons (_:_ _a1i.1_ _𝜑_) PC) z (_→_ _𝜓_ _𝜑_)) ∧ (depth_lte z 1))
 ;;
 ;; where
 ;;
@@ -672,7 +692,7 @@
 ;;   (or mesa level), by being surrounded with _.  So for instance, :
 ;;   becomes _:_, a1i.1 becomes _a1i.1_, → becomes _→_, etc.
 ;;
-;; - The ternary predicate Θ is a PLN predicate representing the
+;; - The ternary predicate 𝛩 is a PLN predicate representing the
 ;;   relationship between Theory, Proof and Theorem, in this
 ;;   respective argument order.  It is also a partial function mapping
 ;;   its first two arguments, Theory and Proof to the third one,
@@ -718,14 +738,16 @@
 (: variablesToPLN (-> Nat             ; Number of variables
                       PLN.Statement   ; PLN statement to be
                                       ; existentially quantified
-                      PLN.STatement)) ; Resulting PLN statement
+                      PLN.Statement)) ; Resulting PLN statement
 (= (variablesToPLN Z $plnstm) $plnstm)
 (= (variablesToPLN (S $k) $plnstm)
-   (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm)))
+   (trace! (👁 variablesToPLN (S $k) $plnstm)
+   (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm))))
 
 ;; Convert a theory in PLN format
 (: theoryToPLN (-> (List $a) (List PLN.Term)))
-(= (theoryToPLN $thry) (List.map typingToPLN $thry))
+(= (theoryToPLN $thry) (trace! (👁 theoryToPLN $thry)
+                               (List.map typingToPLN $thry)))
 
 ;; Convert a typing relationship in PLN format.  It is meant to be
 ;; called by theoryToPLN thus does not require to update variables as
@@ -733,7 +755,7 @@
 ;; interesting thought to allow holes in theories though).  It is also
 ;; why the converter outputs a PLN term instead of a PLN statement,
 ;; because the output is meant to exist at the object level, as a data
-;; point of Θ.
+;; point of 𝛩.
 (: typingToPLN (-> $a PLN.Term))
 (= (typingToPLN $tyr)
    (case (get-metatype $tyr)
@@ -756,7 +778,7 @@
 ;; depth.  Additionally, it takes a list of variables encountered so
 ;; far in the context that has been consumed.  It outputs a pair of
 ;; list of all variables encountered so far and a PLN proposition as a
-;; conjunction of Θ propositions.
+;; conjunction of 𝛩 propositions.
 (: contextToPLN (-> (List $a)                   ; Theory
                     (List Variable)             ; Variables so far
                     (List $a)                   ; Context
@@ -766,16 +788,16 @@
 (= (contextToPLN $thry $vars Nil)
    (MkPair $vars ⊤))
 (= (contextToPLN $thry $vars (Cons $head $tail))
-   (let* (;; Turn the head into an atomic Θ proposition
+   (let* (;; Turn the head into an atomic 𝛩 proposition
           ((MkPair $nvars $headpln) (queryToPLN $thry $vars $head))
-          ;; Turn the tail into a conjunction of Θ propositions
+          ;; Turn the tail into a conjunction of 𝛩 propositions
           ((MkPair $nnvars $tailpln) (contextToPLN $thry $nvars $tail)))
      (MkPair $nnvars (∧ $headpln $tailpln))))
 
 ;; Like contextToPLN but only takes a single query in argument
 ;; alongside a list of variables so far encountered.  It returns a
 ;; pair of list of variables encountered so far and a PLN statement
-;; corresponding to a Θ atomic proposition.
+;; corresponding to a 𝛩 atomic proposition.
 (: queryToPLN (-> (List $a)                   ; Theory
                   (List Variable)             ; Variables encountered so far
                   $a                          ; Query
@@ -783,13 +805,14 @@
                                                          ; and PLN
                                                          ; statement
 (= (queryToPLN $thry $vars (: $prf $thrm))
+   (trace! (👁 queryToPLN $thry $vars (: $prf $thrm))
    (let* (;; Convert theory into PLN term
           ($thrypln (theoryToPLN $thry))
           ;; Convert proof into PLN term, and accumulate new variables
           ((MkPair $nvars $prfpln) (proofToPLN $vars $prf))
           ;; Convert type into PLN term, and accumulate new variables
           ((MkPair $nnvars $thrmpln) (typeToPLN $nvars $thrm)))
-     (MkPair $nnvars (Θ $thrypln $prfpln $thrmpln))))
+     (MkPair $nnvars (𝛩 $thrypln $prfpln $thrmpln)))))
 
 ;; Like queryToPLN but takes a proof (or part thereof) in argument
 ;; alongside a list of variables so far encountered.  It outputs a
@@ -827,6 +850,7 @@
                   (Pair (List Variable) PLN.Term)))  ; Variables and
                                                      ; PLN term
 (= (typeToPLN $vars $type)
+   (trace! (👁 typeToPLN $vars $type)
    (case (get-metatype $type)
      (;; If the type is a variable, check if it is in $vars, if it is
       ;; then return its corresponding De Bruijn index, otherwise,
@@ -847,7 +871,7 @@
                                          ($typln (cons-atom $hdpln $tlpln)))
                                     (MkPair $nnvars $typln))
                                   ;; Empty expression
-                                  (MkPair $vars ()))))))
+                                  (MkPair $vars ())))))))
 
 ;; Turn a variable into its corresponding DeBruijn index and update
 ;; the list of encountered variables if necessary.
@@ -855,16 +879,21 @@
                      Variable           ; Variable
                      (Pair (List Variable) PLN.Term)))
 (= (variableToPLN $vars $var)
+   (trace! (👁 variableToPLN $vars $var)
    (case (List.elemIndex $var $vars)
      (((Just $idx) (MkPair $vars (toDeBruijn $idx)))
       (Nothing (MkPair (List.appendElem $vars $var)
-                       (toDeBruijn (List.length $vars)))))))
+                       (toDeBruijn (List.length $vars))))))))
 
 ;; Turn a symbol, proof or type into its corresponding PLN term.  It
 ;; could probably be simplified by automatically adding underscored
 ;; around any symbol, but I feel it's better for now to exhaustively
 ;; enumerate all supported symbols for the sake of clarity.
-(: symbolToPLN (-> Symbol PLN.Term))
+;;
+;; Note that the output type is anything because it may return not
+;; only PLN terms but also PLN functions, going from terms to terms,
+;; such as _→_.
+(: symbolToPLN (-> Symbol $a))
 ;; Place holder for propositional calculus
 (= (symbolToPLN PC) _PC_)
 ;; Typing relationship
@@ -906,7 +935,7 @@
 !(assertEqual
   (theoryToPLN (Cons PC Nil))
   (Cons _PC_ Nil))
-!(assertEqual
+!(assertEqual                           ; NEXT
   (theoryToPLN (Cons (: a1i.1 𝜑) Nil))
   (Cons (_:_ _a1i.1_ _𝜑_) Nil))
 !(assertEqual
@@ -926,15 +955,43 @@
   (proofToPLN Nil $prf)
   (MkPair (Cons $prf Nil) z))
 
+;; Test typeToPLN
+!(assertEqual
+  (typeToPLN Nil 𝜑)
+  (MkPair Nil _𝜑_))
+!(assertEqual
+  (typeToPLN Nil (→ 𝜓 𝜑))
+  (MkPair Nil (_→_ _𝜓_ _𝜑_)))
+
 ;; Test queryToPLN
 !(assertEqual
+  (queryToPLN Nil Nil (: $prf 𝜑))
+  (MkPair (Cons $prf Nil) (𝛩 Nil z _𝜑_)))
+!(assertEqual
   (queryToPLN Nil Nil (: $prf (→ 𝜓 𝜑)))
-  (MkPair (Cons $prf Nil) (Θ Nil z (_→_ _𝜓_ _𝜑_))))
+  (MkPair (Cons $prf Nil) (𝛩 Nil z (_→_ _𝜓_ _𝜑_))))
+
+;; Test variablesToPLN
+!(assertEqual
+  (variablesToPLN Z (𝛩 Nil z _𝜑_))
+  (𝛩 Nil z _𝜑_))
+!(assertEqual
+  (variablesToPLN (S Z) (𝛩 Nil z _𝜑_))
+  (∃ z (𝛩 Nil z _𝜑_)))
 
 ;; Test toPLN
 !(assertEqual
+  (toPLN Nil Nil (S Z) (: $prf 𝜑))
+  (∃ z (𝛩 Nil z _𝜑_)))
+!(assertEqual
+  (toPLN Nil Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+  (∃ z (𝛩 Nil z (_→_ _𝜓_ _𝜑_))))
+!(assertEqual
+  (toPLN (Cons PC Nil) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+  (∃ z (𝛩 (Cons _PC_ Nil) z (_→_ _𝜓_ _𝜑_))))
+!(assertEqual
   (toPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (Θ (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)) z (_→_ _𝜓_ _𝜑_))))
+  (∃ z (𝛩 (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)) z (_→_ _𝜓_ _𝜑_))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
