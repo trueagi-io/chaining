@@ -117,7 +117,8 @@
 ;; Return the maximum between two value given a certain less than
 ;; predicate.
 (: maxWith (-> (-> $a $a Bool) $a $a Bool))
-(= (maxWith $lt $x $y) (if ($lt $x $y) $y $x))
+(= (maxWith $lt $x $y)
+   (if ($lt $x $y) $y $x))
 
 ;; Return a maximum element of a non empty list, given a certain less
 ;; than predicate.
