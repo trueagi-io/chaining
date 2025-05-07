@@ -1036,9 +1036,16 @@
 ;; Add Theta instance to PLN Space ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Outputs the theory of a corresponding environment (just prepend the
+;; environment to PC.
+(: toTheory (-> (List $a) (List $a)))
+(= (toTheory $env)
+   (List.appendElem $env PC))
+
 ;; Given a PLN space and a description of the query (supposedly closed
 ;; by now), convert the query into a 𝛩 instance, add it to the PLN
-;; space and return the query unchanged.
+;; space and return the query unchanged.  For now depth is
+;; unsupported.
 (: addInstance (-> $a              ; PLN Space
                    (List $b)       ; Theory
                    Nat             ; Depth
@@ -1224,10 +1231,15 @@
 ;; See above for its type signature and comment
 (= (bc (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
    (trace! (👁 bc $ctx $depth (: $prf $thrm))
-   (let* (($edcalls (collapse (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))))
+   (let* (;; Run superposition of backward chainer estimations
+          ($edcalls (collapse (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))))
+          ;; Select the best EDCall
           ($edcall_seq (List.fromExpression $edcalls))
-          ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq)))
-     (EDCall.run5 $best_edcall))))
+          ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq))
+          ;; Run it
+          ($result (EDCall.run5 $best_edcall)))
+     ;; Add the result into the PLN space and return the result
+     (addInstance $pln-space (toTheory $env) $depth $result))))
 
 ;;;;;;;;;;;;;;;;;
 ;; PLN Chainer ;;
