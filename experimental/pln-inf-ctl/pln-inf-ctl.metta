@@ -114,7 +114,8 @@
              $a                         ; Initial value
              $a))                       ; Final value
 (= (until $p $f $x)
-   (if ($p $x) $x (until $p $f ($f $x))))
+   (trace! (👁 until $p $f $x)
+   (if ($p $x) $x (until $p $f ($f $x)))))
 
 ;; Test until
 (: until.test.p (-> Number Bool))
@@ -122,6 +123,23 @@
 !(assertEqual
   (until until.test.p succ 0)
   10)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Set random seed and run ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Set random seed and run nullary function
+(: set-rnd-seed-run0 (-> Number (-> $a) $a))
+(= (set-rnd-seed-run0 $n $f)
+   (let () (set-random-seed &rng $n) ($f)))
+
+;; Set random seed and run nullary function.  Outputs True iff it
+;; succeeds, that is it is not empty.
+(: (set-rnd-seed-run0-not-empty (-> Number (-> $a) Bool)))
+(= (set-rnd-seed-run0-not-empty $n $f)
+   (case (set-rnd-seed-run0 $n $f)
+     ((Empty False)
+      ($else True))))
 
 ;;;;;;;;;;
 ;; List ;;
@@ -1272,10 +1290,15 @@
 ;; Test Random Control ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-!(bind! &rnd-pln (new-space))
+;; Define PLN space
+!(bind! &pln-space (new-space))
+
+;; Define random estimator
 (: rnd-estimate (-> (List $a) (List $a) Nat $a Number))
 (= (rnd-estimate $env $ctx $depth $query) (random-float &rng 0 1))
-!(bind! &rnd-ctl (MkControl $rnd-pln rnd-estimate))
+
+;; Define control with random estimator
+!(bind! &rnd-ctl (MkControl &pln-space rnd-estimate))
 
 ;; In order to reproduce the tests, the random seed needs to be set
 ;; just right, and it becomes harder and harder to find a seed that
@@ -1283,84 +1306,105 @@
 ;; systematically search for a random seed with the following code
 ;; (this is an example to discover the seed of test mp2).
 ;;
-;; (: (bc.test.mp2.p (-> Number Bool)))
-;; (= (bc.test.mp2.p $n)
-;;    (trace! (® bc.test.mp2.p $n)
-;;    (let () (set-random-seed &rng $n)
-;;         (case (bc &rnd-ctl
-;;                   (Cons (: mp2.1 𝜑)
-;;                         (Cons (: mp2.2 𝜓)
-;;                               (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
-;;                                     Nil)))
-;;                   (fromNumber 2)
-;;                   (: $prf 𝜒))
-;;                   ;; (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
-;;           ((Empty False)
-;;            ($else True))))))
+;; (: bc.test.mp2.p (-> Number Bool))
+;; (= (bc.test.mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2))
 ;; !(until bc.test.mp2.p succ 0)
 ;;
 ;; At the end of the loop, it outputs the seed.
 
 ;; Test ax-3
-!(set-random-seed &rng 1)
+(: bc.test.ax-3 (-> $a))
+(= (bc.test.ax-3)
+   (bc &rnd-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑)))))
 !(assertEqual
-  (bc &rnd-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+  (set-rnd-seed-run0 1 bc.test.ax-3)
   (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
 
 ;; Test subgoal of https://us.metamath.org/mpeuni/mp2.html
 ;;
 ;; Note that variables have been replaced by symbols to force them to
 ;; be different which considerably prunes the search space.
-!(set-random-seed &rng 0)
+(: bc.test.sub-mp2 (-> $a))
+(= (bc.test.sub-mp2)
+   (bc &rnd-ctl
+       (Cons (: mp2.1 𝜑)
+             (Cons (: mp2.2 𝜓)
+                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                         Nil)))
+       Nil
+       (fromNumber 1)
+       (: $prf (→ 𝜓 𝜒))))
+;; ;; Look for random seed
+;; (: bc.test.sub-mp2.p (-> Number Bool))
+;; (= (bc.test.sub-mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.sub-mp2))
+;; !(until bc.test.sub-mp2.p succ 0)
+;; Test
 !(assertEqual
-  (bc &rnd-ctl
-      (Cons (: mp2.1 𝜑)
-            (Cons (: mp2.2 𝜓)
-                  (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
-                        Nil)))
-      Nil
-      (fromNumber 1)
-      (: $prf (→ 𝜓 𝜒)))
+  (set-rnd-seed-run0 0 bc.test.sub-mp2)
   (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
 
 ;; Test https://us.metamath.org/mpeuni/mp2.html
 ;;
 ;; Note that variables have been replaced by symbols to force them to
 ;; be different which considerably prunes the search space.
-!(set-random-seed &rng 84)
+(: bc.test.mp2 (-> $a))
+(= (bc.test.mp2)
+   (bc &rnd-ctl
+       (Cons (: mp2.1 𝜑)
+             (Cons (: mp2.2 𝜓)
+                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                         Nil)))
+       Nil
+       (fromNumber 2)
+       (: $prf 𝜒)))
+;; ;; Look for random seed
+;; (: bc.test.mp2.p (-> Number Bool))
+;; (= (bc.test.mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2))
+;; !(until bc.test.mp2.p succ 0)
+;; Test
 !(assertEqual
-  (bc &rnd-ctl
-      (Cons (: mp2.1 𝜑)
-            (Cons (: mp2.2 𝜓)
-                  (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
-                        Nil)))
-      Nil
-      (fromNumber 2)
-      (: $prf 𝜒))
+  (set-rnd-seed-run0 0 bc.test.mp2)
   (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
 
 ;; Test https://us.metamath.org/mpeuni/mp2b.html
-!(set-random-seed &rng 363)
+(: bc.test.mp2b (-> $a))
+(= (bc.test.mp2b)
+   (bc &rnd-ctl
+       (Cons (: mp2b.1 𝜑)
+             (Cons (: mp2b.2 (→ 𝜑 𝜓))
+                   (Cons (: mp2b.3 (→ 𝜓 𝜒))
+                         Nil)))
+       Nil
+       (fromNumber 2)
+       (: $prf 𝜒)))
+;; ;; Look for random seed
+;; (: bc.test.mp2b.p (-> Number Bool))
+;; (= (bc.test.mp2b.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2b))
+;; !(until bc.test.mp2b.p succ 0)
+;; Test
 !(assertEqual
-  (bc &rnd-ctl
-      (Cons (: mp2b.1 𝜑)
-            (Cons (: mp2b.2 (→ 𝜑 𝜓))
-                  (Cons (: mp2b.3 (→ 𝜓 𝜒))
-                        Nil)))
-      Nil
-      (fromNumber 2)
-      (: $prf 𝜒))
+  (set-rnd-seed-run0 160 bc.test.mp2b)
   (: (ax-mp (ax-mp mp2b.1 mp2b.2) mp2b.3) 𝜒))
 
 ;; Test https://us.metamath.org/mpeuni/a1i.html
 ;;
 ;; Note that variables have been replaced by symbols to force them to
 ;; be different which considerably prunes the search space.
-!(set-random-seed &rng 4)
+(: bc.test.a1i.1 (-> $a))
+(= (bc.test.a1i.1)
+   (bc &rnd-ctl
+       (Cons (: a1i.1 𝜑) Nil)
+       Nil
+       (fromNumber 1)
+       (: $prf (→ 𝜓 𝜑))))
+;; ;; Look for random seed
+;; (: bc.test.a1i.1.p (-> Number Bool))
+;; (= (bc.test.a1i.1.p $n) (set-rnd-seed-run0-not-empty $n bc.test.a1i.1))
+;; !(until bc.test.a1i.1.p succ 0)
+;; Test
 !(assertEqual
-  (bc &rnd-ctl
-      (Cons (: a1i.1 𝜑) Nil)
-      Nil
-      (fromNumber 1)
-      (: $prf (→ 𝜓 𝜑)))
+  (set-rnd-seed-run0 4 bc.test.a1i.1)
   (: (ax-mp a1i.1 ax-1) (→ 𝜓 𝜑)))
+
+;; Output PLN space
+!(get-atoms &pln-space)
