@@ -464,13 +464,10 @@
 ;; Control structure holding the inference control, parameterized by
 ;; the query language.  For now it merely holds a function to estimate
 ;; the probability of success of a particular branch.
-(: Control (-> $a Type))
-(MkControl (-> (-> (List $a)            ; Environment
-                   (List $a)            ; Context
-                   Nat                  ; Depth
-                   $a                   ; Query
-                   Number)              ; Estimate
-               (Control $a)))
+(: Control Type)
+(MkControl (-> (-> (List $a) (List $a) Nat $a Number) ; Estimator
+               $b                                     ; PLN Space
+               Control))
 
 ;;;;;;;;;
 ;; PLN ;;
@@ -1119,45 +1116,45 @@
 
 ;; Estimate of environment.  NEXT: the estimate should probably be
 ;; calculated for each matching result.
-(= (bce (MkControl $est) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bce-env (MkControl $est) $env $ctx $depth (: $prf $thrm))
+(= (bce (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))
+   (trace! (👁 bce-env (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-env (MkControl $est) $env $ctx $depth
+             (MkDCall bc-env (MkControl $est $pln) $env $ctx $depth
                       (: $prf $thrm)))))
 
 ;; Estimate of Axiom A1
-(= (bce (MkControl $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-1 (MkControl $est) $env $ctx $depth
+(= (bce (MkControl $est $pln) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (trace! (👁 bce-ax-1 (MkControl $est $pln) $env $ctx $depth
               (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-1 (MkControl $est) $env $ctx $depth
+             (MkDCall bc-ax-1 (MkControl $est $pln) $env $ctx $depth
                       (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Axiom A2
-(= (bce (MkControl $est) $env $ctx $depth
+(= (bce (MkControl $est $pln) $env $ctx $depth
         (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (👁 bce-ax-2 (MkControl $est) $env $ctx $depth
+   (trace! (👁 bce-ax-2 (MkControl $est $pln) $env $ctx $depth
               (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-2 (MkControl $est) $env $ctx $depth
+             (MkDCall bc-ax-2 (MkControl $est $pln) $env $ctx $depth
                       (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))))
 
 ;; Estimate of Axiom A3
-(= (bce (MkControl $est) $env $ctx $depth
+(= (bce (MkControl $est $pln) $env $ctx $depth
         (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-3 (MkControl $est) $env $ctx $depth
+   (trace! (👁 bce-ax-3 (MkControl $est $pln) $env $ctx $depth
               (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-3 (MkControl $est) $env $ctx $depth
+             (MkDCall bc-ax-3 (MkControl $est $pln) $env $ctx $depth
                       (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Rule 1 (modus ponens)
-(= (bce (MkControl $est) $env $ctx (S $k)
+(= (bce (MkControl $est $pln) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (👁 bce-ax-mp (MkControl $est) $env $ctx (S $k)
+   (trace! (👁 bce-ax-mp (MkControl $est $pln) $env $ctx (S $k)
               (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-mp (MkControl $est) $env $ctx (S $k)
+             (MkDCall bc-ax-mp (MkControl $est $pln) $env $ctx (S $k)
                       (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
 
 ;;;;;;;;;;;;;;
@@ -1165,9 +1162,9 @@
 ;;;;;;;;;;;;;;
 
 ;; See above for its type signature and comment
-(= (bc (MkControl $est) $env $ctx $depth (: $prf $thrm))
+(= (bc (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))
    (trace! (👁 bc $ctx $depth (: $prf $thrm))
-   (let* (($edcalls (collapse (bce (MkControl $est) $env $ctx $depth (: $prf $thrm))))
+   (let* (($edcalls (collapse (bce (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))))
           ($edcall_seq (List.fromExpression $edcalls))
           ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq)))
      (EDCall.run5 $best_edcall))))
@@ -1205,7 +1202,8 @@
 
 (: rnd-estimate (-> (List $a) (List $a) Nat $a Number))
 (= (rnd-estimate $env $ctx $depth $query) (random-float &rng 0 1))
-!(bind! &rnd-ctl (MkControl rnd-estimate))
+!(bind! &rnd-pln (new-space))
+!(bind! &rnd-ctl (MkControl rnd-estimate $rnd-pln))
 
 ;; In order to reproduce the tests, the random seed needs to be set
 ;; just right, and it becomes harder and harder to find a seed that
