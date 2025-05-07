@@ -20,6 +20,34 @@
 ;; ;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Add Atom without Duplicate ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Reduce and add an atom only if it is not already in the atomspace.
+;; Warning: if the atom to be added is not in the space but matches
+;; any atom in the space, it will not be added either.  Return the
+;; added (or not added) atom.
+(: add-reduct-nodup (-> $a $b (->)))
+(= (add-reduct-nodup $space $atom)
+   (case (match $space $atom $atom)
+     (($atom ())
+      (Empty (add-reduct $space $atom)))))
+
+;; Test add-atom-nodup
+!(assertEqualToResult
+  (let* (($space (new-space))
+         (() (add-reduct-nodup $space A))
+         (() (add-reduct-nodup $space A)))
+    (get-atoms $space))
+  (A))
+!(assertEqualToResult
+  (let* (($space (new-space))
+         (() (add-reduct-nodup $space A))
+         (() (add-reduct-nodup $space B)))
+    (get-atoms $space))
+  (A B))
+
 ;;;;;;;;;
 ;; Nat ;;
 ;;;;;;;;;
@@ -465,8 +493,8 @@
 ;; the query language.  For now it merely holds a function to estimate
 ;; the probability of success of a particular branch.
 (: Control Type)
-(MkControl (-> (-> (List $a) (List $a) Nat $a Number) ; Estimator
-               $b                                     ; PLN Space
+(MkControl (-> $a                                     ; PLN Space
+               (-> (List $b) (List $b) Nat $b Number) ; Estimator
                Control))
 
 ;;;;;;;;;
@@ -658,10 +686,11 @@
 ;; Convert backward chainer call to PLN ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Convert the arguments of a backward chainer call to a PLN judgement
-;; such that its truth value reflects how likely the holes in the
-;; arguments of the call (the environment, the query and its
-;; surrounding premises) can be filled within the provided depth.
+;; Convert the arguments of a backward chainer call to a PLN statement
+;; such that the semantics of its associated truth value corresponds
+;; to how likely the holes in the arguments of the call (the
+;; environment, the query and its surrounding premises) can be filled
+;; within the provided depth.
 ;;
 ;; So for instance, if the backward chainer call is
 ;;
@@ -718,7 +747,7 @@
              (List $a)                  ; Surrounding premises
              Nat                        ; Maximum Depth
              $a                         ; Query
-             PLN.Judgement))            ; PLN judgement
+             PLN.Statement))            ; PLN statement
 (= (toPLN $thry $ctx $depth (: $prf $type))
    (let* (;; Turn the context into a PLN statement
           ((MkPair $vars $plnctx) (contextToPLN $thry Nil $ctx))
@@ -932,7 +961,7 @@
 !(assertEqual
   (theoryToPLN (Cons PC Nil))
   (Cons _PC_ Nil))
-!(assertEqual                           ; NEXT
+!(assertEqual
   (theoryToPLN (Cons (: a1i.1 𝜑) Nil))
   (Cons (_:_ _a1i.1_ _𝜑_) Nil))
 !(assertEqual
@@ -989,6 +1018,24 @@
 !(assertEqual
   (toPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
   (∃ z (𝛩 (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)) z (_→_ _𝜓_ _𝜑_))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Add Theta instance to PLN Space ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Given a PLN space and a description of the query (supposedly closed
+;; by now), convert the query into a 𝛩 instance, add it to the PLN
+;; space and return the query unchanged.
+(: addInstance (-> $a              ; PLN Space
+                   (List $b)       ; Theory
+                   Nat             ; Depth
+                   $b              ; Query
+                   $b))            ; Query pass through
+(= (addInstance $pln-space $thry $depth $query)
+   (let* (($pln-statement (toPLN $thry Nil $depth $query))
+          ($pln-judgment (≞ $pln-statement (PLN.MkSTV 1 1)))
+          (() (add-reduct-nodup $pln-space $pln-judgment)))
+     $query))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
@@ -1116,45 +1163,45 @@
 
 ;; Estimate of environment.  NEXT: the estimate should probably be
 ;; calculated for each matching result.
-(= (bce (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bce-env (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))
+(= (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
+   (trace! (👁 bce-env (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-env (MkControl $est $pln) $env $ctx $depth
+             (MkDCall bc-env (MkControl $pln-space $est) $env $ctx $depth
                       (: $prf $thrm)))))
 
 ;; Estimate of Axiom A1
-(= (bce (MkControl $est $pln) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-1 (MkControl $est $pln) $env $ctx $depth
+(= (bce (MkControl $pln-space $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (trace! (👁 bce-ax-1 (MkControl $pln-space $est) $env $ctx $depth
               (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-1 (MkControl $est $pln) $env $ctx $depth
+             (MkDCall bc-ax-1 (MkControl $pln-space $est) $env $ctx $depth
                       (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Axiom A2
-(= (bce (MkControl $est $pln) $env $ctx $depth
+(= (bce (MkControl $pln-space $est) $env $ctx $depth
         (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (👁 bce-ax-2 (MkControl $est $pln) $env $ctx $depth
+   (trace! (👁 bce-ax-2 (MkControl $pln-space $est) $env $ctx $depth
               (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-2 (MkControl $est $pln) $env $ctx $depth
+             (MkDCall bc-ax-2 (MkControl $pln-space $est) $env $ctx $depth
                       (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))))
 
 ;; Estimate of Axiom A3
-(= (bce (MkControl $est $pln) $env $ctx $depth
+(= (bce (MkControl $pln-space $est) $env $ctx $depth
         (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-3 (MkControl $est $pln) $env $ctx $depth
+   (trace! (👁 bce-ax-3 (MkControl $pln-space $est) $env $ctx $depth
               (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-3 (MkControl $est $pln) $env $ctx $depth
+             (MkDCall bc-ax-3 (MkControl $pln-space $est) $env $ctx $depth
                       (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Rule 1 (modus ponens)
-(= (bce (MkControl $est $pln) $env $ctx (S $k)
+(= (bce (MkControl $pln-space $est) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (👁 bce-ax-mp (MkControl $est $pln) $env $ctx (S $k)
+   (trace! (👁 bce-ax-mp (MkControl $pln-space $est) $env $ctx (S $k)
               (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-mp (MkControl $est $pln) $env $ctx (S $k)
+             (MkDCall bc-ax-mp (MkControl $pln-space $est) $env $ctx (S $k)
                       (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
 
 ;;;;;;;;;;;;;;
@@ -1162,9 +1209,9 @@
 ;;;;;;;;;;;;;;
 
 ;; See above for its type signature and comment
-(= (bc (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))
+(= (bc (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
    (trace! (👁 bc $ctx $depth (: $prf $thrm))
-   (let* (($edcalls (collapse (bce (MkControl $est $pln) $env $ctx $depth (: $prf $thrm))))
+   (let* (($edcalls (collapse (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))))
           ($edcall_seq (List.fromExpression $edcalls))
           ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq)))
      (EDCall.run5 $best_edcall))))
@@ -1200,10 +1247,10 @@
 ;; Test Random Control ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
+!(bind! &rnd-pln (new-space))
 (: rnd-estimate (-> (List $a) (List $a) Nat $a Number))
 (= (rnd-estimate $env $ctx $depth $query) (random-float &rng 0 1))
-!(bind! &rnd-pln (new-space))
-!(bind! &rnd-ctl (MkControl rnd-estimate $rnd-pln))
+!(bind! &rnd-ctl (MkControl $rnd-pln rnd-estimate))
 
 ;; In order to reproduce the tests, the random seed needs to be set
 ;; just right, and it becomes harder and harder to find a seed that
