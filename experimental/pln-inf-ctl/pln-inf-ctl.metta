@@ -996,6 +996,19 @@
 !(assertEqual
   (queryToPLN Nil Nil (: $prf (→ 𝜓 𝜑)))
   (MkPair (Cons $prf Nil) (𝛩 Nil z (_→_ _𝜓_ _𝜑_))))
+!(assertEqual
+  (queryToPLN (Cons (: mp2.1 𝜑)
+                    (Cons (: mp2.2 𝜓)
+                          (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                                (Cons PC Nil))))
+              Nil
+              (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
+  (MkPair Nil (𝛩 (Cons (_:_ _mp2.1_ _𝜑_)
+                       (Cons (_:_ _mp2.2_ _𝜓_)
+                             (Cons (_:_ _mp2.3_ (_→_ _𝜑_ (_→_ _𝜓_ _𝜒_)))
+                                   (Cons _PC_ Nil))))
+                 (_ax-mp_ _mp2.1_ _mp2.3_)
+                 (_→_ _𝜓_ _𝜒_))))
 
 ;; Test variablesToPLN
 !(assertEqual
