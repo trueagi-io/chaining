@@ -542,7 +542,7 @@
 (: _ax-1_ PLN.Term)
 (: _ax-2_ PLN.Term)
 (: _ax-3_ PLN.Term)
-(: _ax-mp_ PLN.Term)
+(: _ax-mp_ (-> PLN.Term PLN.Term PLN.Term))
 (: _mp2.1_ PLN.Term)
 (: _mp2.2_ PLN.Term)
 (: _mp2.3_ PLN.Term)
