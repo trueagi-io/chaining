@@ -1276,11 +1276,39 @@
                              ; only one hole on the truth value.
               PLN.Judgment)) ; PLN judgement without hole
 
-;; Udf axiom takes any PLN statement and associate the judgement with
-;; the undefined truth value, with strength 1 and confidence 0,
+;; Base cases
+
+;; Match the kb
+(= (pln-bc $kb $depth (: $prf $thrm))
+   (match $kb (: $prf $thrm) (: $prf $thrm)))
+
+;; Udf axiom takes any PLN statement and creates a judgement with the
+;; undefined truth value, with strength 1 and confidence 0,
 ;; corresponding to complete unknown.
-(= (pln-bc &pln-kb $depth (: Udf $prf (≞ $pln-stm (PLN.MkSTV 1 0))))
-   (: Udf (≞ $pln-stm (PLN.MkSTV 1 0))))
+(= (pln-bc $kb $depth (: Udf (≞ $stm (PLN.MkSTV 1 0))))
+   (: Udf (≞ $stm (PLN.MkSTV 1 0))))
+
+;; Recursive steps
+
+;; Introduce existential quantifier from instance.  The truth value on
+;; the existantial quantifier is equal to that on the instance.  For
+;; this to work well, merging truth values obtained from different
+;; instances (or different paths) will need to be applied.  The
+;; challenges should be no different than other truth value merging,
+;; meaning one needs to estimate how much independent they are (maybe
+;; this can be outsourced to PLN itself).
+(= (pln-bc $kb (S $k) (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c))))
+   (let* (;; Replace $idx by a free variable in $stm
+          ($stm-fv (DeBruijnToVariable $idx $stm))
+          ;; Recurse on the dequantified statement
+          ((: $prfarg (≞ $stm-fv (PLN.MkSTV $s $c)))
+           (pln-bc $kb $k (: $prfarg (≞ $stm-fv (PLN.MkSTV $s $c))))))
+     ;; TODO: take care of unifying $stm and $stm-fv
+     (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c)))))
+
+;; NEXT: implement DeBruijnToVariable
+
+;; NEXT: take care of conjunction
 
 ;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;; ;;
