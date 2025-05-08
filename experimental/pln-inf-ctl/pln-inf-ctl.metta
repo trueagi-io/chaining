@@ -1436,5 +1436,20 @@
   (set-rnd-seed-run0 4 bc.test.a1i.1)
   (: (ax-mp a1i.1 ax-1) (→ 𝜓 𝜑)))
 
+;; ;; Run the backward chainer once unconstrained
+;; (: bc.test.any (-> $a))
+;; (= (bc.test.any)
+;;    (bc &rnd-ctl Nil Nil (fromNumber 2) (: $prf $thrm)))
+
+;; ;; Run the backward chainer with a given random seed and output the
+;; ;; incremented random seed
+;; (: bc.test.any.next (-> Number Number))
+;; (= (bc.test.any.next $n)
+;;    (let $_ (collapse (set-rnd-seed-run0 $n bc.test.any))
+;;      (succ $n)))
+
+;; ;; Run the backward chainer N times unconstrained
+;; !(until (curried-equal-to 100) bc.test.any.next 0)
+
 ;; Output PLN space
 !(get-atoms &pln-space)
