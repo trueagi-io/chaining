@@ -107,6 +107,10 @@
 (: succ (-> Number Number))
 (= (succ $n) (+ 1 $n))
 
+;; Test if the input is equal to a given value
+(: curried-equal-to (-> $a (-> $a Bool)))
+(= ((curried-equal-to $n) $x) (== $n $x))
+
 ;; Loop-like function ported from Haskell.  Iterate applying a given
 ;; function till some condition is reached.
 (: until (-> (-> $a Bool)               ; Predicate
@@ -118,10 +122,8 @@
    (if ($p $x) $x (until $p $f ($f $x)))))
 
 ;; Test until
-(: until.test.p (-> Number Bool))
-(= (until.test.p $n) (== $n 10))
 !(assertEqual
-  (until until.test.p succ 0)
+  (until (curried-equal-to 10) succ 0)
   10)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
