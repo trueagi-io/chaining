@@ -554,6 +554,9 @@
 (: _z_ PLN.Term.DeBruijn)
 (: _s_ (-> PLN.Term.DeBruijn PLN.Term.DeBruijn))
 
+;; NEXT: use ⦉z⦊ or ⟮z⟯ instead of _z_
+;; ⟮𝜑⟯ (𝜑) ⦇𝜑⦈ ⦉𝜑⦊ ⦅𝜑⦆ ⟬𝜑⟭
+
 ;; Make sure that _z_ and _s_ can be typed as PLN.Term as well
 (: _z_ PLN.Term)
 (: _s_ (-> PLN.Term.DeBruijn PLN.Term))
