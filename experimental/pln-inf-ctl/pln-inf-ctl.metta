@@ -233,6 +233,53 @@
   (List.map List.map.test.foo (Cons 1 (Cons 2 (Cons 3 Nil))))
   (Cons 2 (Cons 3 (Cons 4 Nil))))
 
+;;;;;;;;;;;;
+;; String ;;
+;;;;;;;;;;;;
+
+;; Fold a tuple from right to left
+(: foldr (-> (-> $a $b $b) $b $c $d))
+(= (foldr $f $i $xs)
+   (if (== $xs ())
+       $i
+       (let* (($h (car-atom $xs))
+              ($t (cdr-atom $xs))
+              ($ft (foldr $f $i $t)))
+         ($f $h $ft))))
+
+;; Concatenate two terms
+(: append (-> $a $a $a))
+(= (append $lhs $rhs) (foldr cons-atom $rhs $lhs))
+
+;; Concatenate two strings (implemented in my own branch)
+(: String.append (-> String String String))
+;; (= (String.append $x $y) (call-fn! string_concat $x $y)) ; Only MeTTaLog
+(= (String.append $x $y) ((py-dot $x __add__ (-> String String String)) $y))
+;; (= (String.append $x $y) (charsToString (append (stringToChars $x) (stringToChars $y))))
+
+;; Test String.append
+!(assertEqual (String.append "abc" "def") "abcdef")
+!(assertEqual (String.append "\"" "\"") "\"\"")
+
+;; Overload String.append to support more than 2 arguments
+(: String.append3 (-> String String String String))
+(= (String.append3 $x $y $z) (String.append $x (String.append $y $z)))
+(: String.append4 (-> String String String String String))
+(= (String.append4 $x $y $z $w) (String.append $x (String.append3 $y $z $w)))
+(: String.append5 (-> String String String String String String))
+(= (String.append5 $x $y $z $w $s) (String.append $x (String.append4 $y $z $w $s)))
+
+;; Join a list of string by a separator
+(: String.join (-> String (List String) String))
+(= (String.join $separator Nil) "")
+(= (String.join $separator (Cons $head $tail))
+   (case $tail
+     ((Nil $head)
+      ($else (String.append3 $head $separator (String.join $separator $tail))))))
+
+;; Test String.join
+!(assertEqual (String.join ", " (Cons "x=42" (Cons "y=24" Nil))) "x=42, y=24")
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
 ;;;;;;;;;;;;;;;;;;;;;
@@ -537,7 +584,7 @@
 ;;
 ;; can be represented at the object level as
 ;;
-;; (_∧_ _P_ _Q_)
+;; ([∧] [P] [Q])
 ;;
 ;; We need to do that because in this experiment we reason about 𝛩, a
 ;; ternary predicate relating theories, proofs and theorems, thus we
@@ -551,42 +598,39 @@
 ;; Define PLN Term DeBruijn index constructors, used in quantifiers at
 ;; the object level.
 (: PLN.Term.DeBruijn Type)
-(: _z_ PLN.Term.DeBruijn)
-(: _s_ (-> PLN.Term.DeBruijn PLN.Term.DeBruijn))
+(: [z] PLN.Term.DeBruijn)
+(: [s] (-> PLN.Term.DeBruijn PLN.Term.DeBruijn))
 
-;; NEXT: use ⦉z⦊ or ⟮z⟯ instead of _z_
-;; ⟮𝜑⟯ (𝜑) ⦇𝜑⦈ ⦉𝜑⦊ ⦅𝜑⦆ ⟬𝜑⟭
-
-;; Make sure that _z_ and _s_ can be typed as PLN.Term as well
-(: _z_ PLN.Term)
-(: _s_ (-> PLN.Term.DeBruijn PLN.Term))
+;; Make sure that [z] and [s] can be typed as PLN.Term as well
+(: [z] PLN.Term)
+(: [s] (-> PLN.Term.DeBruijn PLN.Term))
 
 ;; Define axiom and inference rule names as PLN terms
-(: _ax-1_ PLN.Term)
-(: _ax-2_ PLN.Term)
-(: _ax-3_ PLN.Term)
-(: _ax-mp_ (-> PLN.Term PLN.Term PLN.Term))
-(: _mp2.1_ PLN.Term)
-(: _mp2.2_ PLN.Term)
-(: _mp2.3_ PLN.Term)
-(: _mp2b.1_ PLN.Term)
-(: _mp2b.2_ PLN.Term)
-(: _mp2b.3_ PLN.Term)
-(: _a1i.1_ PLN.Term)
-(: _PC_ PLN.Term)
-(: _𝜑_ PLN.Term)
-(: _𝜓_ PLN.Term)
-(: _𝜒_ PLN.Term)
+(: [ax-1] PLN.Term)
+(: [ax-2] PLN.Term)
+(: [ax-3] PLN.Term)
+(: [ax-mp] (-> PLN.Term PLN.Term PLN.Term))
+(: [mp2.1] PLN.Term)
+(: [mp2.2] PLN.Term)
+(: [mp2.3] PLN.Term)
+(: [mp2b.1] PLN.Term)
+(: [mp2b.2] PLN.Term)
+(: [mp2b.3] PLN.Term)
+(: [a1i.1] PLN.Term)
+(: [PC] PLN.Term)
+(: [𝜑] PLN.Term)
+(: [𝜓] PLN.Term)
+(: [𝜒] PLN.Term)
 
 ;; Define PLN Term logical connectors at the object level.  NEXT:
 ;; support PLN.Term.DeBruijn.
-(: _→_ (-> PLN.Term PLN.Term PLN.Term))
-(: _∧_ (-> PLN.Term PLN.Term PLN.Term))
-(: _∨_ (-> PLN.Term PLN.Term PLN.Term))
-(: _¬_ (-> PLN.Term PLN.Term))
+(: [→] (-> PLN.Term PLN.Term PLN.Term))
+(: [∧] (-> PLN.Term PLN.Term PLN.Term))
+(: [∨] (-> PLN.Term PLN.Term PLN.Term))
+(: [¬] (-> PLN.Term PLN.Term))
 
 ;; Define typing relationship at the object level.
-(: _:_ (-> PLN.Term PLN.Term PLN.Term))
+(: [:] (-> PLN.Term PLN.Term PLN.Term))
 
 ;; Define PLN Statement type.  A PLN statement represents a predicate
 ;; or conditioned predicate.
@@ -699,11 +743,11 @@
   (PLN.reduce ⊤)
   ⊤)
 !(assertEqual
-  (PLN.reduce (𝛩 (Cons _PC_ Nil) z _𝜑_))
-  (𝛩 (Cons _PC_ Nil) z _𝜑_))
+  (PLN.reduce (𝛩 (Cons [PC] Nil) z [𝜑]))
+  (𝛩 (Cons [PC] Nil) z [𝜑]))
 !(assertEqual
-  (PLN.reduce (∧ (𝛩 (Cons _PC_ Nil) z _𝜑_) ⊤))
-  (𝛩 (Cons _PC_ Nil) z _𝜑_))
+  (PLN.reduce (∧ (𝛩 (Cons [PC] Nil) z [𝜑]) ⊤))
+  (𝛩 (Cons [PC] Nil) z [𝜑]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert backward chainer call to PLN ;;
@@ -731,15 +775,15 @@
 ;;
 ;; would be converted into the following PLN query
 ;;
-;; (∃ z (𝛩 (Cons (_:_ _a1i.1_ _𝜑_) PC) z (_→_ _𝜓_ _𝜑_)) ∧ (depth_lte z 1))
+;; (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) PC) z ([→] [𝜓] [𝜑])) ∧ (depth_lte z 1))
 ;;
 ;; where
 ;;
 ;; - z is the first De Bruijn index,
 ;;
 ;; - all symbols of the logic have been dropped to the object level
-;;   (or mesa level), by being surrounded with _.  So for instance, :
-;;   becomes _:_, a1i.1 becomes _a1i.1_, → becomes _→_, etc.
+;;   (or mesa level), by being surrounded with [].  So for instance, :
+;;   becomes [:], a1i.1 becomes [a1i.1], → becomes [→], etc.
 ;;
 ;; - The ternary predicate 𝛩 is a PLN predicate representing the
 ;;   relationship between Theory, Proof and Theorem, in this
@@ -941,41 +985,18 @@
 ;;
 ;; Note that the output type is anything because it may return not
 ;; only PLN terms but also PLN functions, going from terms to terms,
-;; such as _→_.
+;; such as [→].
 (: symbolToPLN (-> Symbol $a))
-;; Place holder for propositional calculus
-(= (symbolToPLN PC) _PC_)
-;; Typing relationship
-(= (symbolToPLN :) _:_)
-;; Axioms
-(= (symbolToPLN ax-1) _ax-1_)
-(= (symbolToPLN ax-2) _ax-2_)
-(= (symbolToPLN ax-3) _ax-3_)
-;; Inference rules
-(= (symbolToPLN ax-mp) _ax-mp_)
-;; Hypothesis
-(= (symbolToPLN mp2.1) _mp2.1_)
-(= (symbolToPLN mp2.2) _mp2.2_)
-(= (symbolToPLN mp2.3) _mp2.3_)
-(= (symbolToPLN mp2b.1) _mp2b.1_)
-(= (symbolToPLN mp2b.2) _mp2b.2_)
-(= (symbolToPLN mp2b.3) _mp2b.3_)
-(= (symbolToPLN a1i.1) _a1i.1_)
-;; Connectors
-(= (symbolToPLN →) _→_)
-(= (symbolToPLN ¬) _¬_)
-;; Formula
-(= (symbolToPLN 𝜑) _𝜑_)
-(= (symbolToPLN 𝜓) _𝜓_)
-(= (symbolToPLN 𝜒) _𝜒_)
+(= (symbolToPLN $x)
+   (parse (String.append3 "[" (repr $x) "]")))
 
 ;; Test typingToPLN
 !(assertEqual
   (typingToPLN (: a1i.1 𝜑))
-  (_:_ _a1i.1_ _𝜑_))
+  ([:] [a1i.1] [𝜑]))
 !(assertEqual
   (typingToPLN PC)
-  _PC_)
+  [PC])
 
 ;; Test theoryToPLN
 !(assertEqual
@@ -983,13 +1004,13 @@
   Nil)
 !(assertEqual
   (theoryToPLN (Cons PC Nil))
-  (Cons _PC_ Nil))
+  (Cons [PC] Nil))
 !(assertEqual
   (theoryToPLN (Cons (: a1i.1 𝜑) Nil))
-  (Cons (_:_ _a1i.1_ _𝜑_) Nil))
+  (Cons ([:] [a1i.1] [𝜑]) Nil))
 !(assertEqual
   (theoryToPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)))
-  (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)))
+  (Cons ([:] [a1i.1] [𝜑]) (Cons [PC] Nil)))
 
 ;; Test variableToPLN
 !(assertEqual
@@ -1007,18 +1028,18 @@
 ;; Test typeToPLN
 !(assertEqual
   (typeToPLN Nil 𝜑)
-  (MkPair Nil _𝜑_))
+  (MkPair Nil [𝜑]))
 !(assertEqual
   (typeToPLN Nil (→ 𝜓 𝜑))
-  (MkPair Nil (_→_ _𝜓_ _𝜑_)))
+  (MkPair Nil ([→] [𝜓] [𝜑])))
 
 ;; Test queryToPLN
 !(assertEqual
   (queryToPLN Nil Nil (: $prf 𝜑))
-  (MkPair (Cons $prf Nil) (𝛩 Nil z _𝜑_)))
+  (MkPair (Cons $prf Nil) (𝛩 Nil z [𝜑])))
 !(assertEqual
   (queryToPLN Nil Nil (: $prf (→ 𝜓 𝜑)))
-  (MkPair (Cons $prf Nil) (𝛩 Nil z (_→_ _𝜓_ _𝜑_))))
+  (MkPair (Cons $prf Nil) (𝛩 Nil z ([→] [𝜓] [𝜑]))))
 !(assertEqual
   (queryToPLN (Cons (: mp2.1 𝜑)
                     (Cons (: mp2.2 𝜓)
@@ -1026,34 +1047,34 @@
                                 (Cons PC Nil))))
               Nil
               (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
-  (MkPair Nil (𝛩 (Cons (_:_ _mp2.1_ _𝜑_)
-                       (Cons (_:_ _mp2.2_ _𝜓_)
-                             (Cons (_:_ _mp2.3_ (_→_ _𝜑_ (_→_ _𝜓_ _𝜒_)))
-                                   (Cons _PC_ Nil))))
-                 (_ax-mp_ _mp2.1_ _mp2.3_)
-                 (_→_ _𝜓_ _𝜒_))))
+  (MkPair Nil (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                       (Cons ([:] [mp2.2] [𝜓])
+                             (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                   (Cons [PC] Nil))))
+                 ([ax-mp] [mp2.1] [mp2.3])
+                 ([→] [𝜓] [𝜒]))))
 
 ;; Test variablesToPLN
 !(assertEqual
-  (variablesToPLN Z (𝛩 Nil z _𝜑_))
-  (𝛩 Nil z _𝜑_))
+  (variablesToPLN Z (𝛩 Nil z [𝜑]))
+  (𝛩 Nil z [𝜑]))
 !(assertEqual
-  (variablesToPLN (S Z) (𝛩 Nil z _𝜑_))
-  (∃ z (𝛩 Nil z _𝜑_)))
+  (variablesToPLN (S Z) (𝛩 Nil z [𝜑]))
+  (∃ z (𝛩 Nil z [𝜑])))
 
 ;; Test toPLN
 !(assertEqual
   (toPLN Nil Nil (S Z) (: $prf 𝜑))
-  (∃ z (𝛩 Nil z _𝜑_)))
+  (∃ z (𝛩 Nil z [𝜑])))
 !(assertEqual
   (toPLN Nil Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 Nil z (_→_ _𝜓_ _𝜑_))))
+  (∃ z (𝛩 Nil z ([→] [𝜓] [𝜑]))))
 !(assertEqual
   (toPLN (Cons PC Nil) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 (Cons _PC_ Nil) z (_→_ _𝜓_ _𝜑_))))
+  (∃ z (𝛩 (Cons [PC] Nil) z ([→] [𝜓] [𝜑]))))
 !(assertEqual
   (toPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)) z (_→_ _𝜓_ _𝜑_))))
+  (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) (Cons [PC] Nil)) z ([→] [𝜓] [𝜑]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Add Theta instance to PLN Space ;;
