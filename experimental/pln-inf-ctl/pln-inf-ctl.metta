@@ -1431,11 +1431,20 @@
      ;; Output conjunction
      (: (CI $prfarg1 $prfarg2) (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c)))))
 
-;; ;; Revision (Rev).  NEXT: Given a list of typing relationships
-;; ;;
-;; ;; [(: PRF1 (≞ STM1 TV1)), ..., (: PRFn (≞ STMn TVn))]
-;; ;;
-;; (= (pln-bc &kb (S $k) NEXT))
+;; Less than predicate over typing relationships of PLN judgements by
+;; confidence.  For instance the following call
+;;
+;; (lt_by_conf (: PRF1 (≞ STM1 (MkSTV 0.4 0.5)))
+;;             (: PRF2 (≞ STM2 (MkSTV 0.6 0.4))))
+;;
+;; outputs
+;;
+;; False because the confidence of STM1 according to PRF1, 0.5, is not
+;; less than the confidence of STM2 according to PRF2, 0.4.
+(: lt_by_conf (-> $a $a Bool))
+(= (lt_by_conf (: $prf1 (≞ $stm1 (MkSTV $s1 $c1)))
+               (: $prf2 (≞ $stm2 (MkSTV $s2 $c2))))
+   (< $c1 $c2))
 
 ;; Test pln-bc
 !(bind! &pln-bc.test.kb (new-space))
