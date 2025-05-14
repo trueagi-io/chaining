@@ -644,7 +644,7 @@
 (: [mp2b.2] PLN.Term)
 (: [mp2b.3] PLN.Term)
 (: [a1i.1] PLN.Term)
-(: [PC] PLN.Term)
+(: [PC] (List PLN.Term))
 (: [𝜑] PLN.Term)
 (: [𝜓] PLN.Term)
 (: [𝜒] PLN.Term)
@@ -770,11 +770,11 @@
   (PLN.reduce ⊤)
   ⊤)
 !(assertEqual
-  (PLN.reduce (𝛩 (Cons [PC] Nil) z [𝜑]))
-  (𝛩 (Cons [PC] Nil) z [𝜑]))
+  (PLN.reduce (𝛩 [PC] z [𝜑]))
+  (𝛩 [PC] z [𝜑]))
 !(assertEqual
-  (PLN.reduce (∧ (𝛩 (Cons [PC] Nil) z [𝜑]) ⊤))
-  (𝛩 (Cons [PC] Nil) z [𝜑]))
+  (PLN.reduce (∧ (𝛩 [PC] z [𝜑]) ⊤))
+  (𝛩 [PC] z [𝜑]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert backward chainer call to PLN ;;
@@ -802,7 +802,7 @@
 ;;
 ;; would be converted into the following PLN query
 ;;
-;; (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) PC) z ([→] [𝜓] [𝜑])) ∧ (depth_lte z 1))
+;; (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) z ([→] [𝜓] [𝜑])) ∧ (depth_lte z 1))
 ;;
 ;; where
 ;;
@@ -861,13 +861,15 @@
                       PLN.Statement)) ; Resulting PLN statement
 (= (variablesToPLN Z $plnstm) $plnstm)
 (= (variablesToPLN (S $k) $plnstm)
-   (trace! (👁 variablesToPLN (S $k) $plnstm)
-   (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm))))
+   (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm)))
 
 ;; Convert a theory in PLN format
 (: theoryToPLN (-> (List $a) (List PLN.Term)))
-(= (theoryToPLN $thry) (trace! (👁 theoryToPLN $thry)
-                               (List.map typingToPLN $thry)))
+(= (theoryToPLN $thry) (List.map typingToPLN $thry))
+
+;; Add extra case to List.map to handle PC
+(: PC (List $a))
+(= (List.map $f PC) [PC])
 
 ;; Convert a typing relationship in PLN format.  It is meant to be
 ;; called by theoryToPLN thus does not require to update variables as
@@ -1029,14 +1031,14 @@
   (theoryToPLN Nil)
   Nil)
 !(assertEqual
-  (theoryToPLN (Cons PC Nil))
-  (Cons [PC] Nil))
+  (theoryToPLN PC)
+  [PC])
 !(assertEqual
   (theoryToPLN (Cons (: a1i.1 𝜑) Nil))
   (Cons ([:] [a1i.1] [𝜑]) Nil))
 !(assertEqual
-  (theoryToPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)))
-  (Cons ([:] [a1i.1] [𝜑]) (Cons [PC] Nil)))
+  (theoryToPLN (Cons (: a1i.1 𝜑) PC))
+  (Cons ([:] [a1i.1] [𝜑]) [PC]))
 
 ;; Test variableToPLN
 !(assertEqual
@@ -1067,16 +1069,19 @@
   (queryToPLN Nil Nil (: $prf (→ 𝜓 𝜑)))
   (MkPair (Cons $prf Nil) (𝛩 Nil z ([→] [𝜓] [𝜑]))))
 !(assertEqual
+  (queryToPLN PC Nil (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+  (MkPair Nil (𝛩 [PC] [ax-3] ([→] ([→] ([¬] [𝜑]) ([¬] [𝜓])) ([→] [𝜓] [𝜑])))))
+!(assertEqual
   (queryToPLN (Cons (: mp2.1 𝜑)
                     (Cons (: mp2.2 𝜓)
                           (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
-                                (Cons PC Nil))))
+                                PC)))
               Nil
               (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
   (MkPair Nil (𝛩 (Cons ([:] [mp2.1] [𝜑])
                        (Cons ([:] [mp2.2] [𝜓])
                              (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
-                                   (Cons [PC] Nil))))
+                                   [PC])))
                  ([ax-mp] [mp2.1] [mp2.3])
                  ([→] [𝜓] [𝜒]))))
 
@@ -1110,7 +1115,7 @@
 ;; environment to PC.
 (: toTheory (-> (List $a) (List $a)))
 (= (toTheory $env)
-   (List.appendElem $env PC))
+   (List.append $env PC))
 
 ;; Given a PLN space and a description of the query (supposedly closed
 ;; by now), convert the query into a 𝛩 instance, add it to the PLN
