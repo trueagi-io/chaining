@@ -1098,11 +1098,11 @@
   (toPLN Nil Nil (S Z) (: $prf (→ 𝜓 𝜑)))
   (∃ z (𝛩 Nil z ([→] [𝜓] [𝜑]))))
 !(assertEqual
-  (toPLN (Cons PC Nil) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 (Cons [PC] Nil) z ([→] [𝜓] [𝜑]))))
+  (toPLN PC Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+  (∃ z (𝛩 [PC] z ([→] [𝜓] [𝜑]))))
 !(assertEqual
-  (toPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) (Cons [PC] Nil)) z ([→] [𝜓] [𝜑]))))
+  (toPLN (Cons (: a1i.1 𝜑) PC) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+  (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) z ([→] [𝜓] [𝜑]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Add Theta instance to PLN Space ;;
