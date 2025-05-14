@@ -14,6 +14,21 @@
 ;;
 ;; https://us.metamath.org/mpeuni/mmtheorems1.html
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;;;;;;;;;;; ;;
+;; ;; Hyper Parameters ;; ;;
+;; ;;;;;;;;;;;;;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Boolean parameter to determine whether the search for random seeds
+;; is enabled.  Warning: if is enabled, it may for a long time.
+!(bind! &seed-search True)
+
+;; Not supported yet
+;; ;; Set this parameter to True if you want to print debug traces on
+;; ;; stderr
+;; !(bind! &debug-trace True)
+
 ;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;; ;;
 ;; ;; Utils ;; ;;
