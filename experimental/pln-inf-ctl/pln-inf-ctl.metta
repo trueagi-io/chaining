@@ -225,8 +225,8 @@
 
 ;; Define List.appendElem that appends an element at the end of a
 ;; list.
-(: List.appendElem (-> (List $a) $a (List $a)))
-(= (List.appendElem $xs $x) (List.append $xs (Cons $x Nil)))
+(: List.appendElem (-> $a (List $a) (List $a)))
+(= (List.appendElem $x $xs) (List.append $xs (Cons $x Nil)))
 
 ;; Define List.elemIndex that returns the index of an element in a
 ;; List, if it exists.
@@ -999,11 +999,10 @@
                      Variable           ; Variable
                      (Pair (List Variable) PLN.Term)))
 (= (variableToPLN $vars $var)
-   (trace! (👁 variableToPLN $vars $var)
    (case (List.elemIndex $var $vars)
      (((Just $idx) (MkPair $vars (toDeBruijn $idx)))
-      (Nothing (MkPair (List.appendElem $vars $var)
-                       (toDeBruijn (List.length $vars))))))))
+      (Nothing (MkPair (List.appendElem $var $vars)
+                       (toDeBruijn (List.length $vars)))))))
 
 ;; Turn a symbol, proof or type into its corresponding PLN term.  It
 ;; could probably be simplified by automatically adding underscored
