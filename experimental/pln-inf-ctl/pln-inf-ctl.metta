@@ -1302,27 +1302,69 @@
 (: DeBruijnToVariable (-> DeBruijn $a $a))
 (= (DeBruijnToVariable $idx $trm) (_DeBruijnToVariable $idx $x $trm))
 (: _DeBruijnToVariable (-> DeBruijn Variable $a $a))
-(= (_DeBruijnToVariable $idx $var $trm)
-   (case (get-metatype $trm)
-     ((Symbol (if-equal $idx $trm $var $trm))
-      (Grounded $trm)
-      (Variable $trm)
+(= (_DeBruijnToVariable $idx $var $term)
+   (case (get-metatype $term)
+     ((Symbol (if-equal $idx $term $var $term))
+      (Grounded $term)
+      (Variable $term)
       (Expression
-       (if-decons-expr $trm $head $tail
-                       ;; Non-empty expression
-                       (let* (;; Recursive call on head
-                              ($nhd (_DeBruijnToVariable $idx $var $head))
-                              ;; Recursive call on tail
-                              ($ntl (_DeBruijnToVariable $idx $var $tail)))
-                         ;; Cons result
-                         (cons-atom $nhd $ntl))
-                       ;; Empty expression
-                       ())))))
+       (if-equal $idx $term $var
+                 (if (isDeBruijn $term)
+                     $term
+                     (if-decons-expr $term $head $tail
+                                     ;; Non-empty expression
+                                     (let* (;; Recursive call on head
+                                            ($nhd (_DeBruijnToVariable $idx $var $head))
+                                            ;; Recursive call on tail
+                                            ($ntl (_DeBruijnToVariable $idx $var $tail)))
+                                       ;; Cons result
+                                       (cons-atom $nhd $ntl))
+                                     ;; Empty expression
+                                     ())))))))
+
+;; Return True iff the given term is also DeBruijn index.  NEXT: alternative
+(: isDeBruijn (-> $a Bool))
+(= (isDeBruijn $term) (case (get-metatype $term)
+                        ((Symbol (== $term z))
+                         (Grounded False)
+                         (Variable False)
+                         (Expression
+                          (if-decons-expr $term $head ($tail)
+                                          ;; Non-empty expression
+                                          (and (== $head s) (isDeBruijn $tail))
+                                          ;; Empty expression
+                                          False)))))
+
+;; Test isDeBruijn
+!(assertEqual
+  (isDeBruijn A)
+  False)
+!(assertEqual
+  (isDeBruijn ())
+  False)
+!(assertEqual
+  (isDeBruijn (A B))
+  False)
+!(assertEqual
+  (isDeBruijn z)
+  True)
+!(assertEqual
+  (isDeBruijn (s z))
+  True)
+!(assertEqual
+  (isDeBruijn (s (s z)))
+  True)
 
 ;; ;; Test DeBruijnToVariable
-;; !(assertAlphaEqual
-;;   (DeBruijnToVariable z (𝛩 [PC] z [𝜑]))
-;;   (𝛩 [PC] $x [𝜑]))
+!(assertAlphaEqual
+  (DeBruijnToVariable z (𝛩 [PC] z [𝜑]))
+  (𝛩 [PC] $x [𝜑]))
+!(assertAlphaEqual
+  (DeBruijnToVariable z (𝛩 [PC] z (s z)))
+  (𝛩 [PC] $x (s z)))
+!(assertAlphaEqual
+  (DeBruijnToVariable (s z) (𝛩 [PC] z (s z)))
+  (𝛩 [PC] z $x))
 
 ;; For now PLN chaining is greedy, without inference control.  That is
 ;; because we first want to make sure PLN-based inference control
