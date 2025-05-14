@@ -1401,8 +1401,20 @@
 (: bc.test.ax-3 (-> $a))
 (= (bc.test.ax-3)
    (bc &rnd-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑)))))
+;; Define predicate to check a random seed for that test
+(: bc.test.ax-3.p (-> Number Bool))
+(= (bc.test.ax-3.p $n) (set-rnd-seed-run0-not-empty $n bc.test.ax-3))
+;; Set or look for a random seed
+!(bind! &bc.test.ax-3.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.ax-3.p succ 0)
+            ;; Use prederminted seed
+            1))
+!(println! ("Random seed for ax-3:" &bc.test.ax-3.seed))
+;; Test
 !(assertEqual
-  (set-rnd-seed-run0 1 bc.test.ax-3)
+  (set-rnd-seed-run0 &bc.test.ax-3.seed bc.test.ax-3)
   (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
 
 ;; Test subgoal of https://us.metamath.org/mpeuni/mp2.html
@@ -1419,13 +1431,20 @@
        Nil
        (fromNumber 1)
        (: $prf (→ 𝜓 𝜒))))
-;; ;; Look for random seed
-;; (: bc.test.sub-mp2.p (-> Number Bool))
-;; (= (bc.test.sub-mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.sub-mp2))
-;; !(until bc.test.sub-mp2.p succ 0)
+;; Define predicate to check a random seed for that test
+(: bc.test.sub-mp2.p (-> Number Bool))
+(= (bc.test.sub-mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.sub-mp2))
+;; Set or look for a random seed
+!(bind! &bc.test.sub-mp2.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.sub-mp2.p succ 0)
+            ;; Use prederminted seed
+            0))
+!(println! ("Random seed for sub-mp2:" &bc.test.sub-mp2.seed))
 ;; Test
 !(assertEqual
-  (set-rnd-seed-run0 0 bc.test.sub-mp2)
+  (set-rnd-seed-run0 &bc.test.sub-mp2.seed bc.test.sub-mp2)
   (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
 
 ;; Test https://us.metamath.org/mpeuni/mp2.html
@@ -1442,13 +1461,20 @@
        Nil
        (fromNumber 2)
        (: $prf 𝜒)))
-;; ;; Look for random seed
-;; (: bc.test.mp2.p (-> Number Bool))
-;; (= (bc.test.mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2))
-;; !(until bc.test.mp2.p succ 0)
+;; Define predicate to check a random seed for that test
+(: bc.test.mp2.p (-> Number Bool))
+(= (bc.test.mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2))
+;; Set or look for a random seed
+!(bind! &bc.test.mp2.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.mp2.p succ 0)
+            ;; Use prederminted seed
+            0))
+!(println! ("Random seed for mp2:" &bc.test.mp2.seed))
 ;; Test
 !(assertEqual
-  (set-rnd-seed-run0 0 bc.test.mp2)
+  (set-rnd-seed-run0 &bc.test.mp2.seed bc.test.mp2)
   (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
 
 ;; Test https://us.metamath.org/mpeuni/mp2b.html
@@ -1462,13 +1488,20 @@
        Nil
        (fromNumber 2)
        (: $prf 𝜒)))
-;; ;; Look for random seed
-;; (: bc.test.mp2b.p (-> Number Bool))
-;; (= (bc.test.mp2b.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2b))
-;; !(until bc.test.mp2b.p succ 0)
+;; Define predicate to check a random seed for that test
+(: bc.test.mp2b.p (-> Number Bool))
+(= (bc.test.mp2b.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2b))
+;; Set or look for a random seed
+!(bind! &bc.test.mp2b.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.mp2b.p succ 0)
+            ;; Use prederminted seed
+            160))
+!(println! ("Random seed for mp2b:" &bc.test.mp2b.seed))
 ;; Test
 !(assertEqual
-  (set-rnd-seed-run0 160 bc.test.mp2b)
+  (set-rnd-seed-run0 &bc.test.mp2b.seed bc.test.mp2b)
   (: (ax-mp (ax-mp mp2b.1 mp2b.2) mp2b.3) 𝜒))
 
 ;; Test https://us.metamath.org/mpeuni/a1i.html
@@ -1482,14 +1515,23 @@
        Nil
        (fromNumber 1)
        (: $prf (→ 𝜓 𝜑))))
-;; ;; Look for random seed
-;; (: bc.test.a1i.1.p (-> Number Bool))
-;; (= (bc.test.a1i.1.p $n) (set-rnd-seed-run0-not-empty $n bc.test.a1i.1))
-;; !(until bc.test.a1i.1.p succ 0)
+;; Define predicate to check a random seed for that test
+(: bc.test.a1i.1.p (-> Number Bool))
+(= (bc.test.a1i.1.p $n) (set-rnd-seed-run0-not-empty $n bc.test.a1i.1))
+;; Set or look for a random seed
+!(bind! &bc.test.a1i.1.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.a1i.1.p succ 0)
+            ;; Use prederminted seed
+            4))
+!(println! ("Random seed for mp2b:" &bc.test.a1i.1.seed))
 ;; Test
 !(assertEqual
-  (set-rnd-seed-run0 4 bc.test.a1i.1)
+  (set-rnd-seed-run0 &bc.test.a1i.1.seed bc.test.a1i.1)
   (: (ax-mp a1i.1 ax-1) (→ 𝜓 𝜑)))
+
+;; NEXT
 
 ;; ;; Run the backward chainer once unconstrained
 ;; (: bc.test.any (-> $a))
@@ -1506,5 +1548,5 @@
 ;; ;; Run the backward chainer N times unconstrained
 ;; !(until (curried-equal-to 100) bc.test.any.next 0)
 
-;; Output PLN space
-!(get-atoms &pln-space)
+;; ;; Output PLN space
+;; !(get-atoms &pln-space)
