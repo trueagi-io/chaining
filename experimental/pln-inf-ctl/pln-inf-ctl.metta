@@ -1462,11 +1462,88 @@
                                          ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
                                  (PLN.MkSTV 1 1))))
 
-;; NEXT
+;; Test axioms (instances)
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 0)
+          (: $prf (≞ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                     (PLN.MkSTV $s 1))))
+  (: ax-1-inst
+     (≞ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+        (PLN.MkSTV 1 1))))
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 0)
+          (: $prf
+             (≞ (𝛩 [PC] [ax-2] ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                    ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
+                (PLN.MkSTV $s 1))))
+  (: ax-2-inst
+     (≞ (𝛩 [PC] [ax-2] ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                            ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
+        (PLN.MkSTV 1 1))))
 
-;; ;; Test pln-bc
-;; !(assertEqual
-;;   (pln-bc &pln-bc.test.kb 0
+;; Test conjunction
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 1)
+          (: $prf (≞ (∧ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                        (𝛩 [PC]
+                           [ax-2]
+                           ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+                     (PLN.MkSTV $s 1))))
+  (: (CI ax-1-inst ax-2-inst)
+     (≞ (∧ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+           (𝛩 [PC] [ax-2] ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                               ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+        (PLN.MkSTV 1 1))))
+
+;; Test existential quantification
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 1)
+          (: $prf (≞ (∃ z (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑]))))
+                     (PLN.MkSTV $s 1))))
+  (: (EQI ax-1-inst)
+     (≞ (∃ z (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑])))) (PLN.MkSTV 1 1))))
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 1)
+          (: $prf
+             (≞ (∃ z (𝛩 [PC] z ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                    ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+                (PLN.MkSTV $s 1))))
+  (: (EQI ax-2-inst)
+     (≞ (∃ z (𝛩 [PC] z ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                            ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+        (PLN.MkSTV 1 1))))
+!(assertEqualToResult
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 2)
+          (: $prf
+             (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z))))
+                (PLN.MkSTV $s 1))))
+  ((: (EQI (EQI ax-1-inst)) (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z)))) (PLN.MkSTV 1 1)))
+   (: (EQI (EQI ax-2-inst)) (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z)))) (PLN.MkSTV 1 1)))))
+
+;; Test existential quantification and conjunction
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 3)
+          (: $prf (≞ (∃ (s z)
+                        (∃ z
+                           (∧ (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                              (𝛩 [PC] (s z) ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                                 ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))))
+                     (PLN.MkSTV $s 1))))
+  (: (EQI (EQI (CI ax-1-inst ax-2-inst)))
+     (≞ (∃ (s z)
+           (∃ z
+              (∧ (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                 (𝛩 [PC] (s z) ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                    ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))))
+        (PLN.MkSTV 1 1))))
 
 ;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;; ;;
