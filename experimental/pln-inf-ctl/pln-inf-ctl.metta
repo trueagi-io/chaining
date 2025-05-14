@@ -1297,6 +1297,33 @@
 ;; PLN Chainer ;;
 ;;;;;;;;;;;;;;;;;
 
+;; Replace a given De Bruijn index by a given variable in a given PLN
+;; statement or term
+(: DeBruijnToVariable (-> DeBruijn $a $a))
+(= (DeBruijnToVariable $idx $trm) (_DeBruijnToVariable $idx $x $trm))
+(: _DeBruijnToVariable (-> DeBruijn Variable $a $a))
+(= (_DeBruijnToVariable $idx $var $trm)
+   (case (get-metatype $trm)
+     ((Symbol (if-equal $idx $trm $var $trm))
+      (Grounded $trm)
+      (Variable $trm)
+      (Expression
+       (if-decons-expr $trm $head $tail
+                       ;; Non-empty expression
+                       (let* (;; Recursive call on head
+                              ($nhd (_DeBruijnToVariable $idx $var $head))
+                              ;; Recursive call on tail
+                              ($ntl (_DeBruijnToVariable $idx $var $tail)))
+                         ;; Cons result
+                         (cons-atom $nhd $ntl))
+                       ;; Empty expression
+                       ())))))
+
+;; ;; Test DeBruijnToVariable
+;; !(assertAlphaEqual
+;;   (DeBruijnToVariable z (𝛩 [PC] z [𝜑]))
+;;   (𝛩 [PC] $x [𝜑]))
+
 ;; For now PLN chaining is greedy, without inference control.  That is
 ;; because we first want to make sure PLN-based inference control
 ;; works at all.  In other words, to begin with we focus on making the
@@ -1313,21 +1340,21 @@
 (= (pln-bc $kb $depth (: $prf $thrm))
    (match $kb (: $prf $thrm) (: $prf $thrm)))
 
-;; Udf axiom takes any PLN statement and creates a judgement with the
-;; undefined truth value, with strength 1 and confidence 0,
-;; corresponding to complete unknown.
+;; Undefined (Udf).  The Udf axiom takes any PLN statement and creates
+;; a judgement with the undefined truth value, with strength 1 and
+;; confidence 0, corresponding to complete unknown.
 (= (pln-bc $kb $depth (: Udf (≞ $stm (PLN.MkSTV 1 0))))
    (: Udf (≞ $stm (PLN.MkSTV 1 0))))
 
 ;; Recursive steps
 
-;; Introduce existential quantifier from instance.  The truth value on
-;; the existantial quantifier is equal to that on the instance.  For
-;; this to work well, merging truth values obtained from different
-;; instances (or different paths) will need to be applied.  The
-;; challenges should be no different than other truth value merging,
-;; meaning one needs to estimate how much independent they are (maybe
-;; this can be outsourced to PLN itself).
+;; Existential Quantifier Introduction - from instance - (EQI).  The
+;; truth value on the existantial quantifier is equal to that on the
+;; instance.  For this to work well, merging truth values obtained
+;; from different instances (or different paths) will need to be
+;; applied.  The challenges should be no different than other truth
+;; value merging, meaning one needs to estimate how much independent
+;; they are (maybe this can be outsourced to PLN itself).
 (= (pln-bc $kb (S $k) (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c))))
    (let* (;; Replace $idx by a free variable in $stm
           ($stm-fv (DeBruijnToVariable $idx $stm))
@@ -1337,9 +1364,58 @@
      ;; TODO: take care of unifying $stm and $stm-fv
      (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c)))))
 
-;; NEXT: implement DeBruijnToVariable
+;; Conjunction Introduction (CI).  The formula is somewhat
+;; conservative but not maximally so, taking the product of the
+;; strengths and the min of the confidences.  Note that it is not
+;; consistent with probability theory, because two strengths can only
+;; be multipled if they are assumed to be independent, but in this
+;; case, their confidences should not be the min, rather their counts
+;; should be added.  We cannot opt for the most conservative approach
+;; because it should assume that both conjuncts are disjoint, which
+;; would output a strength of 0 regardless of the strengths of the
+;; premises.  Anyway, for now we use that formula until we come up
+;; with something better.
+(= (pln-bc $kb (S $k) (: (CI $prfarg1 $prfarg2)
+                         (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c))))
+   (let* (;; Recursive on stm1
+          ((: $prfarg1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))
+           (pln-bc $kb $k (: $prfarg1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))))
+          ;; Recursive on stm2
+          ((: $prfarg2 (≞ $stm2 (PLN.MkSTV $s2 $c2)))
+           (pln-bc $kb $k (: $prfarg2 (≞ $stm2 (PLN.MkSTV $s2 $c2)))))
+          ;; Calculate strength and confidence
+          ($s (* $s1 $s2))
+          ($c (min $c1 $c2)))
+     ;; Output conjunction
+     (: (CI $prfarg1 $prfarg2) (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c)))))
 
-;; NEXT: take care of conjunction
+;; ;; Revision (Rev).  NEXT: Given a list of typing relationships
+;; ;;
+;; ;; [(: PRF1 (≞ STM1 TV1)), ..., (: PRFn (≞ STMn TVn))]
+;; ;;
+;; (= (pln-bc &kb (S $k) NEXT))
+
+;; Test pln-bc
+!(bind! &pln-bc.test.kb (new-space))
+
+;; Populate pln-bc.test.kb with instances of 𝛩
+!(add-atom &pln-bc.test.kb (: ax-1-inst
+                              (≞ (𝛩 [PC]
+                                    [ax-1]
+                                    ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                                 (PLN.MkSTV 1 1))))
+!(add-atom &pln-bc.test.kb (: ax-2-inst
+                              (≞ (𝛩 [PC]
+                                    [ax-2]
+                                    ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                         ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
+                                 (PLN.MkSTV 1 1))))
+
+;; NEXT
+
+;; ;; Test pln-bc
+;; !(assertEqual
+;;   (pln-bc &pln-bc.test.kb 0
 
 ;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;; ;;
