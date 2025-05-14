@@ -685,7 +685,6 @@
 ;; concerns about its semantics, including the interval aspect
 ;; explained in the PLN book.  Since 𝛩 is deterministic anyway, let's
 ;; see how far we can go with a crisp version of this quantifier.
-;; NEXT: DeBruijn or PLN.DeBruijn?
 (: ∃ (-> DeBruijn PLN.Statement PLN.Statement))
 
 ;; Define PLN Statement constructors from a set of primitive
@@ -927,14 +926,13 @@
                                                          ; and PLN
                                                          ; statement
 (= (queryToPLN $thry $vars (: $prf $thrm))
-   (trace! (👁 queryToPLN $thry $vars (: $prf $thrm))
    (let* (;; Convert theory into PLN term
           ($thrypln (theoryToPLN $thry))
           ;; Convert proof into PLN term, and accumulate new variables
           ((MkPair $nvars $prfpln) (proofToPLN $vars $prf))
           ;; Convert type into PLN term, and accumulate new variables
           ((MkPair $nnvars $thrmpln) (typeToPLN $nvars $thrm)))
-     (MkPair $nnvars (𝛩 $thrypln $prfpln $thrmpln)))))
+     (MkPair $nnvars (𝛩 $thrypln $prfpln $thrmpln))))
 
 ;; Like queryToPLN but takes a proof (or part thereof) in argument
 ;; alongside a list of variables so far encountered.  It outputs a
@@ -972,7 +970,6 @@
                   (Pair (List Variable) PLN.Term)))  ; Variables and
                                                      ; PLN term
 (= (typeToPLN $vars $type)
-   (trace! (👁 typeToPLN $vars $type)
    (case (get-metatype $type)
      (;; If the type is a variable, check if it is in $vars, if it is
       ;; then return its corresponding De Bruijn index, otherwise,
@@ -993,7 +990,7 @@
                                          ($typln (cons-atom $hdpln $tlpln)))
                                     (MkPair $nnvars $typln))
                                   ;; Empty expression
-                                  (MkPair $vars ())))))))
+                                  (MkPair $vars ()))))))
 
 ;; Turn a variable into its corresponding DeBruijn index and update
 ;; the list of encountered variables if necessary.
@@ -1148,8 +1145,6 @@
 ;; and exploitation.  Specifically, a first order probability is
 ;; sampled for each branch, and the branch with the maximum
 ;; probability is selected.
-;;
-;; NEXT: detail exactly inputs and output.
 (: bc (-> Control   ; Estimator
           (List $a) ; Environment
           (List $a) ; Surrounding premises
@@ -1169,8 +1164,7 @@
               $a                        ; Query
               $a))                      ; Result
 (= (bc-env $ctl $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bc-env $ctl $ctx $depth (: $prf $thrm))
-   (match' $env (: $prf $thrm) (: $prf $thrm))))
+   (match' $env (: $prf $thrm) (: $prf $thrm)))
 
 ;; Axiom Simp. Axiom A1 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-1.html
@@ -1181,8 +1175,7 @@
                $a                        ; Query
                $a))                      ; Result
 (= (bc-ax-1 $ctl $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (👁 bc-ax-1 $ctl $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
+   (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom Frege. Axiom A2 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-2.html
@@ -1194,9 +1187,7 @@
                $a))                      ; Result
 (= (bc-ax-2 $ctl $env $ctx $depth
             (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (👁 bc-ax-2 $ctl $ctx $depth
-              (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
+   (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 
 ;; Axiom Transp. Axiom A3 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-3.html
@@ -1208,9 +1199,7 @@
                $a))                      ; Result
 (= (bc-ax-3 $ctl $env $depth $ctx
             (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (👁 bc-ax-3 $ctx $depth
-              (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
+   (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Recursive step ;;
@@ -1226,8 +1215,6 @@
                 $a))                      ; Result
 (= (bc-ax-mp $ctl $env $ctx (S $k)
              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (👁 bc-ax-mp $ctl $ctx (S $k)
-              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (let* (;; Recurse on premise 1
           ((: $prfarg1 $𝜑)
            (bc $ctl $env
@@ -1240,7 +1227,7 @@
                ;; Add premise 1 in context
                (Cons (: $prfarg1 $𝜑) $ctx)
                $k (: $prfarg2 (→ $𝜑 $𝜓)))))
-     (: (ax-mp $prfarg1 $prfarg2) $𝜓))))
+     (: (ax-mp $prfarg1 $prfarg2) $𝜓)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward Chainer Estimate ;;
@@ -1259,45 +1246,36 @@
 ;; Estimate of environment.  NEXT: the estimate should probably be
 ;; calculated for each matching result.
 (= (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bce-env (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
              (MkDCall bc-env (MkControl $pln-space $est) $env $ctx $depth
-                      (: $prf $thrm)))))
+                      (: $prf $thrm))))
 
 ;; Estimate of Axiom A1
 (= (bce (MkControl $pln-space $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-1 (MkControl $pln-space $est) $env $ctx $depth
-              (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
              (MkDCall bc-ax-1 (MkControl $pln-space $est) $env $ctx $depth
-                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))))
+                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))))
 
 ;; Estimate of Axiom A2
 (= (bce (MkControl $pln-space $est) $env $ctx $depth
         (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (👁 bce-ax-2 (MkControl $pln-space $est) $env $ctx $depth
-              (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
              (MkDCall bc-ax-2 (MkControl $pln-space $est) $env $ctx $depth
-                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))))
+                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))))
 
 ;; Estimate of Axiom A3
 (= (bce (MkControl $pln-space $est) $env $ctx $depth
         (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-3 (MkControl $pln-space $est) $env $ctx $depth
-              (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
              (MkDCall bc-ax-3 (MkControl $pln-space $est) $env $ctx $depth
-                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))))
+                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))))
 
 ;; Estimate of Rule 1 (modus ponens)
 (= (bce (MkControl $pln-space $est) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (👁 bce-ax-mp (MkControl $pln-space $est) $env $ctx (S $k)
-              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
              (MkDCall bc-ax-mp (MkControl $pln-space $est) $env $ctx (S $k)
-                      (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
+                      (: (ax-mp $prfarg1 $prfarg2) $𝜓))))
 
 ;;;;;;;;;;;;;;
 ;; Monolith ;;
@@ -1305,7 +1283,6 @@
 
 ;; See above for its type signature and comment
 (= (bc (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bc $ctx $depth (: $prf $thrm))
    (let* (;; Run superposition of backward chainer estimations
           ($edcalls (collapse (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))))
           ;; Select the best EDCall
@@ -1314,7 +1291,7 @@
           ;; Run it
           ($result (EDCall.run5 $best_edcall)))
      ;; Add the result into the PLN space and return the result
-     (addInstance $pln-space (toTheory $env) $depth $result))))
+     (addInstance $pln-space (toTheory $env) $depth $result)))
 
 ;;;;;;;;;;;;;;;;;
 ;; PLN Chainer ;;
@@ -1324,7 +1301,6 @@
 ;; because we first want to make sure PLN-based inference control
 ;; works at all.  In other words, to begin with we focus on making the
 ;; inference control accurate, not necessarily efficient.
-
 (: pln-bc (-> $a             ; PLN knowledge base
               Nat            ; Maximum depth
               PLN.Judgment   ; PLN judgement with holes.  Normally,
