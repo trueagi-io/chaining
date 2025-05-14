@@ -79,6 +79,18 @@
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
+;;;;;;;;;;;;
+;; Number ;;
+;;;;;;;;;;;;
+
+;; Return the minimum between two values
+(: min (-> Number Number Number))
+(= (min $x $y) (if (< $x $y) $x $y))
+
+;; Return the minimum between two values
+(: max (-> Number Number Number))
+(= (max $x $y) (if (< $x $y) $y $x))
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; De Bruijn Index ;;
 ;;;;;;;;;;;;;;;;;;;;;
