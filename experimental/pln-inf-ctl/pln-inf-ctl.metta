@@ -714,6 +714,21 @@
 ;; Access truth value from judgement
 (: PLN.tv (-> PLN.Judgement PLN.TruthValue))
 (= (PLN.tv (≞ $stm $tv)) $tv)
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Thompson Sampling ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Thompson sample from a simple truth value.  For now only confidence
+;; of 0 or 1 are supported.  This assumption allows us to operate
+;; Thompson sampling without requiring a Beta distribution.  Indeed if
+;; the confidence is 0 then it amounts to a uniform sampling, assuming
+;; a flat Bayesian prior that is.  And if the confidence is 1 then we
+;; just return the strength.
+(: thompson-sample (-> PLN.TruthValue Number))
+(= (thompson-sample (PLN.MkSTV $s 0)) (random-float &rng 0 1))
+(= (thompson-sample (PLN.MkSTV $s 1)) $s)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reduce PLN statements ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
