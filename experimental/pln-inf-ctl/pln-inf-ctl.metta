@@ -1584,6 +1584,19 @@
 ;; Test Random Control ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; The tests attempt to prove mp2, mp2b and a1i.1 respectively, which
+;; are theorems from Metamath.  The inference control is completely
+;; random, that is at each non-deterministic branch, the control
+;; selects one randomly.  In order to find a proof, we rerun each
+;; attempt for each theorem with a different random seed.  We also
+;; store the seed for future use (which only works if the random
+;; generator is fixed).  Additionally, in the random control
+;; structure, a space is provided.  The backward chainer will populate
+;; the spaces with 𝛩 instances.  These instances will be used in a
+;; second round of inference control tests where PLN can be used to
+;; reason about the instances to extract patterns to make better than
+;; random inference control decisions.
+
 ;; Define PLN space
 !(bind! &pln-space (new-space))
 
