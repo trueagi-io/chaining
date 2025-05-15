@@ -1769,4 +1769,5 @@
 ;; !(until (curried-equal-to 100) bc.test.any.next 0)
 
 ;; ;; Output PLN space
-;; !(get-atoms &pln-space)
+;; ! "&pln-kb:"
+;; !(get-atoms &pln-kb)
