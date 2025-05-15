@@ -1143,10 +1143,10 @@
                    Nat             ; Depth
                    $b              ; Query
                    $b))            ; Query pass through
-(= (addInstance $pln-space $thry $depth $query)
+(= (addInstance $pln-kb $thry $depth $query)
    (let* (($pln-statement (toPLN $thry Nil $depth $query))
           ($pln-judgment (≞ $pln-statement (PLN.MkSTV 1 1)))
-          (() (add-reduct-nodup $pln-space $pln-judgment)))
+          (() (add-reduct-nodup $pln-kb $pln-judgment)))
      $query))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1265,53 +1265,62 @@
 
 ;; Estimate of environment.  NEXT: the estimate should probably be
 ;; calculated for each matching result.
-(= (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   (trace! (👁 bce-env (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
    (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-env (MkControl $pln-space $est) $env $ctx $depth
-                      (: $prf $thrm))))
+             (MkDCall bc-env (MkControl $pln-kb $est) $env $ctx $depth
+                      (: $prf $thrm)))))
 
 ;; Estimate of Axiom A1
-(= (bce (MkControl $pln-space $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-1 (MkControl $pln-space $est) $env $ctx $depth
-                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))))
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (trace! (👁 bce-ax-1 (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkEDCall ($est $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+             (MkDCall bc-ax-1 (MkControl $pln-kb $est) $env $ctx $depth
+                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Axiom A2
-(= (bce (MkControl $pln-space $est) $env $ctx $depth
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth
         (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-2 (MkControl $pln-space $est) $env $ctx $depth
-                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))))
+   (trace! (👁 bce-ax-2 (MkControl $pln-kb $est) $env $ctx $depth
+        (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (MkEDCall ($est $env $ctx $depth (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+             (MkDCall bc-ax-2 (MkControl $pln-kb $est) $env $ctx $depth
+                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))))
 
 ;; Estimate of Axiom A3
-(= (bce (MkControl $pln-space $est) $env $ctx $depth
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth
         (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-3 (MkControl $pln-space $est) $env $ctx $depth
-                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))))
+   (trace! (👁 bce-ax-3 (MkControl $pln-kb $est) $env $ctx $depth
+        (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (MkEDCall ($est $env $ctx $depth (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+             (MkDCall bc-ax-3 (MkControl $pln-kb $est) $env $ctx $depth
+                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))))
 
 ;; Estimate of Rule 1 (modus ponens)
-(= (bce (MkControl $pln-space $est) $env $ctx (S $k)
+(= (bce (MkControl $pln-kb $est) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-mp (MkControl $pln-space $est) $env $ctx (S $k)
-                      (: (ax-mp $prfarg1 $prfarg2) $𝜓))))
+   (trace! (👁 bce-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
+        (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+   (MkEDCall ($est $env $ctx $depth (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+             (MkDCall bc-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
+                      (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
 
 ;;;;;;;;;;;;;;
 ;; Monolith ;;
 ;;;;;;;;;;;;;;
 
 ;; See above for its type signature and comment
-(= (bc (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))
+(= (bc (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   (trace! (👁 bc (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
    (let* (;; Run superposition of backward chainer estimations
-          ($edcalls (collapse (bce (MkControl $pln-space $est) $env $ctx $depth (: $prf $thrm))))
+          ($edcalls (collapse (bce (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))))
           ;; Select the best EDCall
           ($edcall_seq (List.fromExpression $edcalls))
           ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq))
           ;; Run it
           ($result (EDCall.run5 $best_edcall)))
      ;; Add the result into the PLN space and return the result
-     (addInstance $pln-space (toTheory $env) $depth $result)))
+     (addInstance $pln-kb (toTheory $env) $depth $result))))
 
 ;;;;;;;;;;;;;;;;;
 ;; PLN Chainer ;;
