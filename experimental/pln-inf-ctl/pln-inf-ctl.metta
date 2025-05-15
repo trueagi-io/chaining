@@ -43,7 +43,9 @@
 ;; Warning: if the atom to be added is not in the space but matches
 ;; any atom in the space, it will not be added either.  Return the
 ;; added (or not added) atom.
-(: add-reduct-nodup (-> $a $b (->)))
+(: add-reduct-nodup (-> $a              ; Space
+                        $b              ; Atom
+                        (->)))
 (= (add-reduct-nodup $space $atom)
    (case (match $space $atom $atom)
      (($atom ())
