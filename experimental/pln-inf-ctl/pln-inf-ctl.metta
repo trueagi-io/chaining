@@ -1824,3 +1824,23 @@
           ($tv (PLN.tv $max-stm)))
      ;; Thompson sample a first order probability from $tv
      (thompson-sample $tv))))
+
+;; Define control with PLN estimator
+!(bind! &pln-ctl-depth (fromNumber 2))
+!(bind! &pln-ctl (MkControl &pln-kb (pln-estimate &pln-kb &pln-ctl-depth)))
+
+;; Test ax-3
+!(assertEqual
+  (bc &pln-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+  (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+
+;; Test sub-mp2
+;; NEXT: fix
+!(bc &pln-ctl
+     (Cons (: mp2.1 𝜑)
+           (Cons (: mp2.2 𝜓)
+                 (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                       Nil)))
+     Nil
+     (fromNumber 1)
+     (: $prf (→ 𝜓 𝜒)))
