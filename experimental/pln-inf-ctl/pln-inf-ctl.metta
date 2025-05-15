@@ -711,6 +711,9 @@
 (: PLN.Judgement Type)
 (: ≞ (-> PLN.Statement PLN.TruthValue PLN.Judgement))
 
+;; Access truth value from judgement
+(: PLN.tv (-> PLN.Judgement PLN.TruthValue))
+(= (PLN.tv (≞ $stm $tv)) $tv)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reduce PLN statements ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
