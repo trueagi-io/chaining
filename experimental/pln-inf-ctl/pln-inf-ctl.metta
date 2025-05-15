@@ -1598,21 +1598,19 @@
 ;; random inference control decisions.
 
 ;; Define PLN space
-!(bind! &pln-space (new-space))
+!(bind! &pln-kb (new-space))
 
 ;; Define random estimator
-(: rnd-estimate (-> (List $a) (List $a) Nat $a Number))
+(: rnd-estimate (-> (List $a)           ; Environment
+                    (List $a)           ; Surrounding premises
+                    Nat                 ; Depth
+                    $a                  ; Query
+                    Number))            ; Estimate
 (= (rnd-estimate $env $ctx $depth $query) (random-float &rng 0 1))
 
 ;; Define control with random estimator
-!(bind! &rnd-ctl (MkControl &pln-space rnd-estimate))
+!(bind! &rnd-ctl (MkControl &pln-kb rnd-estimate))
 
-;; In order to reproduce the tests, the random seed needs to be set
-;; just right, and it becomes harder and harder to find a seed that
-;; works as the inference path becomes longer and longer.  For that we
-;; systematically search for a random seed with the following code
-;; (this is an example to discover the seed of test mp2).
-;;
 ;; (: bc.test.mp2.p (-> Number Bool))
 ;; (= (bc.test.mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2))
 ;; !(until bc.test.mp2.p succ 0)
