@@ -1795,3 +1795,32 @@
 ;; !(add-reduct-nodup &pln-kb (≞ (∃ (s z) (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [ax-1] ([→] z ([→] (s z) z))))) (PLN.MkSTV 1 1)))
 ;; !(add-reduct-nodup &pln-kb (≞ (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [ax-1] ([→] ([→] [𝜑] [𝜓]) ([→] z ([→] [𝜑] [𝜓]))))) (PLN.MkSTV 1 1)))
 ;; !(add-reduct-nodup &pln-kb (≞ (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) ([ax-mp] [mp2b.2] [ax-1]) ([→] z ([→] [𝜑] [𝜓])))) (PLN.MkSTV 1 1)))
+
+;; In this series of tests we rerun the same tests as above but PLN is
+;; allowed to reason about the viability of each branch.
+
+;; Define PLN estimator, an estimator parameterized by a PLN knowledge
+;; base about 𝛩, and a maximum depth of chaining for PLN reasoning.
+(: pln-estimate (-> $a                 ; PLN knowledge base
+                    Nat                ; PLN chaining depth
+                    (-> (List $b)      ; Environment
+                        (List $b)      ; Surrounding premises
+                        Nat            ; Depth
+                        $b             ; Query
+                        Number)))      ; Estimate
+(= ((pln-estimate $pln-kb $pln-depth) $env $ctx $depth $query)
+   (trace! (👁 pln-estimate $pln-kb $pln-depth $env $ctx $depth $query)
+   (let* (;; Extract PLN statement reflecting the backward chainer query
+          ($pln-stm (toPLN (toTheory $env) $ctx $depth $query))
+          ;; Build a PLN judgement from this statement
+          ($pln-jdm (: $prf (≞ $pln-stm (PLN.MkSTV $s $c))))
+          ;; Run PLN on this judgement
+          ($results (collapse (pln-bc $pln-kb $pln-depth $pln-jdm)))
+          ;; Build of list of results
+          ($lst (List.fromExpression $results))
+          ;; Select result with maximum confidence
+          ((: $max-prf $max-stm) (List.maxElementWith lt_by_conf $lst))
+          ;; Access its truth value
+          ($tv (PLN.tv $max-stm)))
+     ;; Thompson sample a first order probability from $tv
+     (thompson-sample $tv))))
