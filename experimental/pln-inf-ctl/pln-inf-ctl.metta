@@ -1771,3 +1771,27 @@
 ;; ;; Output PLN space
 ;; ! "&pln-kb:"
 ;; !(get-atoms &pln-kb)
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Test PLN Control ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; The following is obtained from running the code above and can be uncommented to avoid rerunning that code.
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 [PC] [ax-3] ([→] ([→] ([¬] [𝜑]) ([¬] [𝜓])) ([→] [𝜓] [𝜑]))) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [mp2.1] [𝜑]) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [mp2.2] [𝜓]) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) ([ax-mp] [mp2.1] [mp2.3]) ([→] [𝜓] [𝜒])) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) ([ax-mp] [mp2.2] ([ax-mp] [mp2.1] [mp2.3])) [𝜒]) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [mp2b.1] [𝜑]) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [mp2b.3] ([→] [𝜓] [𝜒])) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [mp2b.2] ([→] [𝜑] [𝜓])) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) ([ax-mp] [mp2b.1] [mp2b.2]) [𝜓]) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) ([ax-mp] ([ax-mp] [mp2b.1] [mp2b.2]) [mp2b.3]) [𝜒]) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) [a1i.1] [𝜑]) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑]))) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) ([ax-mp] [a1i.1] [ax-1]) ([→] [𝜓] [𝜑])) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (∃ (s z) (∃ z (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [ax-1] ([→] z ([→] (s z) z))))) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (∃ (s z) (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [ax-1] ([→] z ([→] (s z) z))))) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [ax-1] ([→] ([→] [𝜑] [𝜓]) ([→] z ([→] [𝜑] [𝜓]))))) (PLN.MkSTV 1 1)))
+;; !(add-reduct-nodup &pln-kb (≞ (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) ([ax-mp] [mp2b.2] [ax-1]) ([→] z ([→] [𝜑] [𝜓])))) (PLN.MkSTV 1 1)))
