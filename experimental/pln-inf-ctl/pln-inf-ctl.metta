@@ -791,6 +791,11 @@
 !(assertEqual
   (PLN.reduce (∧ (𝛩 [PC] z [𝜑]) ⊤))
   (𝛩 [PC] z [𝜑]))
+!(assertEqual
+  (PLN.reduce (∧ (𝛩 [PC] (s (s z)) (s z))
+                 (∧ (𝛩 [PC] z ([→] (s z) ([→] [𝜓] [𝜒])))
+                    ⊤)))
+  (∧ (𝛩 [PC] (s (s z)) (s z)) (𝛩 [PC] z ([→] (s z) ([→] [𝜓] [𝜒])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert backward chainer call to PLN ;;
