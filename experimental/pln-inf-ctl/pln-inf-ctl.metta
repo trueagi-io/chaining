@@ -1265,13 +1265,13 @@
            $a        ; Query
            (EDCall Control (List $a) (List $a) Nat $a $a))) ; EDCall
 
-;; Estimate of environment.  NEXT: the estimate should probably be
-;; calculated for each matching result.
+;; Estimate of environment
 (= (bce (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
    (trace! (👁 bce-env (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-env (MkControl $pln-kb $est) $env $ctx $depth
-                      (: $prf $thrm)))))
+   (let (: $prf $thrm) (match' $env (: $prf $thrm) (: $prf $thrm))
+        (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
+                  (MkDCall bc-env (MkControl $pln-kb $est) $env $ctx $depth
+                           (: $prf $thrm))))))
 
 ;; Estimate of Axiom A1
 (= (bce (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
