@@ -1511,6 +1511,14 @@
                                     ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
                                          ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
                                  (PLN.MkSTV 1 1))))
+!(add-atom &pln-bc.test.kb (: ax-pm-inst
+                              (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                                          (Cons ([:] [mp2.2] [𝜓])
+                                                (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                                      [PC])))
+                                    ([ax-mp] [mp2.1] [mp2.3])
+                                    ([→] [𝜓] [𝜒]))
+                                 (PLN.MkSTV 1 1))))
 
 ;; Test axioms (instances)
 !(assertEqual
@@ -1576,6 +1584,29 @@
                 (PLN.MkSTV $s 1))))
   ((: (EQI (EQI ax-1-inst)) (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z)))) (PLN.MkSTV 1 1)))
    (: (EQI (EQI ax-2-inst)) (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z)))) (PLN.MkSTV 1 1)))))
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 2)
+          (: (EQI $prfarg)
+             (≞ (∃ (s z)
+                   (∃ z
+                      (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                               (Cons ([:] [mp2.2] [𝜓])
+                                     (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                           [PC])))
+                         ([ax-mp] z (s z))
+                         ([→] [𝜓] [𝜒]))))
+                (PLN.MkSTV $s 1))))
+  (: (EQI (EQI ax-pm-inst))
+     (≞ (∃ (s z)
+           (∃ z
+              (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                       (Cons ([:] [mp2.2] [𝜓])
+                             (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                   [PC])))
+                 ([ax-mp] z (s z))
+                 ([→] [𝜓] [𝜒]))))
+        (PLN.MkSTV 1 1))))
 
 ;; Test existential quantification and conjunction
 !(assertEqual
