@@ -1905,3 +1905,36 @@
       (fromNumber 1)
       (: $prf (→ 𝜓 𝜒)))
   (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
+
+;; Test mp2
+!(assertEqual
+  (bc &pln-ctl
+      (Cons (: mp2.1 𝜑)
+            (Cons (: mp2.2 𝜓)
+                  (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                        Nil)))
+      Nil
+      (fromNumber 2)
+      (: $prf 𝜒))
+  (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
+
+;; Test mp2b
+!(assertEqual
+  (bc &rnd-ctl
+      (Cons (: mp2b.1 𝜑)
+            (Cons (: mp2b.2 (→ 𝜑 𝜓))
+                  (Cons (: mp2b.3 (→ 𝜓 𝜒))
+                        Nil)))
+      Nil
+      (fromNumber 2)
+      (: $prf 𝜒))
+  (: (ax-mp (ax-mp mp2b.1 mp2b.2) mp2b.3) 𝜒))
+
+;; Test a1i.1
+!(assertEqual
+  (bc &rnd-ctl
+      (Cons (: a1i.1 𝜑) Nil)
+      Nil
+      (fromNumber 1)
+      (: $prf (→ 𝜓 𝜑)))
+  (: (ax-mp a1i.1 ax-1) (→ 𝜓 𝜑)))
