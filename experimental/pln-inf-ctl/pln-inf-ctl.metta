@@ -1887,12 +1887,13 @@
   (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
 
 ;; Test sub-mp2
-;; NEXT: fix
-!(bc &pln-ctl
-     (Cons (: mp2.1 𝜑)
-           (Cons (: mp2.2 𝜓)
-                 (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
-                       Nil)))
-     Nil
-     (fromNumber 1)
-     (: $prf (→ 𝜓 𝜒)))
+!(assertEqual
+  (bc &pln-ctl
+      (Cons (: mp2.1 𝜑)
+            (Cons (: mp2.2 𝜓)
+                  (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                        Nil)))
+      Nil
+      (fromNumber 1)
+      (: $prf (→ 𝜓 𝜒)))
+  (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
