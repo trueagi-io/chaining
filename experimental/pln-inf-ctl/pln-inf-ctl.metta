@@ -1339,7 +1339,8 @@
       (Grounded $term)
       (Variable $term)
       (Expression
-       (if-equal $idx $term $var
+       (if-equal $idx $term
+                 $var
                  (if (isDeBruijn $term)
                      $term
                      (if-decons-expr $term $head $tail
@@ -1355,16 +1356,17 @@
 
 ;; Return True iff the given term is also DeBruijn index.  NEXT: alternative
 (: isDeBruijn (-> $a Bool))
-(= (isDeBruijn $term) (case (get-metatype $term)
-                        ((Symbol (== $term z))
-                         (Grounded False)
-                         (Variable False)
-                         (Expression
-                          (if-decons-expr $term $head ($tail)
-                                          ;; Non-empty expression
-                                          (and (== $head s) (isDeBruijn $tail))
-                                          ;; Empty expression
-                                          False)))))
+(= (isDeBruijn $term)
+   (case (get-metatype $term)
+     ((Symbol (if-equal $term z True False))
+      (Grounded False)
+      (Variable False)
+      (Expression
+       (if-decons-expr $term $head ($tail)
+                       ;; Non-empty expression
+                       (and (== $head s) (isDeBruijn $tail))
+                       ;; Empty expression
+                       False)))))
 
 ;; Test isDeBruijn
 !(assertEqual
