@@ -1690,7 +1690,7 @@
             ;; Look for random seed
             (until bc.test.ax-3.p succ 0)
             ;; Use prederminted seed
-            1))
+            0))
 !(println! ("Random seed for ax-3:" &bc.test.ax-3.seed))
 ;; Test
 !(assertEqual
@@ -1720,7 +1720,7 @@
             ;; Look for random seed
             (until bc.test.sub-mp2.p succ 0)
             ;; Use prederminted seed
-            0))
+            5))
 !(println! ("Random seed for sub-mp2:" &bc.test.sub-mp2.seed))
 ;; Test
 !(assertEqual
@@ -1750,7 +1750,7 @@
             ;; Look for random seed
             (until bc.test.mp2.p succ 0)
             ;; Use prederminted seed
-            0))
+            9))
 !(println! ("Random seed for mp2:" &bc.test.mp2.seed))
 ;; Test
 !(assertEqual
