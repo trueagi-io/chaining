@@ -726,8 +726,12 @@
 ;; a flat Bayesian prior that is.  And if the confidence is 1 then we
 ;; just return the strength.
 (: thompson-sample (-> PLN.TruthValue Number))
-(= (thompson-sample (PLN.MkSTV $s 0)) (random-float &rng 0 1))
-(= (thompson-sample (PLN.MkSTV $s 1)) $s)
+(= (thompson-sample (PLN.MkSTV $s 0))
+   ;; (trace! (👁 thompson-sample (PLN.MkSTV $s 0))
+   (random-float &rng 0 1));)
+(= (thompson-sample (PLN.MkSTV $s 1))
+   ;; (trace! (👁 thompson-sample (PLN.MkSTV $s 1))
+    $s);)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reduce PLN statements ;;
@@ -737,6 +741,7 @@
 ;; elimination.
 (: PLN.reduce (-> PLN.Statement PLN.Statement))
 (= (PLN.reduce $stm)
+   ;; (trace! (👁 PLN.reduce $stm)
    (case (get-metatype $stm)
      ((Symbol $stm)
       (Grounded $stm)
@@ -1422,13 +1427,15 @@
 
 ;; Match the kb
 (= (pln-bc $kb $depth (: $prf $thrm))
-   (match $kb (: $prf $thrm) (: $prf $thrm)))
+   ;; (trace! (👁 pln-bc-env $kb $depth (: $prf $thrm))
+   (match $kb (: $prf $thrm) (: $prf $thrm)));)
 
 ;; Undefined (Udf).  The Udf axiom takes any PLN statement and creates
 ;; a judgement with the undefined truth value, with strength 1 and
 ;; confidence 0, corresponding to complete unknown.
 (= (pln-bc $kb $depth (: Udf (≞ $stm (PLN.MkSTV 1 0))))
-   (: Udf (≞ $stm (PLN.MkSTV 1 0))))
+   ;; (trace! (👁 pln-bc-udf $kb $depth (: Udf (≞ $stm (PLN.MkSTV 1 0))))
+   (: Udf (≞ $stm (PLN.MkSTV 1 0))));)
 
 ;; Recursive steps
 
@@ -1440,13 +1447,15 @@
 ;; value merging, meaning one needs to estimate how much independent
 ;; they are (maybe this can be outsourced to PLN itself).
 (= (pln-bc $kb (S $k) (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c))))
+   ;; (trace! (👁 pln-bc-eqi $kb (S $k)
+   ;;            (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c))))
    (let* (;; Replace $idx by a free variable in $stm
           ($stm-fv (DeBruijnToVariable $idx $stm))
           ;; Recurse on the dequantified statement
           ((: $prfarg (≞ $stm-fv (PLN.MkSTV $s $c)))
            (pln-bc $kb $k (: $prfarg (≞ $stm-fv (PLN.MkSTV $s $c))))))
      ;; TODO: take care of unifying $stm and $stm-fv
-     (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c)))))
+     (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c)))));)
 
 ;; Conjunction Introduction (CI).  The formula is somewhat
 ;; conservative but not maximally so, taking the product of the
@@ -1461,6 +1470,8 @@
 ;; with something better.
 (= (pln-bc $kb (S $k) (: (CI $prfarg1 $prfarg2)
                          (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c))))
+   ;; (trace! (👁 pln-bc-ci $kb (S $k) (: (CI $prfarg1 $prfarg2)
+   ;;                                 (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c))))
    (let* (;; Recursive on stm1
           ((: $prfarg1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))
            (pln-bc $kb $k (: $prfarg1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))))
@@ -1471,7 +1482,7 @@
           ($s (* $s1 $s2))
           ($c (min $c1 $c2)))
      ;; Output conjunction
-     (: (CI $prfarg1 $prfarg2) (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c)))))
+     (: (CI $prfarg1 $prfarg2) (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c)))));)
 
 ;; Less than predicate over typing relationships of PLN judgements by
 ;; confidence.  For instance the following call
