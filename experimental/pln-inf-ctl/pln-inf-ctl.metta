@@ -1154,7 +1154,9 @@
 (= (addInstance $pln-kb $thry $depth $query)
    (let* (($pln-statement (toPLN $thry Nil $depth $query))
           ($pln-judgment (≞ $pln-statement (PLN.MkSTV 1 1)))
-          (() (add-reduct-nodup $pln-kb $pln-judgment)))
+          ($axiom-symbol (parse "NEXT"))
+          ($instance (: $axiom-symbol $pln-judgment))
+          (() (add-reduct-nodup $pln-kb $instance)))
      $query))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
