@@ -1674,12 +1674,6 @@
 ;; Define control with random estimator
 !(bind! &rnd-ctl (MkControl &pln-kb rnd-estimate))
 
-;; (: bc.test.mp2.p (-> Number Bool))
-;; (= (bc.test.mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2))
-;; !(until bc.test.mp2.p succ 0)
-;;
-;; At the end of the loop, it outputs the seed.
-
 ;; Test ax-3
 (: bc.test.ax-3 (-> $a))
 (= (bc.test.ax-3)
