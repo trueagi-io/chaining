@@ -197,8 +197,8 @@
 (= (maxWith $lt $x $y)
    (if ($lt $x $y) $y $x))
 
-;; Return a maximum element of a non empty list, given a certain less
-;; than predicate.
+;; Return a maximum element of a non empty list, given a less than
+;; predicate.
 (: List.maxElementWith (-> (-> $a $a Bool) (List $a) $a))
 (= (List.maxElementWith $lt (Cons $head $tail))
    (case $tail
