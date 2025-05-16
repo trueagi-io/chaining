@@ -1145,6 +1145,7 @@
 ;; by now), convert the query into a 𝛩 instance, add it to the PLN
 ;; space and return the query unchanged.  For now depth is
 ;; unsupported.
+;; NEXT: add typing relationship
 (: addInstance (-> $a              ; PLN Space
                    (List $b)       ; Theory
                    Nat             ; Depth
