@@ -1145,7 +1145,7 @@
 ;; by now), convert the query into a 𝛩 instance, add it to the PLN
 ;; space and return the query unchanged.  For now depth is
 ;; unsupported.
-;; NEXT: add typing relationship
+;; NEXT: create new axiom symbol for each new instance
 (: addInstance (-> $a              ; PLN Space
                    (List $b)       ; Theory
                    Nat             ; Depth
@@ -1273,45 +1273,45 @@
 
 ;; Estimate of environment
 (= (bce (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bce-env (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   ;; (trace! (👁 bce-env (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
    (let (: $prf $thrm) (match' $env (: $prf $thrm) (: $prf $thrm))
         (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
                   (MkDCall bc-env (MkControl $pln-kb $est) $env $ctx $depth
-                           (: $prf $thrm))))))
+                           (: $prf $thrm)))));)
 
 ;; Estimate of Axiom A1
 (= (bce (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-1 (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   ;; (trace! (👁 bce-ax-1 (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
    (MkEDCall ($est $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
              (MkDCall bc-ax-1 (MkControl $pln-kb $est) $env $ctx $depth
-                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))))
+                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))));)
 
 ;; Estimate of Axiom A2
 (= (bce (MkControl $pln-kb $est) $env $ctx $depth
         (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (👁 bce-ax-2 (MkControl $pln-kb $est) $env $ctx $depth
-        (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   ;; (trace! (👁 bce-ax-2 (MkControl $pln-kb $est) $env $ctx $depth
+   ;;      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
    (MkEDCall ($est $env $ctx $depth (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
              (MkDCall bc-ax-2 (MkControl $pln-kb $est) $env $ctx $depth
-                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))))
+                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))));)
 
 ;; Estimate of Axiom A3
 (= (bce (MkControl $pln-kb $est) $env $ctx $depth
         (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-3 (MkControl $pln-kb $est) $env $ctx $depth
-        (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   ;; (trace! (👁 bce-ax-3 (MkControl $pln-kb $est) $env $ctx $depth
+   ;;      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
    (MkEDCall ($est $env $ctx $depth (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
              (MkDCall bc-ax-3 (MkControl $pln-kb $est) $env $ctx $depth
-                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))))
+                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))));)
 
 ;; Estimate of Rule 1 (modus ponens)
 (= (bce (MkControl $pln-kb $est) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (👁 bce-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
-        (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+   ;; (trace! (👁 bce-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
+   ;;      (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (MkEDCall ($est $env $ctx (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
              (MkDCall bc-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
-                      (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
+                      (: (ax-mp $prfarg1 $prfarg2) $𝜓))));)
 
 ;;;;;;;;;;;;;;
 ;; Monolith ;;
@@ -1319,7 +1319,7 @@
 
 ;; See above for its type signature and comment
 (= (bc (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bc (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   ;; (trace! (👁 bc (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
    (let* (;; Run superposition of backward chainer estimations
           ($edcalls (collapse (bce (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))))
           ;; Select the best EDCall
@@ -1328,7 +1328,7 @@
           ;; Run it
           ($result (EDCall.run5 $best_edcall)))
      ;; Add the result into the PLN space and return the result
-     (addInstance $pln-kb (toTheory $env) $depth $result))))
+     (addInstance $pln-kb (toTheory $env) $depth $result)));)
 
 ;;;;;;;;;;;;;;;;;
 ;; PLN Chainer ;;
