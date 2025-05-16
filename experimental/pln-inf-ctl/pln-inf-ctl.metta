@@ -21,7 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Boolean parameter to determine whether the search for random seeds
-;; is enabled.  Warning: if is enabled, it may for a long time.
+;; is enabled.  Warning: if is enabled, it may run for a long time.
 !(bind! &seed-search True)
 
 ;; Not supported yet
