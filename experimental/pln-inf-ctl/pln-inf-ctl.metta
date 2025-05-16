@@ -1401,6 +1401,12 @@
 !(assertAlphaEqual
   (DeBruijnToVariable (s z) (𝛩 [PC] z (s z)))
   (𝛩 [PC] z $x))
+!(assertAlphaEqual
+  (DeBruijnToVariable (s z)
+                      (∃ z (𝛩 (Cons ([:] [mp2.1] [𝜑]) [PC])
+                              ([ax-mp] z (s z))
+                              ([→] [𝜓] [𝜒]))))
+  (∃ z (𝛩 (Cons ([:] [mp2.1] [𝜑]) [PC]) ([ax-mp] z $x) ([→] [𝜓] [𝜒]))))
 
 ;; For now PLN chaining is greedy, without inference control.  That is
 ;; because we first want to make sure PLN-based inference control
