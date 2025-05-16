@@ -1301,7 +1301,7 @@
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (trace! (👁 bce-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (MkEDCall ($est $env $ctx $depth (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+   (MkEDCall ($est $env $ctx (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
              (MkDCall bc-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
                       (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
 
