@@ -1484,9 +1484,17 @@
 ;; False because the confidence of STM1 according to PRF1, 0.5, is not
 ;; less than the confidence of STM2 according to PRF2, 0.4.
 (: lt_by_conf (-> $a $a Bool))
-(= (lt_by_conf (: $prf1 (≞ $stm1 (MkSTV $s1 $c1)))
-               (: $prf2 (≞ $stm2 (MkSTV $s2 $c2))))
+(= (lt_by_conf (: $prf1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))
+               (: $prf2 (≞ $stm2 (PLN.MkSTV $s2 $c2))))
    (< $c1 $c2))
+
+;; Test lt_by_conf (TODO: replace by assert once ready)
+!(assertEqual
+  (lt_by_conf (: Ax1 (≞ (∃ (s z) (∃ z (𝛩 [PC] ([ax-mp] z (s z)) ([→] [𝜓] [𝜒]))))
+                        (PLN.MkSTV 1 0)))
+              (: Ax2 (≞ (∃ (s z) (∃ z (𝛩 [PC] ([ax-mp] z (s z)) ([→] [𝜓] [𝜒]))))
+                        (PLN.MkSTV 0 0))))
+  False)
 
 ;; Test pln-bc
 !(bind! &pln-bc.test.kb (new-space))
