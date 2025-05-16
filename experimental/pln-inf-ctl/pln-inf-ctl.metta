@@ -1387,8 +1387,11 @@
 !(assertEqual
   (isDeBruijn (s (s z)))
   True)
+!(assertEqual
+  (isDeBruijn [PC])
+  False)
 
-;; ;; Test DeBruijnToVariable
+;; Test DeBruijnToVariable
 !(assertAlphaEqual
   (DeBruijnToVariable z (𝛩 [PC] z [𝜑]))
   (𝛩 [PC] $x [𝜑]))
