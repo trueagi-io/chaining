@@ -744,9 +744,9 @@
                     (;; Nullary
                      (() ())
                      ;; Unary
-                     (($x) ((PLN.reduce $x)))
+                     (($x) ($x))
                      ;; Binary
-                     (($x $y) ((PLN.reduce $x) (PLN.reduce $y)))
+                     (($x $y) ($x (PLN.reduce $y)))
                      ;; Ternary
                      ;; →
                      ((→ $x ⊤) ⊤)
@@ -764,25 +764,22 @@
                      ((∨ $x ⊥) (PLN.reduce $x))
                      ((∨ ⊥ $x) (PLN.reduce $x))
                      ;; Other ternary
-                     (($x $y $z) ((PLN.reduce $x)
-                                  (PLN.reduce $y)
-                                  (PLN.reduce $z)))
+                     (($x $y $z) ($x (PLN.reduce $y) (PLN.reduce $z)))
                      ;; Quaternary
                      ((𝛩 $x $y $z) $stm)
                      ;; Other quaternary
-                     (($x $y $z $w) ((PLN.reduce $x)
-                                     (PLN.reduce $y)
-                                     (PLN.reduce $z)
-                                     (PLN.reduce $w)))
+                     (($x $y $z $w) ($x (PLN.reduce $y)
+                                        (PLN.reduce $z)
+                                        (PLN.reduce $w)))
                      ;; Quinary
-                     (($x $y $z $w $v) ((PLN.reduce $x)
+                     (($x $y $z $w $v) ($x
                                         (PLN.reduce $y)
                                         (PLN.reduce $z)
                                         (PLN.reduce $w)
                                         (PLN.reduce $v)))
                      ;; Otherwise
                      ($else (Error $stm "Not supported in PLN.reduce")))))
-      ($else (Error (get-metatype $stm) "Not supported in PLN.reduce")))))
+      ($else (Error (get-metatype $stm) "Not supported in PLN.reduce")))));)
 
 ;; Test PLN.reduce
 !(assertEqual
