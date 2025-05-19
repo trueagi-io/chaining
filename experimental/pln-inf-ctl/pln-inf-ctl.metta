@@ -1777,7 +1777,7 @@
             ;; Look for random seed
             (until bc.test.mp2b.p succ 0)
             ;; Use prederminted seed
-            160))
+            47))
 !(println! ("Random seed for mp2b:" &bc.test.mp2b.seed))
 ;; Test
 !(assertEqual
@@ -1804,8 +1804,8 @@
             ;; Look for random seed
             (until bc.test.a1i.1.p succ 0)
             ;; Use prederminted seed
-            4))
-!(println! ("Random seed for mp2b:" &bc.test.a1i.1.seed))
+            5))
+!(println! ("Random seed for a1i.1:" &bc.test.a1i.1.seed))
 ;; Test
 !(assertEqual
   (set-rnd-seed-run0 &bc.test.a1i.1.seed bc.test.a1i.1)
