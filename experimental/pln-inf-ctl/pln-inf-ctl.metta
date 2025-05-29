@@ -14,6 +14,14 @@
 ;;
 ;; https://us.metamath.org/mpeuni/mmtheorems1.html
 
+;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;; ;;
+;; ;; Imports ;; ;;
+;; ;;;;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;;;;
+
+!(import! &self random)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
 ;; ;; Hyper Parameters ;; ;;
@@ -1886,7 +1894,7 @@
      (thompson-sample $tv))))
 
 ;; Define control with PLN estimator
-!(bind! &pln-ctl-depth (fromNumber 2))
+!(bind! &pln-ctl-depth (fromNumber 3))
 !(bind! &pln-ctl (MkControl &pln-kb (pln-estimate &pln-kb &pln-ctl-depth)))
 
 ;; Test ax-3
@@ -1920,7 +1928,7 @@
 
 ;; Test mp2b
 !(assertEqual
-  (bc &rnd-ctl
+  (bc &pln-ctl
       (Cons (: mp2b.1 𝜑)
             (Cons (: mp2b.2 (→ 𝜑 𝜓))
                   (Cons (: mp2b.3 (→ 𝜓 𝜒))
@@ -1932,7 +1940,7 @@
 
 ;; Test a1i.1
 !(assertEqual
-  (bc &rnd-ctl
+  (bc &pln-ctl
       (Cons (: a1i.1 𝜑) Nil)
       Nil
       (fromNumber 1)
