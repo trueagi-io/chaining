@@ -1877,7 +1877,7 @@
                         $b             ; Query
                         Number)))      ; Estimate
 (= ((pln-estimate $pln-kb $pln-depth) $env $ctx $depth $query)
-   (trace! (👁 pln-estimate $pln-kb $pln-depth $env $ctx $depth $query)
+   ;; (trace! (👁 pln-estimate $pln-kb $pln-depth $env $ctx $depth $query)
    (let* (;; Extract PLN statement reflecting the backward chainer query
           ($pln-stm (toPLN (toTheory $env) $ctx $depth $query))
           ;; Build a PLN judgement from this statement
@@ -1891,7 +1891,7 @@
           ;; Access its truth value
           ($tv (PLN.tv $max-stm)))
      ;; Thompson sample a first order probability from $tv
-     (thompson-sample $tv))))
+     (thompson-sample $tv)));)
 
 ;; Define control with PLN estimator
 !(bind! &pln-ctl-depth (fromNumber 5))
