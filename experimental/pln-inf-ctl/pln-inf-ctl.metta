@@ -14,11 +14,64 @@
 ;;
 ;; https://us.metamath.org/mpeuni/mmtheorems1.html
 
+;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;; ;;
+;; ;; Imports ;; ;;
+;; ;;;;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;;;;
+
+!(import! &self random)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;;;;;;;;;;; ;;
+;; ;; Hyper Parameters ;; ;;
+;; ;;;;;;;;;;;;;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Boolean parameter to determine whether the search for random seeds
+;; is enabled.  Warning: if is enabled, it may run for a long time.
+!(bind! &seed-search True)
+
+;; Not supported yet
+;; ;; Set this parameter to True if you want to print debug traces on
+;; ;; stderr
+;; !(bind! &debug-trace True)
+
 ;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;; ;;
 ;; ;; Utils ;; ;;
 ;; ;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Add Atom without Duplicate ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Reduce and add an atom only if it is not already in the atomspace.
+;; Warning: if the atom to be added is not in the space but matches
+;; any atom in the space, it will not be added either.  Return the
+;; added (or not added) atom.
+(: add-reduct-nodup (-> $a              ; Space
+                        $b              ; Atom
+                        (->)))
+(= (add-reduct-nodup $space $atom)
+   (case (match $space $atom $atom)
+     (($atom ())
+      (Empty (add-reduct $space $atom)))))
+
+;; Test add-atom-nodup
+!(assertEqualToResult
+  (let* (($space (new-space))
+         (() (add-reduct-nodup $space A))
+         (() (add-reduct-nodup $space A)))
+    (get-atoms $space))
+  (A))
+!(assertEqualToResult
+  (let* (($space (new-space))
+         (() (add-reduct-nodup $space A))
+         (() (add-reduct-nodup $space B)))
+    (get-atoms $space))
+  (A B))
 
 ;;;;;;;;;
 ;; Nat ;;
@@ -35,6 +88,18 @@
 (: fromNat (-> Nat Number))
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
+
+;;;;;;;;;;;;
+;; Number ;;
+;;;;;;;;;;;;
+
+;; Return the minimum between two values
+(: min (-> Number Number Number))
+(= (min $x $y) (if (< $x $y) $x $y))
+
+;; Return the minimum between two values
+(: max (-> Number Number Number))
+(= (max $x $y) (if (< $x $y) $y $x))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; De Bruijn Index ;;
@@ -79,6 +144,10 @@
 (: succ (-> Number Number))
 (= (succ $n) (+ 1 $n))
 
+;; Test if the input is equal to a given value
+(: curried-equal-to (-> $a (-> $a Bool)))
+(= ((curried-equal-to $n) $x) (== $n $x))
+
 ;; Loop-like function ported from Haskell.  Iterate applying a given
 ;; function till some condition is reached.
 (: until (-> (-> $a Bool)               ; Predicate
@@ -86,14 +155,30 @@
              $a                         ; Initial value
              $a))                       ; Final value
 (= (until $p $f $x)
-   (if ($p $x) $x (until $p $f ($f $x))))
+   (trace! (👁 until $p $f $x)
+   (if ($p $x) $x (until $p $f ($f $x)))))
 
 ;; Test until
-(: until.test.p (-> Number Bool))
-(= (until.test.p $n) (== $n 10))
 !(assertEqual
-  (until until.test.p succ 0)
+  (until (curried-equal-to 10) succ 0)
   10)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Set random seed and run ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Set random seed and run nullary function
+(: set-rnd-seed-run0 (-> Number (-> $a) $a))
+(= (set-rnd-seed-run0 $n $f)
+   (let () (set-random-seed &rng $n) ($f)))
+
+;; Set random seed and run nullary function.  Outputs True iff it
+;; succeeds, that is it is not empty.
+(: (set-rnd-seed-run0-not-empty (-> Number (-> $a) Bool)))
+(= (set-rnd-seed-run0-not-empty $n $f)
+   (case (set-rnd-seed-run0 $n $f)
+     ((Empty False)
+      ($else True))))
 
 ;;;;;;;;;;
 ;; List ;;
@@ -120,8 +205,8 @@
 (= (maxWith $lt $x $y)
    (if ($lt $x $y) $y $x))
 
-;; Return a maximum element of a non empty list, given a certain less
-;; than predicate.
+;; Return a maximum element of a non empty list, given a less than
+;; predicate.
 (: List.maxElementWith (-> (-> $a $a Bool) (List $a) $a))
 (= (List.maxElementWith $lt (Cons $head $tail))
    (case $tail
@@ -150,8 +235,8 @@
 
 ;; Define List.appendElem that appends an element at the end of a
 ;; list.
-(: List.appendElem (-> (List $a) $a (List $a)))
-(= (List.appendElem $xs $x) (List.append $xs (Cons $x Nil)))
+(: List.appendElem (-> $a (List $a) (List $a)))
+(= (List.appendElem $x $xs) (List.append $xs (Cons $x Nil)))
 
 ;; Define List.elemIndex that returns the index of an element in a
 ;; List, if it exists.
@@ -184,6 +269,53 @@
 !(assertEqual
   (List.map List.map.test.foo (Cons 1 (Cons 2 (Cons 3 Nil))))
   (Cons 2 (Cons 3 (Cons 4 Nil))))
+
+;;;;;;;;;;;;
+;; String ;;
+;;;;;;;;;;;;
+
+;; Fold a tuple from right to left
+(: foldr (-> (-> $a $b $b) $b $c $d))
+(= (foldr $f $i $xs)
+   (if (== $xs ())
+       $i
+       (let* (($h (car-atom $xs))
+              ($t (cdr-atom $xs))
+              ($ft (foldr $f $i $t)))
+         ($f $h $ft))))
+
+;; Concatenate two terms
+(: append (-> $a $a $a))
+(= (append $lhs $rhs) (foldr cons-atom $rhs $lhs))
+
+;; Concatenate two strings (implemented in my own branch)
+(: String.append (-> String String String))
+;; (= (String.append $x $y) (call-fn! string_concat $x $y)) ; Only MeTTaLog
+(= (String.append $x $y) ((py-dot $x __add__ (-> String String String)) $y))
+;; (= (String.append $x $y) (charsToString (append (stringToChars $x) (stringToChars $y))))
+
+;; Test String.append
+!(assertEqual (String.append "abc" "def") "abcdef")
+!(assertEqual (String.append "\"" "\"") "\"\"")
+
+;; Overload String.append to support more than 2 arguments
+(: String.append3 (-> String String String String))
+(= (String.append3 $x $y $z) (String.append $x (String.append $y $z)))
+(: String.append4 (-> String String String String String))
+(= (String.append4 $x $y $z $w) (String.append $x (String.append3 $y $z $w)))
+(: String.append5 (-> String String String String String String))
+(= (String.append5 $x $y $z $w $s) (String.append $x (String.append4 $y $z $w $s)))
+
+;; Join a list of string by a separator
+(: String.join (-> String (List String) String))
+(= (String.join $separator Nil) "")
+(= (String.join $separator (Cons $head $tail))
+   (case $tail
+     ((Nil $head)
+      ($else (String.append3 $head $separator (String.join $separator $tail))))))
+
+;; Test String.join
+!(assertEqual (String.join ", " (Cons "x=42" (Cons "y=24" Nil))) "x=42, y=24")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
@@ -464,13 +596,10 @@
 ;; Control structure holding the inference control, parameterized by
 ;; the query language.  For now it merely holds a function to estimate
 ;; the probability of success of a particular branch.
-(: Control (-> $a Type))
-(MkControl (-> (-> (List $a)            ; Environment
-                   (List $a)            ; Context
-                   Nat                  ; Depth
-                   $a                   ; Query
-                   Number)              ; Estimate
-               (Control $a)))
+(: Control Type)
+(MkControl (-> $a                                     ; PLN Space
+               (-> (List $b) (List $b) Nat $b Number) ; Estimator
+               Control))
 
 ;;;;;;;;;
 ;; PLN ;;
@@ -492,7 +621,7 @@
 ;;
 ;; can be represented at the object level as
 ;;
-;; (_∧_ _P_ _Q_)
+;; ([∧] [P] [Q])
 ;;
 ;; We need to do that because in this experiment we reason about 𝛩, a
 ;; ternary predicate relating theories, proofs and theorems, thus we
@@ -506,39 +635,39 @@
 ;; Define PLN Term DeBruijn index constructors, used in quantifiers at
 ;; the object level.
 (: PLN.Term.DeBruijn Type)
-(: _z_ PLN.Term.DeBruijn)
-(: _s_ (-> PLN.Term.DeBruijn PLN.Term.DeBruijn))
+(: [z] PLN.Term.DeBruijn)
+(: [s] (-> PLN.Term.DeBruijn PLN.Term.DeBruijn))
 
-;; Make sure that _z_ and _s_ can be typed as PLN.Term as well
-(: _z_ PLN.Term)
-(: _s_ (-> PLN.Term.DeBruijn PLN.Term))
+;; Make sure that [z] and [s] can be typed as PLN.Term as well
+(: [z] PLN.Term)
+(: [s] (-> PLN.Term.DeBruijn PLN.Term))
 
 ;; Define axiom and inference rule names as PLN terms
-(: _ax-1_ PLN.Term)
-(: _ax-2_ PLN.Term)
-(: _ax-3_ PLN.Term)
-(: _ax-mp_ PLN.Term)
-(: _mp2.1_ PLN.Term)
-(: _mp2.2_ PLN.Term)
-(: _mp2.3_ PLN.Term)
-(: _mp2b.1_ PLN.Term)
-(: _mp2b.2_ PLN.Term)
-(: _mp2b.3_ PLN.Term)
-(: _a1i.1_ PLN.Term)
-(: _PC_ PLN.Term)
-(: _𝜑_ PLN.Term)
-(: _𝜓_ PLN.Term)
-(: _𝜒_ PLN.Term)
+(: [ax-1] PLN.Term)
+(: [ax-2] PLN.Term)
+(: [ax-3] PLN.Term)
+(: [ax-mp] (-> PLN.Term PLN.Term PLN.Term))
+(: [mp2.1] PLN.Term)
+(: [mp2.2] PLN.Term)
+(: [mp2.3] PLN.Term)
+(: [mp2b.1] PLN.Term)
+(: [mp2b.2] PLN.Term)
+(: [mp2b.3] PLN.Term)
+(: [a1i.1] PLN.Term)
+(: [PC] (List PLN.Term))
+(: [𝜑] PLN.Term)
+(: [𝜓] PLN.Term)
+(: [𝜒] PLN.Term)
 
 ;; Define PLN Term logical connectors at the object level.  NEXT:
 ;; support PLN.Term.DeBruijn.
-(: _→_ (-> PLN.Term PLN.Term PLN.Term))
-(: _∧_ (-> PLN.Term PLN.Term PLN.Term))
-(: _∨_ (-> PLN.Term PLN.Term PLN.Term))
-(: _¬_ (-> PLN.Term PLN.Term))
+(: [→] (-> PLN.Term PLN.Term PLN.Term))
+(: [∧] (-> PLN.Term PLN.Term PLN.Term))
+(: [∨] (-> PLN.Term PLN.Term PLN.Term))
+(: [¬] (-> PLN.Term PLN.Term))
 
 ;; Define typing relationship at the object level.
-(: _:_ (-> PLN.Term PLN.Term PLN.Term))
+(: [:] (-> PLN.Term PLN.Term PLN.Term))
 
 ;; Define PLN Statement type.  A PLN statement represents a predicate
 ;; or conditioned predicate.
@@ -566,7 +695,6 @@
 ;; concerns about its semantics, including the interval aspect
 ;; explained in the PLN book.  Since 𝛩 is deterministic anyway, let's
 ;; see how far we can go with a crisp version of this quantifier.
-;; NEXT: DeBruijn or PLN.DeBruijn?
 (: ∃ (-> DeBruijn PLN.Statement PLN.Statement))
 
 ;; Define PLN Statement constructors from a set of primitive
@@ -591,6 +719,28 @@
 (: PLN.Judgement Type)
 (: ≞ (-> PLN.Statement PLN.TruthValue PLN.Judgement))
 
+;; Access truth value from judgement
+(: PLN.tv (-> PLN.Judgement PLN.TruthValue))
+(= (PLN.tv (≞ $stm $tv)) $tv)
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Thompson Sampling ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Thompson sample from a simple truth value.  For now only confidence
+;; of 0 or 1 are supported.  This assumption allows us to operate
+;; Thompson sampling without requiring a Beta distribution.  Indeed if
+;; the confidence is 0 then it amounts to a uniform sampling, assuming
+;; a flat Bayesian prior that is.  And if the confidence is 1 then we
+;; just return the strength.
+(: thompson-sample (-> PLN.TruthValue Number))
+(= (thompson-sample (PLN.MkSTV $s 0))
+   ;; (trace! (👁 thompson-sample (PLN.MkSTV $s 0))
+   (random-float &rng 0 1));)
+(= (thompson-sample (PLN.MkSTV $s 1))
+   ;; (trace! (👁 thompson-sample (PLN.MkSTV $s 1))
+    $s);)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reduce PLN statements ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -599,6 +749,7 @@
 ;; elimination.
 (: PLN.reduce (-> PLN.Statement PLN.Statement))
 (= (PLN.reduce $stm)
+   ;; (trace! (👁 PLN.reduce $stm)
    (case (get-metatype $stm)
      ((Symbol $stm)
       (Grounded $stm)
@@ -606,9 +757,9 @@
                     (;; Nullary
                      (() ())
                      ;; Unary
-                     (($x) ((PLN.reduce $x)))
+                     (($x) ($x))
                      ;; Binary
-                     (($x $y) ((PLN.reduce $x) (PLN.reduce $y)))
+                     (($x $y) ($x (PLN.reduce $y)))
                      ;; Ternary
                      ;; →
                      ((→ $x ⊤) ⊤)
@@ -626,45 +777,48 @@
                      ((∨ $x ⊥) (PLN.reduce $x))
                      ((∨ ⊥ $x) (PLN.reduce $x))
                      ;; Other ternary
-                     (($x $y $z) ((PLN.reduce $x)
-                                  (PLN.reduce $y)
-                                  (PLN.reduce $z)))
+                     (($x $y $z) ($x (PLN.reduce $y) (PLN.reduce $z)))
                      ;; Quaternary
                      ((𝛩 $x $y $z) $stm)
                      ;; Other quaternary
-                     (($x $y $z $w) ((PLN.reduce $x)
-                                     (PLN.reduce $y)
-                                     (PLN.reduce $z)
-                                     (PLN.reduce $w)))
+                     (($x $y $z $w) ($x (PLN.reduce $y)
+                                        (PLN.reduce $z)
+                                        (PLN.reduce $w)))
                      ;; Quinary
-                     (($x $y $z $w $v) ((PLN.reduce $x)
+                     (($x $y $z $w $v) ($x
                                         (PLN.reduce $y)
                                         (PLN.reduce $z)
                                         (PLN.reduce $w)
                                         (PLN.reduce $v)))
                      ;; Otherwise
                      ($else (Error $stm "Not supported in PLN.reduce")))))
-      ($else (Error (get-metatype $stm) "Not supported in PLN.reduce")))))
+      ($else (Error (get-metatype $stm) "Not supported in PLN.reduce")))));)
 
 ;; Test PLN.reduce
 !(assertEqual
   (PLN.reduce ⊤)
   ⊤)
 !(assertEqual
-  (PLN.reduce (𝛩 (Cons _PC_ Nil) z _𝜑_))
-  (𝛩 (Cons _PC_ Nil) z _𝜑_))
+  (PLN.reduce (𝛩 [PC] z [𝜑]))
+  (𝛩 [PC] z [𝜑]))
 !(assertEqual
-  (PLN.reduce (∧ (𝛩 (Cons _PC_ Nil) z _𝜑_) ⊤))
-  (𝛩 (Cons _PC_ Nil) z _𝜑_))
+  (PLN.reduce (∧ (𝛩 [PC] z [𝜑]) ⊤))
+  (𝛩 [PC] z [𝜑]))
+!(assertEqual
+  (PLN.reduce (∧ (𝛩 [PC] (s (s z)) (s z))
+                 (∧ (𝛩 [PC] z ([→] (s z) ([→] [𝜓] [𝜒])))
+                    ⊤)))
+  (∧ (𝛩 [PC] (s (s z)) (s z)) (𝛩 [PC] z ([→] (s z) ([→] [𝜓] [𝜒])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert backward chainer call to PLN ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Convert the arguments of a backward chainer call to a PLN judgement
-;; such that its truth value reflects how likely the holes in the
-;; arguments of the call (the environment, the query and its
-;; surrounding premises) can be filled within the provided depth.
+;; Convert the arguments of a backward chainer call to a PLN statement
+;; such that the semantics of its associated truth value corresponds
+;; to how likely the holes in the arguments of the call (the
+;; environment, the query and its surrounding premises) can be filled
+;; within the provided depth.
 ;;
 ;; So for instance, if the backward chainer call is
 ;;
@@ -682,15 +836,15 @@
 ;;
 ;; would be converted into the following PLN query
 ;;
-;; (∃ z (𝛩 (Cons (_:_ _a1i.1_ _𝜑_) PC) z (_→_ _𝜓_ _𝜑_)) ∧ (depth_lte z 1))
+;; (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) z ([→] [𝜓] [𝜑])) ∧ (depth_lte z 1))
 ;;
 ;; where
 ;;
 ;; - z is the first De Bruijn index,
 ;;
 ;; - all symbols of the logic have been dropped to the object level
-;;   (or mesa level), by being surrounded with _.  So for instance, :
-;;   becomes _:_, a1i.1 becomes _a1i.1_, → becomes _→_, etc.
+;;   (or mesa level), by being surrounded with [].  So for instance, :
+;;   becomes [:], a1i.1 becomes [a1i.1], → becomes [→], etc.
 ;;
 ;; - The ternary predicate 𝛩 is a PLN predicate representing the
 ;;   relationship between Theory, Proof and Theorem, in this
@@ -721,7 +875,7 @@
              (List $a)                  ; Surrounding premises
              Nat                        ; Maximum Depth
              $a                         ; Query
-             PLN.Judgement))            ; PLN judgement
+             PLN.Statement))            ; PLN statement
 (= (toPLN $thry $ctx $depth (: $prf $type))
    (let* (;; Turn the context into a PLN statement
           ((MkPair $vars $plnctx) (contextToPLN $thry Nil $ctx))
@@ -741,13 +895,15 @@
                       PLN.Statement)) ; Resulting PLN statement
 (= (variablesToPLN Z $plnstm) $plnstm)
 (= (variablesToPLN (S $k) $plnstm)
-   (trace! (👁 variablesToPLN (S $k) $plnstm)
-   (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm))))
+   (∃ (toDeBruijn $k) (variablesToPLN $k $plnstm)))
 
 ;; Convert a theory in PLN format
 (: theoryToPLN (-> (List $a) (List PLN.Term)))
-(= (theoryToPLN $thry) (trace! (👁 theoryToPLN $thry)
-                               (List.map typingToPLN $thry)))
+(= (theoryToPLN $thry) (List.map typingToPLN $thry))
+
+;; Add extra case to List.map to handle PC
+(: PC (List $a))
+(= (List.map $f PC) [PC])
 
 ;; Convert a typing relationship in PLN format.  It is meant to be
 ;; called by theoryToPLN thus does not require to update variables as
@@ -805,14 +961,13 @@
                                                          ; and PLN
                                                          ; statement
 (= (queryToPLN $thry $vars (: $prf $thrm))
-   (trace! (👁 queryToPLN $thry $vars (: $prf $thrm))
    (let* (;; Convert theory into PLN term
           ($thrypln (theoryToPLN $thry))
           ;; Convert proof into PLN term, and accumulate new variables
           ((MkPair $nvars $prfpln) (proofToPLN $vars $prf))
           ;; Convert type into PLN term, and accumulate new variables
           ((MkPair $nnvars $thrmpln) (typeToPLN $nvars $thrm)))
-     (MkPair $nnvars (𝛩 $thrypln $prfpln $thrmpln)))))
+     (MkPair $nnvars (𝛩 $thrypln $prfpln $thrmpln))))
 
 ;; Like queryToPLN but takes a proof (or part thereof) in argument
 ;; alongside a list of variables so far encountered.  It outputs a
@@ -850,7 +1005,6 @@
                   (Pair (List Variable) PLN.Term)))  ; Variables and
                                                      ; PLN term
 (= (typeToPLN $vars $type)
-   (trace! (👁 typeToPLN $vars $type)
    (case (get-metatype $type)
      (;; If the type is a variable, check if it is in $vars, if it is
       ;; then return its corresponding De Bruijn index, otherwise,
@@ -871,7 +1025,7 @@
                                          ($typln (cons-atom $hdpln $tlpln)))
                                     (MkPair $nnvars $typln))
                                   ;; Empty expression
-                                  (MkPair $vars ())))))))
+                                  (MkPair $vars ()))))))
 
 ;; Turn a variable into its corresponding DeBruijn index and update
 ;; the list of encountered variables if necessary.
@@ -879,11 +1033,10 @@
                      Variable           ; Variable
                      (Pair (List Variable) PLN.Term)))
 (= (variableToPLN $vars $var)
-   (trace! (👁 variableToPLN $vars $var)
    (case (List.elemIndex $var $vars)
      (((Just $idx) (MkPair $vars (toDeBruijn $idx)))
-      (Nothing (MkPair (List.appendElem $vars $var)
-                       (toDeBruijn (List.length $vars))))))))
+      (Nothing (MkPair (List.appendElem $var $vars)
+                       (toDeBruijn (List.length $vars)))))))
 
 ;; Turn a symbol, proof or type into its corresponding PLN term.  It
 ;; could probably be simplified by automatically adding underscored
@@ -892,55 +1045,32 @@
 ;;
 ;; Note that the output type is anything because it may return not
 ;; only PLN terms but also PLN functions, going from terms to terms,
-;; such as _→_.
+;; such as [→].
 (: symbolToPLN (-> Symbol $a))
-;; Place holder for propositional calculus
-(= (symbolToPLN PC) _PC_)
-;; Typing relationship
-(= (symbolToPLN :) _:_)
-;; Axioms
-(= (symbolToPLN ax-1) _ax-1_)
-(= (symbolToPLN ax-2) _ax-2_)
-(= (symbolToPLN ax-3) _ax-3_)
-;; Inference rules
-(= (symbolToPLN ax-mp) _ax-mp_)
-;; Hypothesis
-(= (symbolToPLN mp2.1) _mp2.1_)
-(= (symbolToPLN mp2.2) _mp2.2_)
-(= (symbolToPLN mp2.3) _mp2.3_)
-(= (symbolToPLN mp2b.1) _mp2b.1_)
-(= (symbolToPLN mp2b.2) _mp2b.2_)
-(= (symbolToPLN mp2b.3) _mp2b.3_)
-(= (symbolToPLN a1i.1) _a1i.1_)
-;; Connectors
-(= (symbolToPLN →) _→_)
-(= (symbolToPLN ¬) _¬_)
-;; Formula
-(= (symbolToPLN 𝜑) _𝜑_)
-(= (symbolToPLN 𝜓) _𝜓_)
-(= (symbolToPLN 𝜒) _𝜒_)
+(= (symbolToPLN $x)
+   (parse (String.append3 "[" (repr $x) "]")))
 
 ;; Test typingToPLN
 !(assertEqual
   (typingToPLN (: a1i.1 𝜑))
-  (_:_ _a1i.1_ _𝜑_))
+  ([:] [a1i.1] [𝜑]))
 !(assertEqual
   (typingToPLN PC)
-  _PC_)
+  [PC])
 
 ;; Test theoryToPLN
 !(assertEqual
   (theoryToPLN Nil)
   Nil)
 !(assertEqual
-  (theoryToPLN (Cons PC Nil))
-  (Cons _PC_ Nil))
-!(assertEqual                           ; NEXT
-  (theoryToPLN (Cons (: a1i.1 𝜑) Nil))
-  (Cons (_:_ _a1i.1_ _𝜑_) Nil))
+  (theoryToPLN PC)
+  [PC])
 !(assertEqual
-  (theoryToPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)))
-  (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)))
+  (theoryToPLN (Cons (: a1i.1 𝜑) Nil))
+  (Cons ([:] [a1i.1] [𝜑]) Nil))
+!(assertEqual
+  (theoryToPLN (Cons (: a1i.1 𝜑) PC))
+  (Cons ([:] [a1i.1] [𝜑]) [PC]))
 
 ;; Test variableToPLN
 !(assertEqual
@@ -958,40 +1088,84 @@
 ;; Test typeToPLN
 !(assertEqual
   (typeToPLN Nil 𝜑)
-  (MkPair Nil _𝜑_))
+  (MkPair Nil [𝜑]))
 !(assertEqual
   (typeToPLN Nil (→ 𝜓 𝜑))
-  (MkPair Nil (_→_ _𝜓_ _𝜑_)))
+  (MkPair Nil ([→] [𝜓] [𝜑])))
 
 ;; Test queryToPLN
 !(assertEqual
   (queryToPLN Nil Nil (: $prf 𝜑))
-  (MkPair (Cons $prf Nil) (𝛩 Nil z _𝜑_)))
+  (MkPair (Cons $prf Nil) (𝛩 Nil z [𝜑])))
 !(assertEqual
   (queryToPLN Nil Nil (: $prf (→ 𝜓 𝜑)))
-  (MkPair (Cons $prf Nil) (𝛩 Nil z (_→_ _𝜓_ _𝜑_))))
+  (MkPair (Cons $prf Nil) (𝛩 Nil z ([→] [𝜓] [𝜑]))))
+!(assertEqual
+  (queryToPLN PC Nil (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+  (MkPair Nil (𝛩 [PC] [ax-3] ([→] ([→] ([¬] [𝜑]) ([¬] [𝜓])) ([→] [𝜓] [𝜑])))))
+!(assertEqual
+  (queryToPLN (Cons (: mp2.1 𝜑)
+                    (Cons (: mp2.2 𝜓)
+                          (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                                PC)))
+              Nil
+              (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
+  (MkPair Nil (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                       (Cons ([:] [mp2.2] [𝜓])
+                             (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                   [PC])))
+                 ([ax-mp] [mp2.1] [mp2.3])
+                 ([→] [𝜓] [𝜒]))))
 
 ;; Test variablesToPLN
 !(assertEqual
-  (variablesToPLN Z (𝛩 Nil z _𝜑_))
-  (𝛩 Nil z _𝜑_))
+  (variablesToPLN Z (𝛩 Nil z [𝜑]))
+  (𝛩 Nil z [𝜑]))
 !(assertEqual
-  (variablesToPLN (S Z) (𝛩 Nil z _𝜑_))
-  (∃ z (𝛩 Nil z _𝜑_)))
+  (variablesToPLN (S Z) (𝛩 Nil z [𝜑]))
+  (∃ z (𝛩 Nil z [𝜑])))
 
 ;; Test toPLN
 !(assertEqual
   (toPLN Nil Nil (S Z) (: $prf 𝜑))
-  (∃ z (𝛩 Nil z _𝜑_)))
+  (∃ z (𝛩 Nil z [𝜑])))
 !(assertEqual
   (toPLN Nil Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 Nil z (_→_ _𝜓_ _𝜑_))))
+  (∃ z (𝛩 Nil z ([→] [𝜓] [𝜑]))))
 !(assertEqual
-  (toPLN (Cons PC Nil) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 (Cons _PC_ Nil) z (_→_ _𝜓_ _𝜑_))))
+  (toPLN PC Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+  (∃ z (𝛩 [PC] z ([→] [𝜓] [𝜑]))))
 !(assertEqual
-  (toPLN (Cons (: a1i.1 𝜑) (Cons PC Nil)) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
-  (∃ z (𝛩 (Cons (_:_ _a1i.1_ _𝜑_) (Cons _PC_ Nil)) z (_→_ _𝜓_ _𝜑_))))
+  (toPLN (Cons (: a1i.1 𝜑) PC) Nil (S Z) (: $prf (→ 𝜓 𝜑)))
+  (∃ z (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) z ([→] [𝜓] [𝜑]))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Add Theta instance to PLN Space ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Outputs the theory of a corresponding environment (just prepend the
+;; environment to PC.
+(: toTheory (-> (List $a) (List $a)))
+(= (toTheory $env)
+   (List.append $env PC))
+
+;; Given a PLN space and a description of the query (supposedly closed
+;; by now), convert the query into a 𝛩 instance, add it to the PLN
+;; space and return the query unchanged.  For now depth is
+;; unsupported.
+;; NEXT: create new axiom symbol for each new instance
+(: addInstance (-> $a              ; PLN Space
+                   (List $b)       ; Theory
+                   Nat             ; Depth
+                   $b              ; Query
+                   $b))            ; Query pass through
+(= (addInstance $pln-kb $thry $depth $query)
+   (let* (($pln-statement (toPLN $thry Nil $depth $query))
+          ($pln-judgment (≞ $pln-statement (PLN.MkSTV 1 1)))
+          ($axiom-symbol (parse "NEXT"))
+          ($instance (: $axiom-symbol $pln-judgment))
+          (() (add-reduct-nodup $pln-kb $instance)))
+     $query))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;;; ;;
@@ -1009,8 +1183,6 @@
 ;; and exploitation.  Specifically, a first order probability is
 ;; sampled for each branch, and the branch with the maximum
 ;; probability is selected.
-;;
-;; NEXT: detail exactly inputs and output.
 (: bc (-> Control   ; Estimator
           (List $a) ; Environment
           (List $a) ; Surrounding premises
@@ -1030,8 +1202,7 @@
               $a                        ; Query
               $a))                      ; Result
 (= (bc-env $ctl $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bc-env $ctl $ctx $depth (: $prf $thrm))
-   (match' $env (: $prf $thrm) (: $prf $thrm))))
+   (match' $env (: $prf $thrm) (: $prf $thrm)))
 
 ;; Axiom Simp. Axiom A1 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-1.html
@@ -1042,8 +1213,7 @@
                $a                        ; Query
                $a))                      ; Result
 (= (bc-ax-1 $ctl $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (👁 bc-ax-1 $ctl $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
+   (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom Frege. Axiom A2 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-2.html
@@ -1055,9 +1225,7 @@
                $a))                      ; Result
 (= (bc-ax-2 $ctl $env $ctx $depth
             (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (👁 bc-ax-2 $ctl $ctx $depth
-              (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
+   (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 
 ;; Axiom Transp. Axiom A3 of [Margaris] p. 49.
 ;; https://us.metamath.org/mpeuni/ax-3.html
@@ -1069,9 +1237,7 @@
                $a))                      ; Result
 (= (bc-ax-3 $ctl $env $depth $ctx
             (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (👁 bc-ax-3 $ctx $depth
-              (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
+   (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Recursive step ;;
@@ -1087,8 +1253,6 @@
                 $a))                      ; Result
 (= (bc-ax-mp $ctl $env $ctx (S $k)
              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (👁 bc-ax-mp $ctl $ctx (S $k)
-              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
    (let* (;; Recurse on premise 1
           ((: $prfarg1 $𝜑)
            (bc $ctl $env
@@ -1101,7 +1265,7 @@
                ;; Add premise 1 in context
                (Cons (: $prfarg1 $𝜑) $ctx)
                $k (: $prfarg2 (→ $𝜑 $𝜓)))))
-     (: (ax-mp $prfarg1 $prfarg2) $𝜓))))
+     (: (ax-mp $prfarg1 $prfarg2) $𝜓)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward Chainer Estimate ;;
@@ -1117,81 +1281,372 @@
            $a        ; Query
            (EDCall Control (List $a) (List $a) Nat $a $a))) ; EDCall
 
-;; Estimate of environment.  NEXT: the estimate should probably be
-;; calculated for each matching result.
-(= (bce (MkControl $est) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bce-env (MkControl $est) $env $ctx $depth (: $prf $thrm))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-env (MkControl $est) $env $ctx $depth
-                      (: $prf $thrm)))))
+;; Estimate of environment
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   ;; (trace! (👁 bce-env (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   (let (: $prf $thrm) (match' $env (: $prf $thrm) (: $prf $thrm))
+        (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
+                  (MkDCall bc-env (MkControl $pln-kb $est) $env $ctx $depth
+                           (: $prf $thrm)))));)
 
 ;; Estimate of Axiom A1
-(= (bce (MkControl $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-1 (MkControl $est) $env $ctx $depth
-              (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-1 (MkControl $est) $env $ctx $depth
-                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))))
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   ;; (trace! (👁 bce-ax-1 (MkControl $pln-kb $est) $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkEDCall ($est $env $ctx $depth (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+             (MkDCall bc-ax-1 (MkControl $pln-kb $est) $env $ctx $depth
+                      (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))));)
 
 ;; Estimate of Axiom A2
-(= (bce (MkControl $est) $env $ctx $depth
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth
         (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (trace! (👁 bce-ax-2 (MkControl $est) $env $ctx $depth
-              (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-2 (MkControl $est) $env $ctx $depth
-                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))))
+   ;; (trace! (👁 bce-ax-2 (MkControl $pln-kb $est) $env $ctx $depth
+   ;;      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (MkEDCall ($est $env $ctx $depth (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+             (MkDCall bc-ax-2 (MkControl $pln-kb $est) $env $ctx $depth
+                      (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))));)
 
 ;; Estimate of Axiom A3
-(= (bce (MkControl $est) $env $ctx $depth
+(= (bce (MkControl $pln-kb $est) $env $ctx $depth
         (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (trace! (👁 bce-ax-3 (MkControl $est) $env $ctx $depth
-              (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-3 (MkControl $est) $env $ctx $depth
-                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))))
+   ;; (trace! (👁 bce-ax-3 (MkControl $pln-kb $est) $env $ctx $depth
+   ;;      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (MkEDCall ($est $env $ctx $depth (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+             (MkDCall bc-ax-3 (MkControl $pln-kb $est) $env $ctx $depth
+                      (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))));)
 
 ;; Estimate of Rule 1 (modus ponens)
-(= (bce (MkControl $est) $env $ctx (S $k)
+(= (bce (MkControl $pln-kb $est) $env $ctx (S $k)
         (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (trace! (👁 bce-ax-mp (MkControl $est) $env $ctx (S $k)
-              (: (ax-mp $prfarg1 $prfarg2) $𝜓))
-   (MkEDCall ($est $env $ctx $depth (: $prf $thrm))
-             (MkDCall bc-ax-mp (MkControl $est) $env $ctx (S $k)
-                      (: (ax-mp $prfarg1 $prfarg2) $𝜓)))))
+   ;; (trace! (👁 bce-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
+   ;;      (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+   (MkEDCall ($est $env $ctx (S $k) (: (ax-mp $prfarg1 $prfarg2) $𝜓))
+             (MkDCall bc-ax-mp (MkControl $pln-kb $est) $env $ctx (S $k)
+                      (: (ax-mp $prfarg1 $prfarg2) $𝜓))));)
 
 ;;;;;;;;;;;;;;
 ;; Monolith ;;
 ;;;;;;;;;;;;;;
 
 ;; See above for its type signature and comment
-(= (bc (MkControl $est) $env $ctx $depth (: $prf $thrm))
-   (trace! (👁 bc $ctx $depth (: $prf $thrm))
-   (let* (($edcalls (collapse (bce (MkControl $est) $env $ctx $depth (: $prf $thrm))))
+(= (bc (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   ;; (trace! (👁 bc (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))
+   (let* (;; Run superposition of backward chainer estimations
+          ($edcalls (collapse (bce (MkControl $pln-kb $est) $env $ctx $depth (: $prf $thrm))))
+          ;; Select the best EDCall
           ($edcall_seq (List.fromExpression $edcalls))
-          ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq)))
-     (EDCall.run5 $best_edcall))))
+          ($best_edcall (List.maxElementWith EDCall.lt5 $edcall_seq))
+          ;; Run it
+          ($result (EDCall.run5 $best_edcall)))
+     ;; Add the result into the PLN space and return the result
+     (addInstance $pln-kb (toTheory $env) $depth $result)));)
 
 ;;;;;;;;;;;;;;;;;
 ;; PLN Chainer ;;
 ;;;;;;;;;;;;;;;;;
 
+;; Replace a given De Bruijn index by a given variable in a given PLN
+;; statement or term
+(: DeBruijnToVariable (-> DeBruijn $a $a))
+(= (DeBruijnToVariable $idx $trm) (_DeBruijnToVariable $idx $x $trm))
+(: _DeBruijnToVariable (-> DeBruijn Variable $a $a))
+(= (_DeBruijnToVariable $idx $var $term)
+   (case (get-metatype $term)
+     ((Symbol (if-equal $idx $term $var $term))
+      (Grounded $term)
+      (Variable $term)
+      (Expression
+       (if-equal $idx $term
+                 $var
+                 (if (isDeBruijn $term)
+                     $term
+                     (if-decons-expr $term $head $tail
+                                     ;; Non-empty expression
+                                     (let* (;; Recursive call on head
+                                            ($nhd (_DeBruijnToVariable $idx $var $head))
+                                            ;; Recursive call on tail
+                                            ($ntl (_DeBruijnToVariable $idx $var $tail)))
+                                       ;; Cons result
+                                       (cons-atom $nhd $ntl))
+                                     ;; Empty expression
+                                     ())))))))
+
+;; Return True iff the given term is also DeBruijn index.  NEXT: alternative
+(: isDeBruijn (-> $a Bool))
+(= (isDeBruijn $term)
+   (case (get-metatype $term)
+     ((Symbol (if-equal $term z True False))
+      (Grounded False)
+      (Variable False)
+      (Expression
+       (if-decons-expr $term $head ($tail)
+                       ;; Non-empty expression
+                       (and (== $head s) (isDeBruijn $tail))
+                       ;; Empty expression
+                       False)))))
+
+;; Test isDeBruijn
+!(assertEqual
+  (isDeBruijn A)
+  False)
+!(assertEqual
+  (isDeBruijn ())
+  False)
+!(assertEqual
+  (isDeBruijn (A B))
+  False)
+!(assertEqual
+  (isDeBruijn z)
+  True)
+!(assertEqual
+  (isDeBruijn (s z))
+  True)
+!(assertEqual
+  (isDeBruijn (s (s z)))
+  True)
+!(assertEqual
+  (isDeBruijn [PC])
+  False)
+
+;; Test DeBruijnToVariable
+!(assertAlphaEqual
+  (DeBruijnToVariable z (𝛩 [PC] z [𝜑]))
+  (𝛩 [PC] $x [𝜑]))
+!(assertAlphaEqual
+  (DeBruijnToVariable z (𝛩 [PC] z (s z)))
+  (𝛩 [PC] $x (s z)))
+!(assertAlphaEqual
+  (DeBruijnToVariable (s z) (𝛩 [PC] z (s z)))
+  (𝛩 [PC] z $x))
+!(assertAlphaEqual
+  (DeBruijnToVariable (s z)
+                      (∃ z (𝛩 (Cons ([:] [mp2.1] [𝜑]) [PC])
+                              ([ax-mp] z (s z))
+                              ([→] [𝜓] [𝜒]))))
+  (∃ z (𝛩 (Cons ([:] [mp2.1] [𝜑]) [PC]) ([ax-mp] z $x) ([→] [𝜓] [𝜒]))))
+
 ;; For now PLN chaining is greedy, without inference control.  That is
 ;; because we first want to make sure PLN-based inference control
 ;; works at all.  In other words, to begin with we focus on making the
 ;; inference control accurate, not necessarily efficient.
-
 (: pln-bc (-> $a             ; PLN knowledge base
               Nat            ; Maximum depth
               PLN.Judgment   ; PLN judgement with holes.  Normally,
                              ; only one hole on the truth value.
               PLN.Judgment)) ; PLN judgement without hole
 
-;; Udf axiom takes any PLN statement and associate the judgement with
-;; the undefined truth value, with strength 1 and confidence 0,
-;; corresponding to complete unknown.
-(= (pln-bc &pln-kb $depth (: Udf $prf (≞ $pln-stm (PLN.MkSTV 1 0))))
-   (: Udf (≞ $pln-stm (PLN.MkSTV 1 0))))
+;; Base cases
+
+;; Match the kb
+(= (pln-bc $kb $depth (: $prf $thrm))
+   ;; (trace! (👁 pln-bc-env $kb $depth (: $prf $thrm))
+   (match $kb (: $prf $thrm) (: $prf $thrm)));)
+
+;; Undefined (Udf).  The Udf axiom takes any PLN statement and creates
+;; a judgement with the undefined truth value, with strength 1 and
+;; confidence 0, corresponding to complete unknown.
+(= (pln-bc $kb $depth (: Udf (≞ $stm (PLN.MkSTV 1 0))))
+   ;; (trace! (👁 pln-bc-udf $kb $depth (: Udf (≞ $stm (PLN.MkSTV 1 0))))
+   (: Udf (≞ $stm (PLN.MkSTV 1 0))));)
+
+;; Recursive steps
+
+;; Existential Quantifier Introduction - from instance - (EQI).  The
+;; truth value on the existantial quantifier is equal to that on the
+;; instance.  For this to work well, merging truth values obtained
+;; from different instances (or different paths) will need to be
+;; applied.  The challenges should be no different than other truth
+;; value merging, meaning one needs to estimate how much independent
+;; they are (maybe this can be outsourced to PLN itself).
+(= (pln-bc $kb (S $k) (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c))))
+   ;; (trace! (👁 pln-bc-eqi $kb (S $k)
+   ;;            (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c))))
+   (let* (;; Replace $idx by a free variable in $stm
+          ($stm-fv (DeBruijnToVariable $idx $stm))
+          ;; Recurse on the dequantified statement
+          ((: $prfarg (≞ $stm-fv (PLN.MkSTV $s $c)))
+           (pln-bc $kb $k (: $prfarg (≞ $stm-fv (PLN.MkSTV $s $c))))))
+     ;; TODO: take care of unifying $stm and $stm-fv
+     (: (EQI $prfarg) (≞ (∃ $idx $stm) (PLN.MkSTV $s $c)))));)
+
+;; Conjunction Introduction (CI).  The formula is somewhat
+;; conservative but not maximally so, taking the product of the
+;; strengths and the min of the confidences.  Note that it is not
+;; consistent with probability theory, because two strengths can only
+;; be multipled if they are assumed to be independent, but in this
+;; case, their confidences should not be the min, rather their counts
+;; should be added.  We cannot opt for the most conservative approach
+;; because it should assume that both conjuncts are disjoint, which
+;; would output a strength of 0 regardless of the strengths of the
+;; premises.  Anyway, for now we use that formula until we come up
+;; with something better.
+(= (pln-bc $kb (S $k) (: (CI $prfarg1 $prfarg2)
+                         (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c))))
+   ;; (trace! (👁 pln-bc-ci $kb (S $k) (: (CI $prfarg1 $prfarg2)
+   ;;                                 (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c))))
+   (let* (;; Recursive on stm1
+          ((: $prfarg1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))
+           (pln-bc $kb $k (: $prfarg1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))))
+          ;; Recursive on stm2
+          ((: $prfarg2 (≞ $stm2 (PLN.MkSTV $s2 $c2)))
+           (pln-bc $kb $k (: $prfarg2 (≞ $stm2 (PLN.MkSTV $s2 $c2)))))
+          ;; Calculate strength and confidence
+          ($s (* $s1 $s2))
+          ($c (min $c1 $c2)))
+     ;; Output conjunction
+     (: (CI $prfarg1 $prfarg2) (≞ (∧ $stm1 $stm2) (PLN.MkSTV $s $c)))));)
+
+;; Less than predicate over typing relationships of PLN judgements by
+;; confidence.  For instance the following call
+;;
+;; (lt_by_conf (: PRF1 (≞ STM1 (MkSTV 0.4 0.5)))
+;;             (: PRF2 (≞ STM2 (MkSTV 0.6 0.4))))
+;;
+;; outputs
+;;
+;; False because the confidence of STM1 according to PRF1, 0.5, is not
+;; less than the confidence of STM2 according to PRF2, 0.4.
+(: lt_by_conf (-> $a $a Bool))
+(= (lt_by_conf (: $prf1 (≞ $stm1 (PLN.MkSTV $s1 $c1)))
+               (: $prf2 (≞ $stm2 (PLN.MkSTV $s2 $c2))))
+   (< $c1 $c2))
+
+;; Test lt_by_conf (TODO: replace by assert once ready)
+!(assertEqual
+  (lt_by_conf (: Ax1 (≞ (∃ (s z) (∃ z (𝛩 [PC] ([ax-mp] z (s z)) ([→] [𝜓] [𝜒]))))
+                        (PLN.MkSTV 1 0)))
+              (: Ax2 (≞ (∃ (s z) (∃ z (𝛩 [PC] ([ax-mp] z (s z)) ([→] [𝜓] [𝜒]))))
+                        (PLN.MkSTV 0 0))))
+  False)
+
+;; Test pln-bc
+!(bind! &pln-bc.test.kb (new-space))
+
+;; Populate pln-bc.test.kb with instances of 𝛩
+!(add-atom &pln-bc.test.kb (: ax-1-inst
+                              (≞ (𝛩 [PC]
+                                    [ax-1]
+                                    ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                                 (PLN.MkSTV 1 1))))
+!(add-atom &pln-bc.test.kb (: ax-2-inst
+                              (≞ (𝛩 [PC]
+                                    [ax-2]
+                                    ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                         ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
+                                 (PLN.MkSTV 1 1))))
+!(add-atom &pln-bc.test.kb (: ax-pm-inst
+                              (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                                          (Cons ([:] [mp2.2] [𝜓])
+                                                (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                                      [PC])))
+                                    ([ax-mp] [mp2.1] [mp2.3])
+                                    ([→] [𝜓] [𝜒]))
+                                 (PLN.MkSTV 1 1))))
+
+;; Test axioms (instances)
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 0)
+          (: $prf (≞ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                     (PLN.MkSTV $s 1))))
+  (: ax-1-inst
+     (≞ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+        (PLN.MkSTV 1 1))))
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 0)
+          (: $prf
+             (≞ (𝛩 [PC] [ax-2] ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                    ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
+                (PLN.MkSTV $s 1))))
+  (: ax-2-inst
+     (≞ (𝛩 [PC] [ax-2] ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                            ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒]))))
+        (PLN.MkSTV 1 1))))
+
+;; Test conjunction
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 1)
+          (: $prf (≞ (∧ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                        (𝛩 [PC]
+                           [ax-2]
+                           ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+                     (PLN.MkSTV $s 1))))
+  (: (CI ax-1-inst ax-2-inst)
+     (≞ (∧ (𝛩 [PC] [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑])))
+           (𝛩 [PC] [ax-2] ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                               ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+        (PLN.MkSTV 1 1))))
+
+;; Test existential quantification
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 1)
+          (: $prf (≞ (∃ z (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑]))))
+                     (PLN.MkSTV $s 1))))
+  (: (EQI ax-1-inst)
+     (≞ (∃ z (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑])))) (PLN.MkSTV 1 1))))
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 1)
+          (: $prf
+             (≞ (∃ z (𝛩 [PC] z ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                    ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+                (PLN.MkSTV $s 1))))
+  (: (EQI ax-2-inst)
+     (≞ (∃ z (𝛩 [PC] z ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                            ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))
+        (PLN.MkSTV 1 1))))
+!(assertEqualToResult
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 2)
+          (: $prf
+             (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z))))
+                (PLN.MkSTV $s 1))))
+  ((: (EQI (EQI ax-1-inst)) (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z)))) (PLN.MkSTV 1 1)))
+   (: (EQI (EQI ax-2-inst)) (≞ (∃ (s z) (∃ z (𝛩 [PC] z (s z)))) (PLN.MkSTV 1 1)))))
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 2)
+          (: (EQI $prfarg)
+             (≞ (∃ (s z)
+                   (∃ z
+                      (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                               (Cons ([:] [mp2.2] [𝜓])
+                                     (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                           [PC])))
+                         ([ax-mp] z (s z))
+                         ([→] [𝜓] [𝜒]))))
+                (PLN.MkSTV $s 1))))
+  (: (EQI (EQI ax-pm-inst))
+     (≞ (∃ (s z)
+           (∃ z
+              (𝛩 (Cons ([:] [mp2.1] [𝜑])
+                       (Cons ([:] [mp2.2] [𝜓])
+                             (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒])))
+                                   [PC])))
+                 ([ax-mp] z (s z))
+                 ([→] [𝜓] [𝜒]))))
+        (PLN.MkSTV 1 1))))
+
+;; Test existential quantification and conjunction
+!(assertEqual
+  (pln-bc &pln-bc.test.kb
+          (fromNumber 3)
+          (: $prf (≞ (∃ (s z)
+                        (∃ z
+                           (∧ (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                              (𝛩 [PC] (s z) ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                                 ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))))
+                     (PLN.MkSTV $s 1))))
+  (: (EQI (EQI (CI ax-1-inst ax-2-inst)))
+     (≞ (∃ (s z)
+           (∃ z
+              (∧ (𝛩 [PC] z ([→] [𝜑] ([→] [𝜓] [𝜑])))
+                 (𝛩 [PC] (s z) ([→] ([→] [𝜑] ([→] [𝜓] [𝜒]))
+                                    ([→] ([→] [𝜑] [𝜓]) ([→] [𝜑] [𝜒])))))))
+        (PLN.MkSTV 1 1))))
 
 ;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;; ;;
@@ -1203,47 +1658,253 @@
 ;; Test Random Control ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(: rnd-estimate (-> (List $a) (List $a) Nat $a Number))
-(= (rnd-estimate $env $ctx $depth $query) (random-float &rng 0 1))
-!(bind! &rnd-ctl (MkControl rnd-estimate))
+;; The tests attempt to prove mp2, mp2b and a1i.1 respectively, which
+;; are theorems from Metamath.  The inference control is completely
+;; random, that is at each non-deterministic branch, the control
+;; selects one randomly.  In order to find a proof, we rerun each
+;; attempt for each theorem with a different random seed.  We also
+;; store the seed for future use (which only works if the random
+;; generator is fixed).  Additionally, in the random control
+;; structure, a space is provided.  The backward chainer will populate
+;; the spaces with 𝛩 instances.  These instances will be used in a
+;; second round of inference control tests where PLN can be used to
+;; reason about the instances to extract patterns to make better than
+;; random inference control decisions.
 
-;; In order to reproduce the tests, the random seed needs to be set
-;; just right, and it becomes harder and harder to find a seed that
-;; works as the inference path becomes longer and longer.  For that we
-;; systematically search for a random seed with the following code
-;; (this is an example to discover the seed of test mp2).
-;;
-;; (: (bc.test.mp2.p (-> Number Bool)))
-;; (= (bc.test.mp2.p $n)
-;;    (trace! (® bc.test.mp2.p $n)
-;;    (let () (set-random-seed &rng $n)
-;;         (case (bc &rnd-ctl
-;;                   (Cons (: mp2.1 𝜑)
-;;                         (Cons (: mp2.2 𝜓)
-;;                               (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
-;;                                     Nil)))
-;;                   (fromNumber 2)
-;;                   (: $prf 𝜒))
-;;                   ;; (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
-;;           ((Empty False)
-;;            ($else True))))))
-;; !(until bc.test.mp2.p succ 0)
-;;
-;; At the end of the loop, it outputs the seed.
+;; Define PLN space
+!(bind! &pln-kb (new-space))
+
+;; Define random estimator
+(: rnd-estimate (-> (List $a)           ; Environment
+                    (List $a)           ; Surrounding premises
+                    Nat                 ; Depth
+                    $a                  ; Query
+                    Number))            ; Estimate
+(= (rnd-estimate $env $ctx $depth $query) (random-float &rng 0 1))
+
+;; Define control with random estimator
+!(bind! &rnd-ctl (MkControl &pln-kb rnd-estimate))
 
 ;; Test ax-3
-!(set-random-seed &rng 1)
+(: bc.test.ax-3 (-> $a))
+(= (bc.test.ax-3)
+   (bc &rnd-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑)))))
+;; Define predicate to check a random seed for that test
+(: bc.test.ax-3.p (-> Number Bool))
+(= (bc.test.ax-3.p $n) (set-rnd-seed-run0-not-empty $n bc.test.ax-3))
+;; Set or look for a random seed
+!(bind! &bc.test.ax-3.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.ax-3.p succ 0)
+            ;; Use prederminted seed
+            0))
+!(println! ("Random seed for ax-3:" &bc.test.ax-3.seed))
+;; Test
 !(assertEqual
-  (bc &rnd-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+  (set-rnd-seed-run0 &bc.test.ax-3.seed bc.test.ax-3)
   (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
 
 ;; Test subgoal of https://us.metamath.org/mpeuni/mp2.html
 ;;
 ;; Note that variables have been replaced by symbols to force them to
 ;; be different which considerably prunes the search space.
-!(set-random-seed &rng 0)
+(: bc.test.sub-mp2 (-> $a))
+(= (bc.test.sub-mp2)
+   (bc &rnd-ctl
+       (Cons (: mp2.1 𝜑)
+             (Cons (: mp2.2 𝜓)
+                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                         Nil)))
+       Nil
+       (fromNumber 1)
+       (: $prf (→ 𝜓 𝜒))))
+;; Define predicate to check a random seed for that test
+(: bc.test.sub-mp2.p (-> Number Bool))
+(= (bc.test.sub-mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.sub-mp2))
+;; Set or look for a random seed
+!(bind! &bc.test.sub-mp2.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.sub-mp2.p succ 0)
+            ;; Use prederminted seed
+            5))
+!(println! ("Random seed for sub-mp2:" &bc.test.sub-mp2.seed))
+;; Test
 !(assertEqual
-  (bc &rnd-ctl
+  (set-rnd-seed-run0 &bc.test.sub-mp2.seed bc.test.sub-mp2)
+  (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
+
+;; Test https://us.metamath.org/mpeuni/mp2.html
+;;
+;; Note that variables have been replaced by symbols to force them to
+;; be different which considerably prunes the search space.
+(: bc.test.mp2 (-> $a))
+(= (bc.test.mp2)
+   (bc &rnd-ctl
+       (Cons (: mp2.1 𝜑)
+             (Cons (: mp2.2 𝜓)
+                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
+                         Nil)))
+       Nil
+       (fromNumber 2)
+       (: $prf 𝜒)))
+;; Define predicate to check a random seed for that test
+(: bc.test.mp2.p (-> Number Bool))
+(= (bc.test.mp2.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2))
+;; Set or look for a random seed
+!(bind! &bc.test.mp2.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.mp2.p succ 0)
+            ;; Use prederminted seed
+            9))
+!(println! ("Random seed for mp2:" &bc.test.mp2.seed))
+;; Test
+!(assertEqual
+  (set-rnd-seed-run0 &bc.test.mp2.seed bc.test.mp2)
+  (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
+
+;; Test https://us.metamath.org/mpeuni/mp2b.html
+(: bc.test.mp2b (-> $a))
+(= (bc.test.mp2b)
+   (bc &rnd-ctl
+       (Cons (: mp2b.1 𝜑)
+             (Cons (: mp2b.2 (→ 𝜑 𝜓))
+                   (Cons (: mp2b.3 (→ 𝜓 𝜒))
+                         Nil)))
+       Nil
+       (fromNumber 2)
+       (: $prf 𝜒)))
+;; Define predicate to check a random seed for that test
+(: bc.test.mp2b.p (-> Number Bool))
+(= (bc.test.mp2b.p $n) (set-rnd-seed-run0-not-empty $n bc.test.mp2b))
+;; Set or look for a random seed
+!(bind! &bc.test.mp2b.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.mp2b.p succ 0)
+            ;; Use prederminted seed
+            47))
+!(println! ("Random seed for mp2b:" &bc.test.mp2b.seed))
+;; Test
+!(assertEqual
+  (set-rnd-seed-run0 &bc.test.mp2b.seed bc.test.mp2b)
+  (: (ax-mp (ax-mp mp2b.1 mp2b.2) mp2b.3) 𝜒))
+
+;; Test https://us.metamath.org/mpeuni/a1i.html
+;;
+;; Note that variables have been replaced by symbols to force them to
+;; be different which considerably prunes the search space.
+(: bc.test.a1i.1 (-> $a))
+(= (bc.test.a1i.1)
+   (bc &rnd-ctl
+       (Cons (: a1i.1 𝜑) Nil)
+       Nil
+       (fromNumber 1)
+       (: $prf (→ 𝜓 𝜑))))
+;; Define predicate to check a random seed for that test
+(: bc.test.a1i.1.p (-> Number Bool))
+(= (bc.test.a1i.1.p $n) (set-rnd-seed-run0-not-empty $n bc.test.a1i.1))
+;; Set or look for a random seed
+!(bind! &bc.test.a1i.1.seed
+        (if &seed-search
+            ;; Look for random seed
+            (until bc.test.a1i.1.p succ 0)
+            ;; Use prederminted seed
+            5))
+!(println! ("Random seed for a1i.1:" &bc.test.a1i.1.seed))
+;; Test
+!(assertEqual
+  (set-rnd-seed-run0 &bc.test.a1i.1.seed bc.test.a1i.1)
+  (: (ax-mp a1i.1 ax-1) (→ 𝜓 𝜑)))
+
+;; NEXT
+
+;; ;; Run the backward chainer once unconstrained
+;; (: bc.test.any (-> $a))
+;; (= (bc.test.any)
+;;    (bc &rnd-ctl Nil Nil (fromNumber 2) (: $prf $thrm)))
+
+;; ;; Run the backward chainer with a given random seed and output the
+;; ;; incremented random seed
+;; (: bc.test.any.next (-> Number Number))
+;; (= (bc.test.any.next $n)
+;;    (let $_ (collapse (set-rnd-seed-run0 $n bc.test.any))
+;;      (succ $n)))
+
+;; ;; Run the backward chainer N times unconstrained
+;; !(until (curried-equal-to 100) bc.test.any.next 0)
+
+;; ;; Output PLN space
+;; ! "&pln-kb:"
+;; !(get-atoms &pln-kb)
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Test PLN Control ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; The following is obtained from running the code above and can be uncommented to avoid rerunning that code.
+;; !(add-reduct-nodup &pln-kb (: inst-1 (≞ (𝛩 [PC] [ax-3] ([→] ([→] ([¬] [𝜑]) ([¬] [𝜓])) ([→] [𝜓] [𝜑]))) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-2 (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [mp2.1] [𝜑]) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-3 (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-4 (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [mp2.2] [𝜓]) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-5 (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) ([ax-mp] [mp2.1] [mp2.3]) ([→] [𝜓] [𝜒])) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-6 (≞ (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) ([ax-mp] [mp2.2] ([ax-mp] [mp2.1] [mp2.3])) [𝜒]) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-7 (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [mp2b.1] [𝜑]) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-8 (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [mp2b.3] ([→] [𝜓] [𝜒])) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-9 (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [mp2b.2] ([→] [𝜑] [𝜓])) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-a (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) ([ax-mp] [mp2b.1] [mp2b.2]) [𝜓]) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-b (≞ (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) ([ax-mp] ([ax-mp] [mp2b.1] [mp2b.2]) [mp2b.3]) [𝜒]) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-c (≞ (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) [a1i.1] [𝜑]) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-d (≞ (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) [ax-1] ([→] [𝜑] ([→] [𝜓] [𝜑]))) (PLN.MkSTV 1 1))))
+;; !(add-reduct-nodup &pln-kb (: inst-e (≞ (𝛩 (Cons ([:] [a1i.1] [𝜑]) [PC]) ([ax-mp] [a1i.1] [ax-1]) ([→] [𝜓] [𝜑])) (PLN.MkSTV 1 1))))
+;; ;; !(add-reduct-nodup &pln-kb (≞ (∃ (s z) (∃ z (𝛩 (Cons ([:] [mp2.1] [𝜑]) (Cons ([:] [mp2.2] [𝜓]) (Cons ([:] [mp2.3] ([→] [𝜑] ([→] [𝜓] [𝜒]))) [PC]))) [ax-1] ([→] z ([→] (s z) z))))) (PLN.MkSTV 1 1)))
+;; ;; !(add-reduct-nodup &pln-kb (≞ (∃ (s z) (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [ax-1] ([→] z ([→] (s z) z))))) (PLN.MkSTV 1 1)))
+;; ;; !(add-reduct-nodup &pln-kb (≞ (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) [ax-1] ([→] ([→] [𝜑] [𝜓]) ([→] z ([→] [𝜑] [𝜓]))))) (PLN.MkSTV 1 1)))
+;; ;; !(add-reduct-nodup &pln-kb (≞ (∃ z (𝛩 (Cons ([:] [mp2b.1] [𝜑]) (Cons ([:] [mp2b.2] ([→] [𝜑] [𝜓])) (Cons ([:] [mp2b.3] ([→] [𝜓] [𝜒])) [PC]))) ([ax-mp] [mp2b.2] [ax-1]) ([→] z ([→] [𝜑] [𝜓])))) (PLN.MkSTV 1 1)))
+
+;; In this series of tests we rerun the same tests as above but PLN is
+;; allowed to reason about the viability of each branch.
+
+;; Define PLN estimator, an estimator parameterized by a PLN knowledge
+;; base about 𝛩, and a maximum depth of chaining for PLN reasoning.
+(: pln-estimate (-> $a                 ; PLN knowledge base
+                    Nat                ; PLN chaining depth
+                    (-> (List $b)      ; Environment
+                        (List $b)      ; Surrounding premises
+                        Nat            ; Depth
+                        $b             ; Query
+                        Number)))      ; Estimate
+(= ((pln-estimate $pln-kb $pln-depth) $env $ctx $depth $query)
+   ;; (trace! (👁 pln-estimate $pln-kb $pln-depth $env $ctx $depth $query)
+   (let* (;; Extract PLN statement reflecting the backward chainer query
+          ($pln-stm (toPLN (toTheory $env) $ctx $depth $query))
+          ;; Build a PLN judgement from this statement
+          ($pln-jdm (: $prf (≞ $pln-stm (PLN.MkSTV $s $c))))
+          ;; Run PLN on this judgement
+          ($results (collapse (pln-bc $pln-kb $pln-depth $pln-jdm)))
+          ;; Build of list of results
+          ($lst (List.fromExpression $results))
+          ;; Select result with maximum confidence
+          ((: $max-prf $max-stm) (List.maxElementWith lt_by_conf $lst))
+          ;; Access its truth value
+          ($tv (PLN.tv $max-stm)))
+     ;; Thompson sample a first order probability from $tv
+     (thompson-sample $tv)));)
+
+;; Define control with PLN estimator
+!(bind! &pln-ctl-depth (fromNumber 5))
+!(bind! &pln-ctl (MkControl &pln-kb (pln-estimate &pln-kb &pln-ctl-depth)))
+
+;; Test ax-3
+!(assertEqual
+  (bc &pln-ctl Nil Nil (fromNumber 0) (: $prf (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+  (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+
+;; Test sub-mp2
+!(assertEqual
+  (bc &pln-ctl
       (Cons (: mp2.1 𝜑)
             (Cons (: mp2.2 𝜓)
                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
@@ -1253,13 +1914,9 @@
       (: $prf (→ 𝜓 𝜒)))
   (: (ax-mp mp2.1 mp2.3) (→ 𝜓 𝜒)))
 
-;; Test https://us.metamath.org/mpeuni/mp2.html
-;;
-;; Note that variables have been replaced by symbols to force them to
-;; be different which considerably prunes the search space.
-!(set-random-seed &rng 84)
+;; Test mp2
 !(assertEqual
-  (bc &rnd-ctl
+  (bc &pln-ctl
       (Cons (: mp2.1 𝜑)
             (Cons (: mp2.2 𝜓)
                   (Cons (: mp2.3 (→ 𝜑 (→ 𝜓 𝜒)))
@@ -1269,10 +1926,9 @@
       (: $prf 𝜒))
   (: (ax-mp mp2.2 (ax-mp mp2.1 mp2.3)) 𝜒))
 
-;; Test https://us.metamath.org/mpeuni/mp2b.html
-!(set-random-seed &rng 363)
+;; Test mp2b
 !(assertEqual
-  (bc &rnd-ctl
+  (bc &pln-ctl
       (Cons (: mp2b.1 𝜑)
             (Cons (: mp2b.2 (→ 𝜑 𝜓))
                   (Cons (: mp2b.3 (→ 𝜓 𝜒))
@@ -1282,13 +1938,9 @@
       (: $prf 𝜒))
   (: (ax-mp (ax-mp mp2b.1 mp2b.2) mp2b.3) 𝜒))
 
-;; Test https://us.metamath.org/mpeuni/a1i.html
-;;
-;; Note that variables have been replaced by symbols to force them to
-;; be different which considerably prunes the search space.
-!(set-random-seed &rng 4)
+;; Test a1i.1
 !(assertEqual
-  (bc &rnd-ctl
+  (bc &pln-ctl
       (Cons (: a1i.1 𝜑) Nil)
       Nil
       (fromNumber 1)
