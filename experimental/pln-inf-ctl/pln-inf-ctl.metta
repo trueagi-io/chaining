@@ -1894,7 +1894,7 @@
      (thompson-sample $tv))))
 
 ;; Define control with PLN estimator
-!(bind! &pln-ctl-depth (fromNumber 3))
+!(bind! &pln-ctl-depth (fromNumber 5))
 !(bind! &pln-ctl (MkControl &pln-kb (pln-estimate &pln-kb &pln-ctl-depth)))
 
 ;; Test ax-3
