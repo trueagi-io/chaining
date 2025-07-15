@@ -316,29 +316,29 @@
   (join-str ", " ("A" "B" "C"))
   "A, B, C")
 
-! (bind! split (py-atom str.split)) 
+; ! (bind! split (py-atom str.split)) 
 
-(= (split-str $str $char)
-    (function 
-       (chain (eval (split $str $char)) $split-str
-        (chain (eval (join "" $split-str)) $joined-str
-        (chain (eval (stringToChars $joined-str)) $str-expr ;; working version befor edit just characters are returned as 'A' instead of "A" ..
-        ;; attempt to fix that using charsToString function
-        (chain (toString $str-expr) $result
-        (return $result))))))) 
+; (= (split-str $str $char)
+;     (function 
+;        (chain (eval (split $str $char)) $split-str
+;         (chain (eval (join "" $split-str)) $joined-str
+;         (chain (eval (stringToChars $joined-str)) $str-expr ;; working version befor edit just characters are returned as 'A' instead of "A" ..
+;         ;; attempt to fix that using charsToString function
+;         (chain (toString $str-expr) $result
+;         (return $result))))))) 
 
-(= (toString $str-expr) 
-  (function 
-      (eval (if-decons-expr $str-expr $head $tail
-          (chain (eval (charsToString ($head))) $head-str
-              (chain (eval (toString $tail)) $rest
-                  (chain (cons-atom $head-str $rest) $result (return $result))))
-                  (return ())))))
+; (= (toString $str-expr) 
+;   (function 
+;       (eval (if-decons-expr $str-expr $head $tail
+;           (chain (eval (charsToString ($head))) $head-str
+;               (chain (eval (toString $tail)) $rest
+;                   (chain (cons-atom $head-str $rest) $result (return $result))))
+;                   (return ())))))
 
-;; Test split-str
-!(assertEqual
-  (split-str "A, B, C" ", ")
-  ("A" "B" "C"))
+; ;; Test split-str
+; !(assertEqual
+;   (split-str "A, B, C" ", ")
+;   ("A" "B" "C"))
 
 ;; Given a tuple of strings, return the length of the string with
 ;; maximum length.
@@ -522,7 +522,7 @@
 ;; instance
 ;;
 ;; (flatten (-> T1 (-> T2 T3))) returns (-> T1 (-> T2 T3)), not (-> T1 T2 T3)
-(: flatten (-> Atom Atom))
+(: flatten (-> $a $a))
 (= (flatten $term)
    (if (is-expression $term)
        (if (== $term ())
@@ -594,9 +594,9 @@
   (flatten (: ((plus (: 1 Number)) (: 2 Number)) Number))
   (: (plus (: 1 Number) (: 2 Number)) Number))
 !(assertEqual
-  (flatten (: ((ModusPonens (: bc (→ B C)))
+  (flatten (: ((ModusPonens (: Bc (→ B C)))
                (: ((ModusPonens (: ab (→ A B))) (: a A)) B)) C))
-  (: (ModusPonens (: bc (→ B C)) (: (ModusPonens (: ab (→ A B)) (: a A)) B)) C))
+  (: (ModusPonens (: Bc (→ B C)) (: (ModusPonens (: ab (→ A B)) (: a A)) B)) C))
 
 ;;;;;;;;;;;;
 ;; Drawer ;;
