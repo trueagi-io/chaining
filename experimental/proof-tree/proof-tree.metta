@@ -190,7 +190,8 @@
 ;;
 ;; (concat-atom (a b) (c d)) returns (a b c d)
 (: concat-atom (-> $a $a $a))
-(= (concat-atom $lhs $rhs) (foldr cons-atom $rhs $lhs))
+; (= (concat-atom $lhs $rhs) (foldr cons-atom $rhs $lhs))
+(= (concat-atom $lhs $rhs) (union-atom $lhs $rhs))
 
 ;; Test concat-atom
 !(assertEqual
@@ -241,9 +242,9 @@
   ((a b c) ()))
 
 ;; ;; Return the arity of an expression
-;; (= (acc $x $n) (+ 1 $n))
-;; (: arity (-> $a Number))
-;; (= (arity $expr) (foldr acc 0 $expr))
+(= (acc $x $n) (+ 1 $n))
+(: arity (-> $a Number))
+(= (arity $expr) (foldr acc 0 $expr))
 ;; ;; TODO: re-enable when the interpreter is fixed
 ;; ;; (= (arity $expr) (foldr (λ $x $n (+ 1 $n)) 0 $expr))
 
@@ -268,10 +269,22 @@
   (max-element (1 3 2))
   3)
 
+;; binding pythons str methods join method 
+! (bind! len (py-atom len))
+! (bind! list (py-atom list))
+
+(: len-str (-> String Number))
+(= (len-str $str)
+    (chain (list $str) $str-list
+        (len $str-list)))
+
 ;; Test len-str
 !(assertEqual
   (len-str "abc")
   3)
+
+(: concat-str (-> String String String))
+(= (concat-str $lhs $rhs) (charsToString ($lhs $rhs)))
 
 ;; Test concat-str
 !(assertEqual
@@ -291,15 +304,41 @@
   (repeat-str "abc" 3)
   "abcabcabc")
 
+! (bind! join (py-atom str.join))
+
+(: join-str (-> String Expression %Undefined%))
+(= (join-str $char $str-expr)
+  ;; using python bind function join 
+  (join $char (py-list $str-expr)))
+
 ;; Test join-str
 !(assertEqual
   (join-str ", " ("A" "B" "C"))
   "A, B, C")
 
-;; Test split-str
-!(assertEqual
-  (split-str "A, B, C" ", ")
-  ("A" "B" "C"))
+; ! (bind! split (py-atom str.split)) 
+
+; (= (split-str $str $char)
+;     (function 
+;        (chain (eval (split $str $char)) $split-str
+;         (chain (eval (join "" $split-str)) $joined-str
+;         (chain (eval (stringToChars $joined-str)) $str-expr ;; working version befor edit just characters are returned as 'A' instead of "A" ..
+;         ;; attempt to fix that using charsToString function
+;         (chain (toString $str-expr) $result
+;         (return $result))))))) 
+
+; (= (toString $str-expr) 
+;   (function 
+;       (eval (if-decons-expr $str-expr $head $tail
+;           (chain (eval (charsToString ($head))) $head-str
+;               (chain (eval (toString $tail)) $rest
+;                   (chain (cons-atom $head-str $rest) $result (return $result))))
+;                   (return ())))))
+
+; ;; Test split-str
+; !(assertEqual
+;   (split-str "A, B, C" ", ")
+;   ("A" "B" "C"))
 
 ;; Given a tuple of strings, return the length of the string with
 ;; maximum length.
@@ -326,7 +365,7 @@
    (let $len (len-str $s)
      (if (< $len $n)
          (concat-str $s (repeat-str $c (- $n $len)))
-         $s))))
+         $s)))
 
 ;; Test pad-trail
 !(assertEqual
@@ -483,7 +522,7 @@
 ;; instance
 ;;
 ;; (flatten (-> T1 (-> T2 T3))) returns (-> T1 (-> T2 T3)), not (-> T1 T2 T3)
-(: flatten (-> Atom Atom))
+(: flatten (-> $a $a))
 (= (flatten $term)
    (if (is-expression $term)
        (if (== $term ())
@@ -555,9 +594,9 @@
   (flatten (: ((plus (: 1 Number)) (: 2 Number)) Number))
   (: (plus (: 1 Number) (: 2 Number)) Number))
 !(assertEqual
-  (flatten (: ((ModusPonens (: bc (→ B C)))
+  (flatten (: ((ModusPonens (: Bc (→ B C)))
                (: ((ModusPonens (: ab (→ A B))) (: a A)) B)) C))
-  (: (ModusPonens (: bc (→ B C)) (: (ModusPonens (: ab (→ A B)) (: a A)) B)) C))
+  (: (ModusPonens (: Bc (→ B C)) (: (ModusPonens (: ab (→ A B)) (: a A)) B)) C))
 
 ;;;;;;;;;;;;
 ;; Drawer ;;
