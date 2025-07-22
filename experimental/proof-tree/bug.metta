@@ -1,5 +1,0 @@
-(= (foldr $f $i $xs) (if (== $xs ()) $i ($f (car-atom $xs) (foldr $f $i (cdr-atom $xs)))))
-(= (acc $_ $n) (+ 1 $n))
-(= (arity $expr) (foldr acc 0 $expr))
-(= (arity $tuple) (if (== $tuple ()) 0 (+ 1 (arity (cdr-atom $tuple)))))
-!(arity (1 2 3 (4 5)))
