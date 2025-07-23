@@ -10,7 +10,8 @@ This repository contains various experiments on chaining, including
 - Probabilistic backward chaining
 - PLN prototype
 - PLN based Inference control
-- Roman Treutlein's argument set chainer (git module)
+- Roman Treutlein's argument set chainer applied on "Light PLN", as a
+  git module
 - and more
 
 It also contains a MeTTa module of backward and forward chaining
