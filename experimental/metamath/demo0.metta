@@ -461,7 +461,7 @@
 ;;   $( Here is its proof: $)
 ;;     tt tze tpl tt weq tt tt weq tt a2 tt tze tpl tt weq tt tze tpl tt weq tt tt
 ;;     weq wim tt a2 tt tze tpl tt tt a1 mp mp $.
-!(add-atom &kbm (: ⟨t⟩ ⟨term⟩))
+!(add-atom &kbh (: ⟨t⟩ ⟨term⟩))
 ;; !(assertIncludes
   !(bc &kbh (fromNumber 3) (: $prf (⟨=⟩ ⟨t⟩ ⟨t⟩)))
   ;; ((: (a1 (⟨+⟩ ⟨t⟩ ⟨0⟩)
