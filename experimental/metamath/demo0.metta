@@ -1,6 +1,167 @@
+;;;;;;;;;;;;;;;;;;;;;;
+;; Backward chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; Backward Chainer supporting dependent types.
+;;
+;; The arguments of the backward chainer are:
+;;
+;; * Knowledge base: pointer to a space containing axioms and rules in
+;;   the format (: <NAME> <RULE>).  Rules may not be curried, meaning
+;;   that a rule with n premises may be represented by
+;;
+;;   (: <NAME> (-> <PREMISE1> ... <PREMISEn> <CONCLUSION>))
+;;
+;;   In addition, each premise must be an inline typing relationship,
+;;   to represent dependent types.  It should be noted that such
+;;   typing relationship must be provided even if the witness is not
+;;   present in the rest of the definition.  For instance <PREMISE1>
+;;   would have the format
+;;
+;;   (: <TERM1> <TYPE1>)
+;;
+;; * Maximum depth: maximum depth of the generated proof tree.
+;;
+;; * Query: a metta term of the form (: <PROOF> <THEOREM>) where
+;;   <PROOF> and <THEOREM> may contain free variables that may be
+;;   filled by the backward chainer.
+;;
+;; A result is the query with its variables grounded, fully or
+;; partially.  If multiple results are possible, they are returned as
+;; a superposition.
+(: bc (-> $a                            ; Knowledge base space
+          Nat                           ; Maximum depth
+          $b                            ; Query
+          $b))                          ; Result
+
+;; Base cases
+;; Match the knowledge base
+(= (bc $kb $_ (: $prf $thrm)) (match $kb (: $prf $thrm) (: $prf $thrm)))
+
+;; Recursive steps
+
+;; Unary proof application
+(= (bc $kb (S $k) (: ($prfabs $prfarg) $thrm))
+   (let* (;; Recurse on abtraction
+          ((: $prfabs (-> (: $prfarg $prms) $thrm))
+           (bc $kb $k (: $prfabs (-> (: $prfarg $prms) $thrm))))
+          ;; Recurse on premise
+          ((: $prfarg $prms)
+           (bc $kb $k (: $prfarg $prms))))
+     ;; Output fulfilled query
+     (: ($prfabs $prfarg) $thrm)))
+
+;; Binary proof application
+(= (bc $kb (S $k) (: ($prfabs $prfarg1 $prfarg2) $thrm))
+   (let* (;; Recurse on abstraction
+          ((: $prfabs (-> (: $prfarg1 $prms1)
+                          (: $prfarg2 $prms2)
+                          $thrm))
+           (bc $kb $k (: $prfabs (-> (: $prfarg1 $prms1)
+                                     (: $prfarg2 $prms2)
+                                     $thrm))))
+          ;; Recurse on first premise
+          ((: $prfarg1 $prms1)
+           (bc $kb $k (: $prfarg1 $prms1)))
+          ;; Recurse on second premise
+          ((: $prfarg2 $prms2)
+           (bc $kb $k (: $prfarg2 $prms2))))
+     ;; Output fulfilled query
+     (: ($prfabs $prfarg1 $prfarg2) $thrm)))
+
+;; Ternary proof application
+(= (bc $kb (S $k) (: ($prfabs $prfarg1 $prfarg2 $prfarg3) $thrm))
+   (let* (;; Recurse on abstraction
+          ((: $prfabs (-> (: $prfarg1 $prms1)
+                          (: $prfarg2 $prms2)
+                          (: $prfarg3 $prms3)
+                          $thrm))
+           (bc $kb $k (: $prfabs (-> (: $prfarg1 $prms1)
+                                     (: $prfarg2 $prms2)
+                                     (: $prfarg3 $prms3)
+                                     $thrm))))
+          ;; Recurse on first premise
+          ((: $prfarg1 $prms1)
+           (bc $kb $k (: $prfarg1 $prms1)))
+          ;; Recurse on second premise
+          ((: $prfarg2 $prms2)
+           (bc $kb $k (: $prfarg2 $prms2)))
+          ;; Recurse on third premise
+          ((: $prfarg3 $prms3)
+           (bc $kb $k (: $prfarg3 $prms3))))
+     ;; Output fulfilled query
+     (: ($prfabs $prfarg1 $prfarg2 $prfarg3) $thrm)))
+
+;; Quaternary proof application
+(= (bc $kb (S $k) (: ($prfabs $prfarg1 $prfarg2 $prfarg3 $prfarg4) $thrm))
+   (let* (;; Recurse on abstraction
+          ((: $prfabs (-> (: $prfarg1 $prms1)
+                          (: $prfarg2 $prms2)
+                          (: $prfarg3 $prms3)
+                          (: $prfarg4 $prms4)
+                          $thrm))
+           (bc $kb $k (: $prfabs (-> (: $prfarg1 $prms1)
+                                     (: $prfarg2 $prms2)
+                                     (: $prfarg3 $prms3)
+                                     (: $prfarg4 $prms4)
+                                     $thrm))))
+          ;; Recurse on first premise
+          ((: $prfarg1 $prms1)
+           (bc $kb $k (: $prfarg1 $prms1)))
+          ;; Recurse on second premise
+          ((: $prfarg2 $prms2)
+           (bc $kb $k (: $prfarg2 $prms2)))
+          ;; Recurse on third premise
+          ((: $prfarg3 $prms3)
+           (bc $kb $k (: $prfarg3 $prms3)))
+          ;; Recurse on fourth premise
+          ((: $prfarg4 $prms4)
+           (bc $kb $k (: $prfarg4 $prms4))))
+     ;; Output fulfilled query
+     (: ($prfabs $prfarg1 $prfarg2 $prfarg3 $prfarg4) $thrm)))
+
+;; Quintenary proof application
+(= (bc $kb (S $k) (: ($prfabs $prfarg1 $prfarg2 $prfarg3 $prfarg4 $prfarg5) $thrm))
+   (let* (;; Recurse on abstraction
+          ((: $prfabs (-> (: $prfarg1 $prms1)
+                          (: $prfarg2 $prms2)
+                          (: $prfarg3 $prms3)
+                          (: $prfarg4 $prms4)
+                          (: $prfarg5 $prms5)
+                          $thrm))
+           (bc $kb $k (: $prfabs (-> (: $prfarg1 $prms1)
+                                     (: $prfarg2 $prms2)
+                                     (: $prfarg3 $prms3)
+                                     (: $prfarg4 $prms4)
+                                     (: $prfarg5 $prms5)
+                                     $thrm))))
+          ;; Recurse on first premise
+          ((: $prfarg1 $prms1)
+           (bc $kb $k (: $prfarg1 $prms1)))
+          ;; Recurse on second premise
+          ((: $prfarg2 $prms2)
+           (bc $kb $k (: $prfarg2 $prms2)))
+          ;; Recurse on third premise
+          ((: $prfarg3 $prms3)
+           (bc $kb $k (: $prfarg3 $prms3)))
+          ;; Recurse on fourth premise
+          ((: $prfarg4 $prms4)
+           (bc $kb $k (: $prfarg4 $prms4)))
+          ;; Recurse on fifth premise
+          ((: $prfarg5 $prms5)
+           (bc $kb $k (: $prfarg5 $prms5))))
+     ;; Output fulfilled query
+     (: ($prfabs $prfarg1 $prfarg2 $prfarg3 $prfarg4 $prfarg5) $thrm)))
+
+;;;;;;;;;;;;;;;;;;;;
+;; Knowledge base ;;
+;;;;;;;;;;;;;;;;;;;;
+
 ;; Convert
 ;; [demo0.mm](https://github.com/zariuq/mmverify.py/blob/metta/examples/demo0.mm)
 ;; to MeTTa using a type theoretic representation.
+
+!(bind! &kb (new-space))
 
 ;; Informal description:
 ;;   Zero is a term
@@ -8,7 +169,7 @@
 ;; Metamath description:
 ;;   $( Define "term" (part 1 of 2). $)
 ;;   tze $a term 0 $.
-(: ⟨0⟩ ⟨term⟩)
+!(add-atom &kb (: ⟨0⟩ term))
 
 ;; Informal description:
 ;;   Adding two terms outputs a term
@@ -16,7 +177,7 @@
 ;; Metamath description:
 ;;   $( Define "term" (part 2 of 2). $)
 ;;   tpl $a term ( t + r ) $.
-(: ⟨+⟩ (-> ⟨term⟩ ⟨term⟩ ⟨term⟩))
+!(add-atom &kb (: ⟨+⟩ (-> term term term)))
 
 ;; Informal description:
 ;;   Equality between two terms is a well formed formula.
@@ -24,7 +185,7 @@
 ;; Metamath description:
 ;;   $( Define "wff" (part 1 of 2). $)
 ;;   weq $a wff t = r $.
-(: ⟨=⟩ (-> ⟨term⟩ ⟨term⟩ ⟨wff⟩))
+!(add-atom &kb (: ⟨=⟩ (-> term term wff)))
 
 ;; Informal description:
 ;;   Implication between two well formed formulas is a well formed formula.
@@ -32,8 +193,7 @@
 ;; Metamath description:
 ;;   $( Define "wff" (part 2 of 2). $)
 ;;   wim $a wff ( P -> Q ) $.
-(: ⟨->⟩ (-> <wff> <wff> <wff>))
-
+!(add-atom &kb (: ⟨->⟩ (-> wff wff wff)))
 
 ;; Informal description:
 ;;   Equality is right Euclidean (see https://arxiv.org/pdf/1806.05036)
@@ -43,7 +203,7 @@
 ;;   a1 $a |- ( t = r -> ( t = s -> r = s ) ) $.
 ;;
 ;; Warning: not using ⟨->⟩ and the fact that $t $r and $s are wff.
-(: a1 (-> (⟨=⟩ $t $r) (-> (⟨=⟩ $t $s) (⟨=⟩ $r $s))))
+!(add-atom &kb (: a1 (-> (⟨=⟩ $t $r) (-> (⟨=⟩ $t $s) (⟨=⟩ $r $s)))))
 
 ;; Informal description:
 ;;   Zero is a right identity of addition.
@@ -53,7 +213,7 @@
 ;;   a2 $a |- ( t + 0 ) = t $.
 ;;
 ;; Warning: not using the fact that $t is wff.
-(: a2 (⟨=⟩ (⟨+⟩ $t ⟨0⟩) $t))
+!(add-atom &kb (: a2 (⟨=⟩ (⟨+⟩ $t ⟨0⟩) $t)))
 
 ;; Informal description:
 ;;   Modus ponens
@@ -65,9 +225,15 @@
 ;;     $( Define the modus ponens inference rule. $)
 ;;     mp $a |- Q $.
 ;;   $}
-;;
-;; Warning: not using the fact that $P and $Q are wff.
-(: mp (-> $P (-> (⟨->⟩ $P $Q) $Q)))
+!(add-atom &kb (: mp (-> (: $P wff)
+                         (: $Q wff)
+                         (: $min $P)
+                         (: $maj (⟨->⟩ $P $Q))
+                         $Q)))
+
+;;;;;;;;;;;
+;; Tests ;;
+;;;;;;;;;;;
 
 ;; Informal description:
 ;;   Prove that equality is reflexive.  NEXT.
@@ -79,3 +245,4 @@
 ;;     tt tze tpl tt weq tt tt weq tt a2 tt tze tpl tt weq tt tze tpl tt weq tt tt
 ;;     weq wim tt a2 tt tze tpl tt tt a1 mp mp $.
 NEXT
+
