@@ -183,15 +183,19 @@
 ;; [demo0.mm](https://github.com/zariuq/mmverify.py/blob/metta/examples/demo0.mm)
 ;; to MeTTa using a type theoretic representation.
 ;;
-;; There are three levels of difficulty or rather nearness to the
-;; Metamath representation:
+;; There are four levels of difficulty, each one getting increasingly
+;; closer to the Metamath representation.
 ;;
-;; - Easy: term and wff are ignored, metamath implication is replaced
-;;   by arrow type.
+;; - Easy: term and wff are ignored.  Metamath implication is ignored
+;;   and replaced by the arrow type.  Disjoint variables are not
+;;   supported.
 ;;
-;; - Medium: term and wff are taken into account.
+;; - Medium: like easy but term and wff types are used.
 ;;
-;; - Hard: metamath implication is used.
+;; - Hard: like medium but metamath implication is used.
+;;
+;; - Nightmare: everything, term, wff, metamath implication and
+;;   disjoint variables, is supported.
 
 ;;;;;;;;;;
 ;; Easy ;;
@@ -470,3 +474,9 @@
   ;;         (a2 ⟨t⟩)
   ;;         (a2 ⟨t⟩))
   ;;     (⟨=⟩ ⟨t⟩ ⟨t⟩))))
+
+;;;;;;;;;;;;;;;
+;; Nightmare ;;
+;;;;;;;;;;;;;;;
+
+;; NEXT
