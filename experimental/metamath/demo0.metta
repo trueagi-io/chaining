@@ -55,6 +55,7 @@
           $b))                          ; Result
 
 ;; Base cases
+
 ;; Match the knowledge base
 (= (bc $kb $_ (: $prf $thrm)) (match $kb (: $prf $thrm) (: $prf $thrm)))
 
@@ -222,7 +223,7 @@
 ;;   $( State Axiom ~ a2 . $)
 ;;   a2 $a |- ( t + 0 ) = t $.
 ;;
-;; Warning: not using the fact that $t is wff.
+;; Warning: not using the fact that $t is a term.
 !(add-atom &kbe (: a2 (⟨=⟩ (⟨+⟩ $t ⟨0⟩) $t)))
 
 ;;;;;;;;;;;
@@ -296,7 +297,7 @@
 ;;   $( State Axiom ~ a1 . $)
 ;;   a1 $a |- ( t = r -> ( t = s -> r = s ) ) $.
 ;;
-;; Warning: not using ⟨->⟩ and the fact that $t $r and $s are wff.
+;; Warning: not using ⟨->⟩
 !(add-atom &kbm (: a1 (-> (: $t ⟨term⟩)
                           (: $r ⟨term⟩)
                           (: $s ⟨term⟩)
@@ -310,8 +311,6 @@
 ;; Metamath description:
 ;;   $( State Axiom ~ a2 . $)
 ;;   a2 $a |- ( t + 0 ) = t $.
-;;
-;; Warning: not using the fact that $t is wff.
 !(add-atom &kbm (: a2 (-> (: $t ⟨term⟩)
                           (⟨=⟩ (⟨+⟩ $t ⟨0⟩) $t))))
 
@@ -341,6 +340,9 @@
 ;;   $( Here is its proof: $)
 ;;     tt tze tpl tt weq tt tt weq tt a2 tt tze tpl tt weq tt tze tpl tt weq tt tt
 ;;     weq wim tt a2 tt tze tpl tt tt a1 mp mp $.
+;;
+;; Warning: this take over a minute to run on the hyperon experimental
+;; backend.
 !(add-atom &kbm (: ⟨t⟩ ⟨term⟩))
 !(assertIncludes
   (bc &kbm (fromNumber 3) (: $prf (⟨=⟩ ⟨t⟩ ⟨t⟩)))
@@ -354,8 +356,6 @@
 ;;;;;;;;;;
 ;; Hard ;;
 ;;;;;;;;;;
-
-;; NEXT
 
 !(bind! &kbh (new-space))
 
@@ -403,14 +403,10 @@
 ;; Metamath description:
 ;;   $( State Axiom ~ a1 . $)
 ;;   a1 $a |- ( t = r -> ( t = s -> r = s ) ) $.
-;;
-;; Warning: not using ⟨->⟩ and the fact that $t $r and $s are wff.
 !(add-atom &kbh (: a1 (-> (: $t ⟨term⟩)
                           (: $r ⟨term⟩)
                           (: $s ⟨term⟩)
-                          (: $ter (⟨=⟩ $t $r))
-                          (: $tes (⟨=⟩ $t $s))
-                          (⟨=⟩ $r $s))))
+                          (⟨->⟩ (⟨=⟩ $t $r) (⟨->⟩ (⟨=⟩ $t $s) (⟨=⟩ $r $s))))))
 
 ;; Informal description:
 ;;   Zero is a right identity of addition.
@@ -418,8 +414,6 @@
 ;; Metamath description:
 ;;   $( State Axiom ~ a2 . $)
 ;;   a2 $a |- ( t + 0 ) = t $.
-;;
-;; Warning: not using the fact that $t is wff.
 !(add-atom &kbh (: a2 (-> (: $t ⟨term⟩)
                           (⟨=⟩ (⟨+⟩ $t ⟨0⟩) $t))))
 
@@ -443,6 +437,73 @@
 ;; Tests ;;
 ;;;;;;;;;;;
 
+;; Add assumption that ⟨t⟩ is a term
+!(add-atom &kbh (: ⟨t⟩ ⟨term⟩))
+
+;; Prove that if t = t and t = t, then t = t
+!(assertEqual
+  (bc &kbh (fromNumber 1)
+      (: $prf
+         (⟨->⟩ (⟨=⟩ ⟨t⟩ ⟨t⟩) (⟨->⟩ (⟨=⟩ ⟨t⟩ ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩)))))
+  (: (a1 ⟨t⟩ ⟨t⟩ ⟨t⟩)
+     (⟨->⟩ (⟨=⟩ ⟨t⟩ ⟨t⟩) (⟨->⟩ (⟨=⟩ ⟨t⟩ ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩)))))
+
+;; Prove that if t + 0 = t and t + 0 = t, then t = t
+!(assertEqual
+  (bc &kbh (fromNumber 2)
+      (: $prf
+         (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+               (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩)))))
+  (: (a1 (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩ ⟨t⟩)
+     (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+           (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩)))))
+
+;; Prove that t + 0 = t
+!(assertEqual
+  (bc &kbh (fromNumber 1)
+      (: $prf
+         (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)))
+  (: (a2 ⟨t⟩)
+     (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)))
+
+;; Prove that t + 0 = t is a well formed formula
+!(assertEqual
+  (bc &kbh (fromNumber 2) (: (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) ⟨wff⟩))
+  (: (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) ⟨wff⟩))
+
+;; Prove that t = t is a well formed formula
+!(assertEqual
+  (bc &kbh (fromNumber 1) (: (⟨=⟩ ⟨t⟩ ⟨t⟩) ⟨wff⟩))
+  (: (⟨=⟩ ⟨t⟩ ⟨t⟩) ⟨wff⟩))
+
+;; Prove that if t + 0 = t, then t = t
+;;
+;; Warning: searching for the whole proof takes too long so it is only
+;; verified.
+;;
+;; As a reference of comparison, providing a partial proof such as
+;;
+;;         (mp (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+;;             (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩))
+;;             $z
+;;             $w)
+;;
+;; takes 2 minutes with the hyperon experimental backend.  So
+;; searching for the entire proof would probably take hours if not
+;; days.
+!(assertEqual
+  (bc &kbh (fromNumber 4)
+      (: (mp (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+             (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩))
+             (a2 ⟨t⟩)
+             (a1 (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩ ⟨t⟩))
+         (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩))))
+  (: (mp (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+         (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩))
+         (a2 ⟨t⟩)
+         (a1 (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩ ⟨t⟩))
+     (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩))))
+
 ;; Informal description:
 ;;   Prove that equality is reflexive.
 ;;
@@ -465,15 +526,27 @@
 ;;   $( Here is its proof: $)
 ;;     tt tze tpl tt weq tt tt weq tt a2 tt tze tpl tt weq tt tze tpl tt weq tt tt
 ;;     weq wim tt a2 tt tze tpl tt tt a1 mp mp $.
-!(add-atom &kbh (: ⟨t⟩ ⟨term⟩))
-;; !(assertIncludes
-  !(bc &kbh (fromNumber 3) (: $prf (⟨=⟩ ⟨t⟩ ⟨t⟩)))
-  ;; ((: (a1 (⟨+⟩ ⟨t⟩ ⟨0⟩)
-  ;;         ⟨t⟩
-  ;;         ⟨t⟩
-  ;;         (a2 ⟨t⟩)
-  ;;         (a2 ⟨t⟩))
-  ;;     (⟨=⟩ ⟨t⟩ ⟨t⟩))))
+;;
+;; Warning: searching for the whole proof takes too long so it is only
+;; verified.
+!(assertEqual
+  (bc &kbh (fromNumber 5)
+      (: (mp (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+             (⟨=⟩ ⟨t⟩ ⟨t⟩)
+             (a2 ⟨t⟩)
+             (mp (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+                 (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩))
+                 (a2 ⟨t⟩)
+                 (a1 (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩ ⟨t⟩)))
+         (⟨=⟩ ⟨t⟩ ⟨t⟩)))
+  (: (mp (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+         (⟨=⟩ ⟨t⟩ ⟨t⟩)
+         (a2 ⟨t⟩)
+         (mp (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩)
+             (⟨->⟩ (⟨=⟩ (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩) (⟨=⟩ ⟨t⟩ ⟨t⟩))
+             (a2 ⟨t⟩)
+             (a1 (⟨+⟩ ⟨t⟩ ⟨0⟩) ⟨t⟩ ⟨t⟩)))
+     (⟨=⟩ ⟨t⟩ ⟨t⟩)))
 
 ;;;;;;;;;;;;;;;
 ;; Nightmare ;;
