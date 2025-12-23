@@ -1,14 +1,16 @@
-# MetaMath port to MeTTa
+# Metamath port to MeTTa
 
-Initial attempt to port some of [MetaMath](https://us.metamath.org) to
+Initial attempt to port some of [Metamath](https://us.metamath.org) to
 MeTTa and the backward chainer.  For now only propositional logic
 axioms are imported with the first three theorems proved/verified.
 
 ## Propositional Calculus Corpus
 
+### Metamath format
+
 The file [propositional-calculus.mm](propositional-calculus.mm)
 contains 1517 theorems and uncompressed proofs about propositional
-calculus obtained from set.mm as follows
+calculus obtained from `set.mm` as follows
 
 1. Download [metamath](https://us.metamath.org/downloads/metamath.tar.bz2).
 2. Unpack `metamath.tar.bz2`
@@ -34,10 +36,16 @@ calculus obtained from set.mm as follows
 7. Compile metamath
    ```bash
    cd metamath
-   ./configure
-   make -j
+   ./build.sh
    ```
 8. Unpack all proofs (make sure `propositional-calculus.mm` is under the same folder as the metamath executable)
    ```bash
    ./metamath "read 'propositional-calculus.mm'" "save proof * / normal" "write source 'propositional-calculus.mm'" "exit"
    ```
+
+### Conversion to MeTTa format
+
+The file [propositional-calculus.mm](propositional-calculus.mm) has
+been converted to
+[propositional-calculus.metta](propositional-calculus.metta) using
+[mm2metta](https://github.com/ngeiswei/mm2metta).
