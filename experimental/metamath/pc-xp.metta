@@ -189,8 +189,9 @@
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-;; Backward Chainer with support for environment and lambda
-;; abstraction.
+;; Backward Chainer with support for environment, as well as lambda
+;; abstraction but only at the entry point (no recursive search on
+;; lambda terms).
 ;;
 ;; The arguments of the backward chainer are:
 ;;
@@ -211,45 +212,57 @@
 ;; A result is the query with its variables grounded, fully or
 ;; partially.  If multiple results are possible, they are returned as
 ;; a superposition.
+
+;; Entry point
 (: bc (-> $a                            ; Knowledge base space
           (List $b)                     ; Environment
           Nat                           ; Maximum depth
           $c                            ; Query
           $c))                          ; Result
+(= (bc $kb $env $depth (: $prf $thrm))
+   (trace! (👁 bc $kb $env $depth (: $prf $thrm))
+   (case (: $prf $thrm)
+     (;; Unary lambda abstraction
+      ((: (λ $x $y) (-> (: $x $a) $b))
+       (bc_search $kb (Cons (: $x $a) $env) $depth
+                  (: (λ $x $y) (-> (: $x $a) $b))))
+      ;; Binary lambda abstraction
+      ((: (λ $x $y $z) (-> (: $x $a) (: $y $b) $c))
+       (bc_search $kb (Cons (: $x $a) (: $y $b) $env) $depth
+                  (: (λ $x $y $z) (-> (: $x $a) (: $y $b) $c))))
+      ;; Otherwise
+      ($_ (bc_search $kb $env $depth (: $x $a)))))))
 
+;; Recursive search
+(: bc_search (-> $a                            ; Knowledge base space
+                 (List $b)                     ; Environment
+                 Nat                           ; Maximum depth
+                 $c                            ; Query
+                 $c))                          ; Result
 ;; Base cases
-
 ;; Match the knowledge base
-(= (bc $kb $env $_ (: $x $a)) (match $kb (: $x $a) (: $x $a)))
+(= (bc_search $kb $env $_ (: $x $a)) (match $kb (: $x $a) (: $x $a)))
 ;; Match the environment
-(= (bc $kb $env $_ (: $x $a)) (match' $env (: $x $a) (: $x $a)))
+(= (bc_search $kb $env $_ (: $x $a)) (match' $env (: $x $a) (: $x $a)))
 
 ;; Recursive steps
-
-;; Unary proof abstraction
-(= (bc $kb $env (S $k) (: (λ $x $y) (-> $a $b)))
-   (let (: $y $b) (bc $kb (Cons (: $x $a) $env) $k (: $y $b))
-     (: (λ $x $y) (-> $a $b))))
-;; Binary proof abstraction
-(= (bc $kb $env (S $k) (: (λ $x $y $z) (-> $a $b $c)))
-   (let (: $z $c) (bc $kb (Cons (: $x $a) (Cons (: $y $b) $env)) $k (: $z $c))
-     (: (λ $x $y $z) (-> $a $b $c))))
-
 ;; Unary proof application
-(= (bc $kb $env (S $k) (: ($f $x) $b))
+(= (bc_search $kb $env (S $k) (: ($f $x) $b))
    (let* (;; Recurse on unary rule
-          ((: $f (-> $a $b)) (bc $kb $env $k (: $f (-> $a $b))))
+          ((: $f (-> (: $x $a) $b))
+           (bc_search $kb $env $k (: $f (-> (: $x $a) $b))))
           ;; Recurse on premise
-          ((: $x $a) (bc $kb $env $k (: $x $a))))
+          ((: $x $a) (bc_search $kb $env $k (: $x $a))))
      (: ($f $x) $b)))
 ;; Binary proof application
-(= (bc $kb $env (S $k) (: ($f $x $y) $c))
+(= (bc_search $kb $env (S $k) (: ($f $x $y) $c))
    (let* (;; Recurse on binary rule
-          ((: $f (-> $a $b $c)) (bc $kb $env $k (: $f (-> $a $b $c))))
+          ((: $f (-> (: $x $a) (: $y $b) $c))
+           (bc_search $kb $env $k (: $f (-> (: $x $a) (: $y $b) $c))))
           ;; Recurse on premise 1
-          ((: $x $a) (bc $kb $env $k (: $x $a)))
+          ((: $x $a) (bc_search $kb $env $k (: $x $a)))
           ;; Recurse on premise 2
-          ((: $y $b) (bc $kb $env $k (: $y $b))))
+          ((: $y $b) (bc_search $kb $env $k (: $y $b))))
      (: ($f $x $y) $c)))
 
 ;;;;;;;;;;;;;;;;;
@@ -308,16 +321,16 @@
                   (Just (+ $idx 1))))
           ;; Theorem
           ((MkTheorem $label $proof $thrm)
-           (progn (trace! (👁 "Add theorem" (: $label $thrm))
-                          (add-atom &pc-kb (: $label $thrm)))
-                  (Just (+ $idx 1)))))))
-           ;; (let $depth (fromNumber (proof-depth $proof))
-           ;;   (case (bc &pc-kb Nil $depth (: $proof $thrm))
-           ;;     (;; Verified
-           ;;      ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
-           ;;                               (Just (+ $idx 1))))
-           ;;      ;; Not verified
-           ;;      (Empty Nothing))))))))
+           (trace! (👁 "Verify and add theorem" (: $label $thrm))
+           (let $depth (fromNumber (term-depth $proof))
+             (case (bc &pc-kb Nil $depth (: $proof $thrm))
+               (;; Debug
+                ((OK Colar) (Just (+ $idx 1)))
+                ;; Verified
+                ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
+                                         (Just (+ $idx 1))))
+                ;; Not verified
+                (Empty Nothing)))))))))
       ;; Nothing
       (Nothing Nothing))))
 
