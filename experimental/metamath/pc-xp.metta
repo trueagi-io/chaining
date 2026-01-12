@@ -303,7 +303,7 @@
    (case $midx
      (;; Just
       ;; ((Just $idx) (== (max-index &pc-idxd) $idx)) ; TODO: use &midx
-      ((Just $idx) (== 3 $idx)) ; TODO: use &midx
+      ((Just $idx) (== 7 $idx)) ; TODO: use &midx
       ;; Nothing
       (Nothing True)))))
 
