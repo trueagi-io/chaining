@@ -224,14 +224,27 @@
    (case (: $prf $thrm)
      (;; Unary lambda abstraction
       ((: (λ $x $y) (-> (: $x $a) $b))
-       (bc_search $kb (Cons (: $x $a) $env) $depth
-                  (: (λ $x $y) (-> (: $x $a) $b))))
+       (let (: $y $b)
+         (bc_search $kb (Cons (: $x $a) $env) $depth (: $y $b))
+         (: (λ $x $y) (-> (: $x $a) $b))))
       ;; Binary lambda abstraction
-      ((: (λ $x $y $z) (-> (: $x $a) (: $y $b) $c))
-       (bc_search $kb (Cons (: $x $a) (: $y $b) $env) $depth
-                  (: (λ $x $y $z) (-> (: $x $a) (: $y $b) $c))))
+      ((: (λ $x1 $x2 $y) (-> (: $x1 $a1) (: $x2 $a2) $b))
+       (let (: $y $b)
+         (bc_search $kb
+                    (Cons (: $x1 $a1) (Cons (: $x2 $a2) $env))
+                    $depth
+                    (: $y $b))
+         (: (λ $x1 $x2 $y) (-> (: $x1 $a1) (: $x2 $a2) $b))))
+      ;; Ternary lambda abstraction
+      ((: (λ $x1 $x2 $x3 $y) (-> (: $x1 $a1) (: $x2 $a2) (: $x3 $a3) $b))
+       (let (: $y $b)
+         (bc_search $kb
+                    (Cons (: $x1 $a1) (Cons (: $x2 $a2) (Cons (: $x3 $a3) $env)))
+                    $depth
+                    (: $y $b))
+         (: (λ $x1 $x2 $x3 $y) (-> (: $x1 $a1) (: $x2 $a2) (: $x3 $a3) $b))))
       ;; Otherwise
-      ($_ (bc_search $kb $env $depth (: $x $a)))))))
+      ($_ (bc_search $kb $env $depth (: $prf $thrm)))))))
 
 ;; Recursive search
 (: bc_search (-> $a                            ; Knowledge base space
