@@ -92,7 +92,7 @@
 
 ;; Increment a number by 1
 (: succ (-> Number Number))
-(= (succ $n) (+ 1 $n))
+(= (succ $n) (trace! (👁 succ $n) (+ 1 $n)))
 
 ;;;;;;;;;
 ;; Map ;;
@@ -316,6 +316,9 @@
 ;; (: ax-mp (-> $𝜑 (→ $𝜑 $𝜓) $𝜓))
 !(bind! &pc-kb (new-space))
 
+(= (what-is-going-on (: $l $t))
+   (trace! (👁 what-is-going-on (: $l $t)) (: $l $t)))
+
 ;; Process the assertion corresponding to the given index and return
 ;; the index of the next assertion to process.  Meaning, if the
 ;; assertion is an axiom, insert the axiom in the knowledge base, and
@@ -323,6 +326,7 @@
 ;; it in the knowledge base as if it were an axiom.
 (: process-assertion-step (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-step $midx)
+   (trace! (👁 process-assertion-step $midx)
    (case $midx
      (;; Just
       ((Just $idx)
@@ -337,16 +341,17 @@
            (trace! (👁 "Verify and add theorem" (: $label $thrm))
            (let $depth (fromNumber (term-depth $proof))
              (case (bc &pc-kb Nil $depth (: $proof $thrm))
-               (;; Debug
-                ((OK Colar) (Just (+ $idx 1)))
-                ;; Verified
-                ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
+               (;; Verified
+                ((: $proof $thrm) (progn (what-is-going-on (: $label $thrm))
+                                         (add-atom &pc-kb (: $label $thrm))
                                          (Just (+ $idx 1))))
                 ;; Not verified
                 (Empty Nothing)))))))))
       ;; Nothing
-      (Nothing Nothing))))
+      (Nothing Nothing)))))
 
 ;; Run verification loop
 !(until equal-to-maxidx process-assertion-step (Just 0))
 !(get-atoms &pc-kb)
+
+;; NEXT: try to understand why mp2 failed to be verified
