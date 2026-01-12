@@ -7,6 +7,15 @@
 ;; ;;;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;
+;; Eager trace ;;
+;;;;;;;;;;;;;;;;;
+
+(: trace!! (-> Expression Expression Expression))
+(= (trace!! $pr $ret)
+   (quote (progn (println! $pr) $ret)))
+!(add-translator-rule! trace!!)
+
 ;;;;;;;;;
 ;; Nat ;;
 ;;;;;;;;;
@@ -92,7 +101,7 @@
 
 ;; Increment a number by 1
 (: succ (-> Number Number))
-(= (succ $n) (trace! (👁 succ $n) (+ 1 $n)))
+(= (succ $n) (trace!! (👁 succ $n) (+ 1 $n)))
 
 ;;;;;;;;;
 ;; Map ;;
@@ -151,7 +160,7 @@
              $a                         ; Initial value
              $a))                       ; Final value
 (= (until $p $f $x)
-   (trace! (👁 until $p $f $x)
+   (trace!! (👁 until $p $f $x)
    (if ($p $x) $x (until $p $f ($f $x)))))
 
 ;; Test until
@@ -220,7 +229,7 @@
           $c                            ; Query
           $c))                          ; Result
 (= (bc $kb $env $depth (: $prf $thrm))
-   (trace! (👁 bc $kb $env $depth (: $prf $thrm))
+   (trace!! (👁 bc $kb $env $depth (: $prf $thrm))
    (case (: $prf $thrm)
      (;; Unary lambda abstraction
       ((: (λ $x $y) (-> (: $x $a) $b))
@@ -299,7 +308,7 @@
 ;; experiment should be aborted.
 (: equal-to-maxidx (-> (Maybe Number) Bool))
 (= (equal-to-maxidx $midx)
-   (trace! (👁 equal-to-maxidx $midx)
+   (trace!! (👁 equal-to-maxidx $midx)
    (case $midx
      (;; Just
       ;; ((Just $idx) (== (max-index &pc-idxd) $idx)) ; TODO: use &midx
@@ -317,7 +326,7 @@
 !(bind! &pc-kb (new-space))
 
 (= (what-is-going-on (: $l $t))
-   (trace! (👁 what-is-going-on (: $l $t)) (: $l $t)))
+   (trace!! (👁 what-is-going-on (: $l $t)) (: $l $t)))
 
 ;; Process the assertion corresponding to the given index and return
 ;; the index of the next assertion to process.  Meaning, if the
@@ -326,19 +335,19 @@
 ;; it in the knowledge base as if it were an axiom.
 (: process-assertion-step (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-step $midx)
-   (trace! (👁 process-assertion-step $midx)
+   (trace!! (👁 process-assertion-step $midx)
    (case $midx
      (;; Just
       ((Just $idx)
        (case (match &pc-idxd (MkIndexed $idx $asrt) $asrt)
          (;; Axiom
           ((MkAxiom $label $axiom)
-           (progn (trace! (👁 "Add axiom" (: $label $axiom))
+           (progn (trace!! (👁 "Add axiom" (: $label $axiom))
                           (add-atom &pc-kb (: $label $axiom)))
                   (Just (+ $idx 1))))
           ;; Theorem
           ((MkTheorem $label $proof $thrm)
-           (trace! (👁 "Verify and add theorem" (: $label $thrm))
+           (trace!! (👁 "Verify and add theorem" (: $label $thrm))
            (let $depth (fromNumber (term-depth $proof))
              (case (bc &pc-kb Nil $depth (: $proof $thrm))
                (;; Verified
