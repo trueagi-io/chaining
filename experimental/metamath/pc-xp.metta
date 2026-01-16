@@ -643,7 +643,7 @@
    (case $midx
      (;; Just
       ;; ((Just $idx) (== (+ (max-index &pc-idxd) 1) $idx)) ; TODO: use &midx
-      ((Just $idx) (== (+ 1525 1) $idx))
+      ((Just $idx) (== (up-to-idx) $idx))
       ;; Nothing
       (Nothing True))))
 
