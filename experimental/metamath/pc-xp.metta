@@ -271,19 +271,20 @@
           Nat                           ; Maximum depth
           $c                            ; Query
           $c))                          ; Result
-(= (bc $kb $depth (: $prf $thrm))
+(= (bc $kb (S $k) (: $prf $thrm))
+   (trace!! (👁 bc $kb (S $k) (: $prf $thrm))
    (case (: $prf $thrm)
      (;; Unary lambda abstraction
       ((: (λ $x $y) (-> $a $b))
        (let (: $y $b)
-         (bc_search $kb (Cons (: $x $a) Nil) $depth (: $y $b))
+         (bc_search $kb (Cons (: $x $a) Nil) $k (: $y $b))
          (: (λ $x $y) (-> $a $b))))
       ;; Binary lambda abstraction
       ((: (λ $x1 $x2 $y) (-> $a1 $a2 $b))
        (let (: $y $b)
          (bc_search $kb
                     (Cons (: $x1 $a1) (Cons (: $x2 $a2) Nil))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $y) (-> $a1 $a2 $b))))
       ;; Ternary lambda abstraction
@@ -291,7 +292,7 @@
        (let (: $y $b)
          (bc_search $kb
                     (Cons (: $x1 $a1) (Cons (: $x2 $a2) (Cons (: $x3 $a3) Nil)))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))))
       ;; Quaternary lambda abstraction
@@ -302,7 +303,7 @@
                           (Cons (: $x2 $a2)
                                 (Cons (: $x3 $a3)
                                       (Cons (: $x4 $a4) Nil))))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))))
       ;; Quintenary lambda abstraction
@@ -315,7 +316,7 @@
                                       (Cons (: $x4 $a4)
                                             (Cons (: $x5 $a5)
                                                   Nil)))))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))))
       ;; Senary lambda abstraction
@@ -329,7 +330,7 @@
                                             (Cons (: $x5 $a5)
                                                   (Cons (: $x6 $a6)
                                                         Nil))))))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
       ;; Septenary lambda abstraction
@@ -344,7 +345,7 @@
                                                   (Cons (: $x6 $a6)
                                                         (Cons (: $x7 $a7)
                                                               Nil)))))))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
       ;; Octonary lambda abstraction
@@ -361,7 +362,7 @@
                                                         (Cons (: $x7 $a7)
                                                               (Cons (: $x8 $a8)
                                                                     Nil))))))))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
             (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
@@ -380,7 +381,7 @@
                                                               (Cons (: $x8 $a8)
                                                                     (Cons (: $x9 $a9)
                                                                     Nil)))))))))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
             (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
@@ -400,12 +401,12 @@
                                                                     (Cons (: $x9 $a9)
                                                                           (Cons (: $x10 $a10)
                                                                                 Nil))))))))))
-                    $depth
+                    $k
                     (: $y $b))
          (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
             (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
       ;; Otherwise
-      ($_ (bc_search $kb Nil $depth (: $prf $thrm))))))
+      ($_ (bc_search $kb Nil (S $k) (: $prf $thrm)))))))
 
 ;; Recursive search.  No support for lambda abstraction, but support
 ;; for environment, which is a list of typing relationships such as
