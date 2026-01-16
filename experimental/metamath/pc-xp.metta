@@ -1,6 +1,33 @@
 ;; Experiment to verify or rediscover proofs of the propositional
 ;; calculus fragment of set theory of Metamath.
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;;;;;;;;;;; ;;
+;; ;; Hyper parameters ;; ;;
+;; ;;;;;;;;;;;;;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Whether to reverse the order of arguments.  For instance
+;;
+;; (: ax-mp (-> $𝜑 (→ $𝜑 $𝜓) $𝜓))
+;;
+;; becomes
+;;
+;; (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓))
+;;
+;; This can speed up the proof search because in the reversed order,
+;; the first arguments tend to be more constrained than the lastest
+;; ones, which can have the effect of pruning earlier the search.
+(= (reverse-arguments) True)
+
+;; Re-discover proofs.  If it is True then the proofs are attempted to
+;; be re-discovered instead of merely being checked.
+(= (search-proof) True)
+
+;; Process assertions up to the provided index (excluded).  The
+;; default is 1526 because the full corpus contains 1525 assertions.
+(= (up-to-idx) 7)
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;; ;;
 ;; ;; Functions ;; ;;
