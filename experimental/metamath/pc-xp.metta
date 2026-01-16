@@ -626,7 +626,9 @@
 ;; Import the propositional calculus corpus in the format
 ;; (MkIndexed INDEX (MkAxiom LABEL AXIOM))
 ;; (MkIndexed INDEX (MkTheorem LABEL PROOF THEOREM))
-!(import! &pc-idxd propositional-calculus)
+!(if (reverse-arguments)
+     (import! &pc-idxd propositional-calculus-reversed-arguments)
+     (import! &pc-idxd propositional-calculus))
 
 ;; Retrieve the maximum index of the propositional calculus corpus
 !(bind! &midx (max-index &pc-idxd))
