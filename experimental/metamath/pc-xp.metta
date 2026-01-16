@@ -220,6 +220,29 @@
   (term-depth (R A (S B C)))
   2)
 
+;; Take a lambda term and replace its body by a variable
+;; (: remove-body (-> $a $a))
+(= (remove-body (λ $x $body))
+   (λ $x $y))
+(= (remove-body (λ $x1 $x2 $body))
+   (λ $x1 $x2 $y))
+(= (remove-body (λ $x1 $x2 $x3 $body))
+   (λ $x1 $x2 $x3 $y))
+(= (remove-body (λ $x1 $x2 $x3 $x4 $body))
+   (λ $x1 $x2 $x3 $x4 $y))
+(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $body))
+   (λ $x1 $x2 $x3 $x4 $x5 $y))
+(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $body))
+   (λ $x1 $x2 $x3 $x4 $x5 $x6 $y))
+(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $body))
+   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y))
+(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $body))
+   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y))
+(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $body))
+   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y))
+(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $body))
+   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y))
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
