@@ -45,7 +45,7 @@ calculus obtained from `set.mm` as follows
 
 ### Conversion to MeTTa format
 
-The files [propositional-calculus.mm](propositional-calculus.mm) has
+The file [propositional-calculus.mm](propositional-calculus.mm) has
 been converted to
 [propositional-calculus.metta](propositional-calculus.metta) and
 [propositional-calculus-reversed-arguments.metta](propositional-calculus-reversed-arguments.metta)
