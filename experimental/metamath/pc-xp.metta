@@ -674,17 +674,26 @@
                   (Just (+ $idx 1))))
           ;; Theorem
           ((MkTheorem $label $proof $thrm)
-           (trace!! (👁 (Iteration $idx "Verify and add theorem" $label))
-           (let $depth (fromNumber (term-depth $proof))
-             (case (bc &pc-kb $depth (: $proof $thrm))
-               (;; Verified
-                ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
-                                         (Just (+ $idx 1))))
-                ;; Not verified
-                (Empty Nothing)))))))))
+           (let $depth (term-depth $proof)
+             (if (search-proof)
+                 (trace!! (👁 (Iteration $idx "Search proof of" $label "up to depth" $depth))
+                 (case (bc &pc-kb (fromNumber $depth) (: (remove-body $proof) $thrm))
+                   (;; Found
+                    ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
+                                             (Just (+ $idx 1))))
+                    ;; Not found
+                    (Empty Nothing))))
+                 (trace!! (👁 (Iteration $idx "Verify proof of" $label "up to depth" $depth))
+                 (case (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
+                   (;; Verified
+                    ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
+                                             (Just (+ $idx 1))))
+                    ;; Not verified
+                    (Empty Nothing))))))))))
       ;; Nothing
       (Nothing Nothing))))
 
-;; Run verification loop
-!(until equal-to-maxidx process-assertion-step (Just 0))
+;; Run verification loop (skip the first 2 assertions idi and a1ii
+;; which are only useful)
+!(until equal-to-maxidx process-assertion-step (Just 2))
 !(get-atoms &pc-kb)
