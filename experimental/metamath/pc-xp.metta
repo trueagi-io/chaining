@@ -657,35 +657,38 @@
 ;; it in the knowledge base as if it were an axiom.
 (: process-assertion-step (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-step $midx)
+   ;; (trace! (👁 process-assertion-step $midx)
    (case $midx
      (;; Just
       ((Just $idx)
        (case (match &pc-idxd (MkIndexed $idx $asrt) $asrt)
          (;; Axiom
           ((MkAxiom $label $axiom)
-           (progn (trace!! (👁 (Iteration $idx "Add axiom" $label))
+           (progn (trace! (👁 (Iteration $idx "Add axiom" $label))
                            (add-atom &pc-kb (: $label $axiom)))
                   (Just (+ $idx 1))))
           ;; Theorem
           ((MkTheorem $label $proof $thrm)
            (let $depth (term-depth $proof)
              (if (search-proof)
-                 (trace!! (👁 (Iteration $idx "Search proof of" $label "up to depth" $depth))
+                 (trace! (👁 (Iteration $idx "Search proof of" $label "up to depth" $depth))
                  (case (bc &pc-kb (fromNumber $depth) (: (remove-body $proof) $thrm))
                    (;; Found
                     ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
                                              (Just (+ $idx 1))))
                     ;; Not found
                     (Empty Nothing))))
-                 (trace!! (👁 (Iteration $idx "Verify proof of" $label "up to depth" $depth))
-                 (case (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
-                   (;; Verified
-                    ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
-                                             (Just (+ $idx 1))))
-                    ;; Not verified
-                    (Empty Nothing))))))))))
+                 (trace! (👁 (Iteration $idx "Verify proof of" $label "up to depth" $depth))
+                 (let (: $proof $thrm)
+                   (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
+                   (case (: $proof $thrm)
+                     (;; Verified
+                      ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
+                                               (Just (+ $idx 1))))
+                      ;; Not verified
+                      (Empty Nothing)))))))))))
       ;; Nothing
-      (Nothing Nothing))))
+      (Nothing Nothing))));)
 
 ;; Run verification loop (skip the first 2 assertions idi and a1ii
 ;; which are only useful)
