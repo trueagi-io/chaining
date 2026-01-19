@@ -650,6 +650,9 @@
 ;; (: ax-mp (-> $𝜑 (→ $𝜑 $𝜓) $𝜓))
 !(bind! &pc-kb (new-space))
 
+;; Enable occurs check to detect cycles in unification
+!(translatePredicate (set_prolog_flag occurs_check True))
+
 ;; Process the assertion corresponding to the given index and return
 ;; the index of the next assertion to process.  Meaning, if the
 ;; assertion is an axiom, insert the axiom in the knowledge base, and
