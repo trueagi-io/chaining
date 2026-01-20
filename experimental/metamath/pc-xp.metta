@@ -234,6 +234,40 @@
 (= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $body))
    (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Variable Introduction ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Replace a given symbol by a variable in a term.
+(: replaceSymbolByVariable (-> Symbol $a $a))
+(= (replaceSymbolByVariable $sym $term) (_replaceSymbolByVariable $sym $x $term))
+(: _replaceSymbolByVariable (-> Symbol Variable $a $a))
+(= (_replaceSymbolByVariable $sym $var $term)
+   (case (get-metatype $term)
+     ((Symbol (if (== $sym $term) $var $term))
+      (Grounded $term)
+      (Variable $term)
+      (Expression (if (== $term ())
+                      $term
+                      (let* (;; Get head of term
+                             ($head (car-atom $term))
+                             ;; Get tail of term
+                             ($tail (cdr-atom $term))
+                             ;; Recurs on head
+                             ($nhd (_replaceSymbolByVariable $sym $var $head))
+                             ;; Recurs on tail
+                             ($ntl (_replaceSymbolByVariable $sym $var $tail)))
+                        ;; Cons result
+                        (cons-atom $nhd $ntl)))))))
+
+;; Test replaceSymbolByVariable
+!(test
+  (replaceSymbolByVariable 𝜑 𝜑)
+  $𝜑)
+!(test
+  (replaceSymbolByVariable 𝜑 (-> (→ 𝜑 (→ 𝜓 𝜒)) 𝜓 𝜑 𝜒))
+  (-> (→ $𝜑 (→ 𝜓 𝜒)) 𝜓 $𝜑 𝜒))
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
