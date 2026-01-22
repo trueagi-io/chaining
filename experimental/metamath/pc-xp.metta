@@ -211,28 +211,60 @@
   (term-depth (R A (S B C)))
   2)
 
-;; Take a lambda term and replace its body by a variable
+;; Take a term representing a proof and replace its body by a variable
+;; (as to be able to rediscover it).  If it is a lambda abstraction,
+;; then replace the lambda term body by a variable, other replace the
+;; whole term by a variable.
 ;; (: remove-body (-> $a $a))
-(= (remove-body (λ $x $body))
-   (λ $x $y))
-(= (remove-body (λ $x1 $x2 $body))
-   (λ $x1 $x2 $y))
-(= (remove-body (λ $x1 $x2 $x3 $body))
-   (λ $x1 $x2 $x3 $y))
-(= (remove-body (λ $x1 $x2 $x3 $x4 $body))
-   (λ $x1 $x2 $x3 $x4 $y))
-(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $body))
-   (λ $x1 $x2 $x3 $x4 $x5 $y))
-(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $body))
-   (λ $x1 $x2 $x3 $x4 $x5 $x6 $y))
-(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $body))
-   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y))
-(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $body))
-   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y))
-(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $body))
-   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y))
-(= (remove-body (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $body))
-   (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y))
+(= (remove-body $prf)
+   (case (get-metatype $prf)
+     ((Symbol $y)
+      (Grounded $y)
+      (Variable $y)
+      (Expression
+       (if (== () $prf)
+           $y
+           (case $prf
+             (;; Unary lambda abstraction
+              ((λ $x $bdy)
+               (λ $x $y))
+              ;; Binary lambda abstraction
+              ((λ $x1 $x2 $bdy)
+               (λ $x1 $x2 $y))
+              ;; Ternary lambda abstraction
+              ((λ $x1 $x2 $x3 $bdy)
+               (λ $x1 $x2 $x3 $y))
+              ;; Quaternary lambda abstraction
+              ((λ $x1 $x2 $x3 $x4 $bdy)
+               (λ $x1 $x2 $x3 $x4 $y))
+              ;; Quintenary lambda abstraction
+              ((λ $x1 $x2 $x3 $x4 $x5 $bdy)
+               (λ $x1 $x2 $x3 $x4 $x5 $y))
+              ;; Senary lambda abstraction
+              ((λ $x1 $x2 $x3 $x4 $x5 $x6 $bdy)
+               (λ $x1 $x2 $x3 $x4 $x5 $x6 $y))
+              ;; Septenary lambda abstraction
+              ((λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $bdy)
+               (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y))
+              ;; Octonary lambda abstraction
+              ((λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $bdy)
+               (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y))
+              ;; Nonary lambda abstraction
+              ((λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $bdy)
+               (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y))
+              ;; Denary lambda abstraction
+              ((λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $bdy)
+               (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y))
+              ;; Otherwise
+              ($else $y))))))))
+
+;; Test remove-body
+!(test
+  (remove-body (λ mpi.2 mpi.1 (mpd mpi.2 (a1i mpi.1))))
+  (λ mpi.2 mpi.1 $bdy))
+!(test
+  (remove-body (mpd ax-1 ax-1))
+  $bdy)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Variable Introduction ;;
