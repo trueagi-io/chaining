@@ -757,26 +757,40 @@
        (case (match &pc-idxd (MkIndexed $idx $asrt) $asrt)
          (;; Axiom
           ((MkAxiom $label $axiom)
-           (progn (trace! (👁 (Iteration $idx "Add axiom" $label))
-                           (add-atom &pc-kb (: $label $axiom)))
-                  (Just (+ $idx 1))))
+           (let $axiom-with-vars (replace-greeks-by-variables $axiom)
+             (progn (trace! (👁 (Iteration $idx Add axiom $label))
+                            (add-atom &pc-kb (: $label $axiom-with-vars)))
+                    (Just (+ $idx 1)))))
           ;; Theorem
           ((MkTheorem $label $proof $thrm)
-           (let $depth (term-depth $proof)
+           (let* (;; Calculate depth of proof
+                  ($depth (term-depth $proof))
+                  ;; Replace greeks letters by variables in theorem
+                  ($thrm-with-vars (replace-greeks-by-variables $thrm)))
              (if (search-proof)
-                 (trace! (👁 (Iteration $idx "Search proof of" $label "up to depth" $depth))
-                 (case (bc &pc-kb (fromNumber $depth) (: (remove-body $proof) $thrm))
-                   (;; Found
-                    ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
-                                             (Just (+ $idx 1))))
-                    ;; Not found
-                    (Empty Nothing))))
+                 ;; Search proof
+                 (trace! (👁 (Iteration $idx Search proof of $label up to depth $depth))
+                 (let* (;; Replace proof body by variable
+                        ($proof-wo-bdy (remove-body $proof))
+                        ;; Call backward chainer to rediscover the proof
+                        ((: $proof-wo-bdy $thrm)
+                         (once (bc &pc-kb (fromNumber $depth) (: $proof-wo-bdy $thrm)))))
+                   (case (: $proof-wo-bdy $thrm)
+                     (;; Found
+                      ((: $proof-wo-bdy $thrm)
+                       (trace! (👁 (Found proof $proof-wo-bdy))
+                       (progn (add-atom &pc-kb (: $label $thrm-with-vars))
+                              (Just (+ $idx 1)))))
+                      ;; Not found
+                      (Empty (trace! (👁 (Proof not found) Nothing)))))))
+                 ;; Check proof
                  (trace! (👁 (Iteration $idx "Verify proof of" $label "up to depth" $depth))
                  (let (: $proof $thrm)
                    (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
                    (case (: $proof $thrm)
                      (;; Verified
-                      ((: $proof $thrm) (progn (add-atom &pc-kb (: $label $thrm))
+                      ((: $proof $thrm) (progn (add-atom &pc-kb
+                                                         (: $label $thrm-with-vars))
                                                (Just (+ $idx 1))))
                       ;; Not verified
                       (Empty Nothing)))))))))))
