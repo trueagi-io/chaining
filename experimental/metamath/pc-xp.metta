@@ -30,7 +30,7 @@
 
 ;; Process assertions up to the provided index (excluded).  The
 ;; default is 1526 because the full corpus contains 1525 assertions.
-(= (up-to-idx) 7)
+(= (up-to-idx) 1526)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;; ;;
