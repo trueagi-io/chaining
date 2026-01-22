@@ -271,10 +271,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Replace a given symbol by a variable in a term.
-(: replaceSymbolByVariable (-> Symbol $a $a))
-(= (replaceSymbolByVariable $sym $term) (_replaceSymbolByVariable $sym $x $term))
-(: _replaceSymbolByVariable (-> Symbol Variable $a $a))
-(= (_replaceSymbolByVariable $sym $var $term)
+(: replace-symbol-by-variable (-> Symbol $a $a))
+(= (replace-symbol-by-variable $sym $term) (_replace-symbol-by-variable $sym $x $term))
+(: _replace-symbol-by-variable (-> Symbol Variable $a $a))
+(= (_replace-symbol-by-variable $sym $var $term)
    (case (get-metatype $term)
      ((Symbol (if (== $sym $term) $var $term))
       (Grounded $term)
@@ -286,19 +286,32 @@
                              ;; Get tail of term
                              ($tail (cdr-atom $term))
                              ;; Recurs on head
-                             ($nhd (_replaceSymbolByVariable $sym $var $head))
+                             ($nhd (_replace-symbol-by-variable $sym $var $head))
                              ;; Recurs on tail
-                             ($ntl (_replaceSymbolByVariable $sym $var $tail)))
+                             ($ntl (_replace-symbol-by-variable $sym $var $tail)))
                         ;; Cons result
                         (cons-atom $nhd $ntl)))))))
 
-;; Test replaceSymbolByVariable
+;; Test replace-symbol-by-variable
 !(test
-  (replaceSymbolByVariable 𝜑 𝜑)
+  (replace-symbol-by-variable 𝜑 𝜑)
   $𝜑)
 !(test
-  (replaceSymbolByVariable 𝜑 (-> (→ 𝜑 (→ 𝜓 𝜒)) 𝜓 𝜑 𝜒))
+  (replace-symbol-by-variable 𝜑 (-> (→ 𝜑 (→ 𝜓 𝜒)) 𝜓 𝜑 𝜒))
   (-> (→ $𝜑 (→ 𝜓 𝜒)) 𝜓 $𝜑 𝜒))
+
+;; Replace all greek letters by variables
+(: replace-greeks-by-variables (-> $a $a))
+(= (replace-greeks-by-variables $term)
+   (foldr replace-symbol-by-variable $term (𝜑 𝜓 𝜒 𝜃 𝜏 𝜂 𝜁 𝜎 𝜌 𝜇 𝜆 𝜅)))
+
+;; Test replace-greeks-by-variables
+!(test
+  (replace-greeks-by-variables 𝜑)
+  $𝜑)
+!(test
+  (replace-greeks-by-variables (-> (→ 𝜑 (→ 𝜓 𝜒)) 𝜓 𝜑 𝜒))
+  (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 $𝜑 $𝜒))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
