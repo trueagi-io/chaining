@@ -18,6 +18,10 @@
 ;; This can speed up the proof search because in the reversed order,
 ;; the first arguments tend to be more constrained than the lastest
 ;; ones, which can have the effect of pruning earlier the search.
+;;
+;; Indeed, early results confirm that.  Reversing the arguments allows
+;; to rediscover the first proofs (up to index 50 excluded) in 9.144s,
+;; instead of 6m47.418s if not reversed.
 (= (reverse-arguments) True)
 
 ;; Re-discover proofs.  If it is True then the proofs are attempted to
