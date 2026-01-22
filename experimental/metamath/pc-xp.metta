@@ -717,9 +717,6 @@
      (import! &pc-idxd propositional-calculus-reversed-arguments)
      (import! &pc-idxd propositional-calculus))
 
-;; Retrieve the maximum index of the propositional calculus corpus
-!(bind! &midx (max-index &pc-idxd))
-
 ;; In case the input number is something, then return True iff it is
 ;; equal of the maximum index of the propositional calculus indexed
 ;; corpus.  If the input number is nothing, then return True as well
