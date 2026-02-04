@@ -1,11 +1,13 @@
 ;; Experiment to verify or rediscover proofs of the propositional
 ;; calculus fragment of set theory of Metamath.
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ;;;;;;;;;;;;;;;;;;;;;; ;;
-;; ;; Hyper parameters ;; ;;
-;; ;;;;;;;;;;;;;;;;;;;;;; ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; NEXT: look for reduction rules
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;;;;; ;;
+;; ;; Parameters ;; ;;
+;; ;;;;;;;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Whether to reverse the order of arguments.  For instance
 ;;
@@ -31,6 +33,35 @@
 ;; Process assertions up to the provided index (excluded).  The
 ;; default is 1526 because the full corpus contains 1525 assertions.
 (= (up-to-idx) 1526)
+
+;; Log level
+(= (log-level) trace)
+
+;; Log file path
+(= (log-filepath) "pc-xp.log")
+
+;;;;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;;;;; ;;
+;; ;; Imports ;; ;;
+;; ;;;;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;;;;
+
+;; Import logger library
+!(import! &self (library lib_logger))
+
+;; Import the propositional calculus corpus in the format
+;; (MkIndexed INDEX (MkAxiom LABEL AXIOM))
+;; (MkIndexed INDEX (MkTheorem LABEL PROOF THEOREM))
+!(if (reverse-arguments)
+     (import! &pc-idxd propositional-calculus-reversed-arguments)
+     (import! &pc-idxd propositional-calculus))
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Configure Logger ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+!(logger-set-level (log-level))
+!(logger-set-filepath (log-filepath))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;; ;;
@@ -346,160 +377,162 @@
           $c                            ; Query
           $c))                          ; Result
 (= (bc $kb $depth (: $prf $thrm))
-   ;; (trace! (👁 bc $kb $depth (: $prf $thrm))
-   (case $depth
-     (;; Depth 0
-      (Z (_bc $kb Nil Z (: $prf $thrm)))
-      ;; Depth greater than 0 (consider lambda abstraction)
-      ((S $k)
-       (case (get-metatype $prf)
-         ((Symbol (_bc $kb Nil (S $k) (: $prf $thrm)))
-          (Grounded (_bc $kb Nil (S $k) (: $prf $thrm)))
-          (Variable (_bc $kb Nil (S $k) (: $prf $thrm)))
-          (Expression
-           (if (== () $prf)
-               (_bc $kb Nil (S $k) (: $prf $thrm))
-               (case (: $prf $thrm)
-                 (;; Unary lambda abstraction
-                  ((: (λ $x $y) (-> $a $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x $a) Nil)
-                          $k
-                          (: $y $b))
-                     (: (λ $x $y) (-> $a $b))))
-                  ;; Binary lambda abstraction
-                  ((: (λ $x1 $x2 $y) (-> $a1 $a2 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1) (Cons (: $x2 $a2) Nil))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $y) (-> $a1 $a2 $b))))
-                  ;; Ternary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            Nil)))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))))
-                  ;; Quaternary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            (Cons (: $x4 $a4)
-                                                  Nil))))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))))
-                  ;; Quintenary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            (Cons (: $x4 $a4)
-                                                  (Cons (: $x5 $a5)
-                                                        Nil)))))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))))
-                  ;; Senary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            (Cons (: $x4 $a4)
-                                                  (Cons (: $x5 $a5)
-                                                        (Cons (: $x6 $a6)
-                                                              Nil))))))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
-                  ;; Septenary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            (Cons (: $x4 $a4)
-                                                  (Cons (: $x5 $a5)
-                                                        (Cons (: $x6 $a6)
-                                                              (Cons (: $x7 $a7)
-                                                                    Nil)))))))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
-                  ;; Octonary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
-                      (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            (Cons (: $x4 $a4)
-                                                  (Cons (: $x5 $a5)
-                                                        (Cons (: $x6 $a6)
-                                                              (Cons (: $x7 $a7)
-                                                                    (Cons (: $x8 $a8)
-                                                                          Nil))))))))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
-                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
-                  ;; Nonary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
-                      (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            (Cons (: $x4 $a4)
-                                                  (Cons (: $x5 $a5)
-                                                        (Cons (: $x6 $a6)
-                                                              (Cons (: $x7 $a7)
-                                                                    (Cons (: $x8 $a8)
-                                                                          (Cons (: $x9 $a9)
-                                                                                Nil)))))))))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
-                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
-                  ;; Denary lambda abstraction
-                  ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
-                      (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
-                   (let (: $y $b)
-                     (_bc $kb
-                          (Cons (: $x1 $a1)
-                                (Cons (: $x2 $a2)
-                                      (Cons (: $x3 $a3)
-                                            (Cons (: $x4 $a4)
-                                                  (Cons (: $x5 $a5)
-                                                        (Cons (: $x6 $a6)
-                                                              (Cons (: $x7 $a7)
-                                                                    (Cons (: $x8 $a8)
-                                                                          (Cons (: $x9 $a9)
-                                                                                (Cons (: $x10 $a10)
-                                                                                      Nil))))))))))
-                          $k
-                          (: $y $b))
-                     (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
-                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
-                  ;; Otherwise
-                  ($else (_bc $kb Nil (S $k) (: $prf $thrm)))))))))))));)
+   (progn
+    (logger-tracef "Call (lambda): (bc %w %w (: %w %w))"
+                   ($kb $depth $prf $thrm))
+    (case $depth
+      (;; Depth 0
+       (Z (_bc $kb Nil Z (: $prf $thrm)))
+       ;; Depth greater than 0 (consider lambda abstraction)
+       ((S $k)
+        (case (get-metatype $prf)
+          ((Symbol (_bc $kb Nil (S $k) (: $prf $thrm)))
+           (Grounded (_bc $kb Nil (S $k) (: $prf $thrm)))
+           (Variable (_bc $kb Nil (S $k) (: $prf $thrm)))
+           (Expression
+            (if (== () $prf)
+                (_bc $kb Nil (S $k) (: $prf $thrm))
+                (case (: $prf $thrm)
+                  (;; Unary lambda abstraction
+                   ((: (λ $x $y) (-> $a $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x $a) Nil)
+                           $k
+                           (: $y $b))
+                      (: (λ $x $y) (-> $a $b))))
+                   ;; Binary lambda abstraction
+                   ((: (λ $x1 $x2 $y) (-> $a1 $a2 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1) (Cons (: $x2 $a2) Nil))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $y) (-> $a1 $a2 $b))))
+                   ;; Ternary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             Nil)))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))))
+                   ;; Quaternary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             (Cons (: $x4 $a4)
+                                                   Nil))))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))))
+                   ;; Quintenary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             (Cons (: $x4 $a4)
+                                                   (Cons (: $x5 $a5)
+                                                         Nil)))))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))))
+                   ;; Senary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             (Cons (: $x4 $a4)
+                                                   (Cons (: $x5 $a5)
+                                                         (Cons (: $x6 $a6)
+                                                               Nil))))))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
+                   ;; Septenary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             (Cons (: $x4 $a4)
+                                                   (Cons (: $x5 $a5)
+                                                         (Cons (: $x6 $a6)
+                                                               (Cons (: $x7 $a7)
+                                                                     Nil)))))))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
+                   ;; Octonary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
+                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             (Cons (: $x4 $a4)
+                                                   (Cons (: $x5 $a5)
+                                                         (Cons (: $x6 $a6)
+                                                               (Cons (: $x7 $a7)
+                                                                     (Cons (: $x8 $a8)
+                                                                           Nil))))))))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
+                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
+                   ;; Nonary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
+                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             (Cons (: $x4 $a4)
+                                                   (Cons (: $x5 $a5)
+                                                         (Cons (: $x6 $a6)
+                                                               (Cons (: $x7 $a7)
+                                                                     (Cons (: $x8 $a8)
+                                                                           (Cons (: $x9 $a9)
+                                                                                 Nil)))))))))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
+                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
+                   ;; Denary lambda abstraction
+                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
+                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
+                    (let (: $y $b)
+                      (_bc $kb
+                           (Cons (: $x1 $a1)
+                                 (Cons (: $x2 $a2)
+                                       (Cons (: $x3 $a3)
+                                             (Cons (: $x4 $a4)
+                                                   (Cons (: $x5 $a5)
+                                                         (Cons (: $x6 $a6)
+                                                               (Cons (: $x7 $a7)
+                                                                     (Cons (: $x8 $a8)
+                                                                           (Cons (: $x9 $a9)
+                                                                                 (Cons (: $x10 $a10)
+                                                                                       Nil))))))))))
+                           $k
+                           (: $y $b))
+                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
+                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
+                   ;; Otherwise
+                   ($else (_bc $kb Nil (S $k) (: $prf $thrm))))))))))))))
 
 ;; Recursive search.  No support for lambda abstraction, but support
 ;; for environment, which is a list of typing relationships such as
@@ -518,26 +551,34 @@
 ;; Base cases
 ;; Match the knowledge base
 (= (_bc $kb $env $k (: $x $a))
-   ;; (trace! (👁 _bc-kb $kb $env $k (: $x $a))
-   (match $kb (: $x $a) (: $x $a)));)
+   (progn
+    (logger-tracef "Call (kb): (_bc %w %w %w (: %w %w))"
+                   ($kb $env $k $x $a))
+    (match $kb (: $x $a) (: $x $a))))
 ;; Match the environment
 (= (_bc $kb $env $k (: $x $a))
-   ;; (trace! (👁 _bc-env $kb $env $k (: $x $a))
-   (match' $env (: $x $a) (: $x $a)));)
+   (progn
+    (logger-tracef "Call (env): (_bc-env %w %w %w (: %w %w))"
+                   ($kb $env $k $x $a))
+    (match' $env (: $x $a) (: $x $a))))
 
 ;; Recursive steps
 ;; Unary proof application
 (= (_bc $kb $env (S $k) (: ($f $x) $b))
-   ;; (trace! (👁 _bc-1 $kb $env (S $k) (: ($f $x) $b))
-   (let* (;; Recurse on unary rule
-          ((: $f (-> $a $b))
-           (_bc $kb $env Z (: $f (-> $a $b))))
-          ;; Recurse on premise
-          ((: $x $a) (_bc $kb $env $k (: $x $a))))
-     (: ($f $x) $b)));)
+   (progn
+    (logger-tracef "Call (app-1): (_bc %w %w %w %w)"
+                   ($kb $env (S $k) (: ($f $x) $b)))
+    (let* (;; Recurse on unary rule
+           ((: $f (-> $a $b))
+            (_bc $kb $env Z (: $f (-> $a $b))))
+           ;; Recurse on premise
+           ((: $x $a) (_bc $kb $env $k (: $x $a))))
+      (: ($f $x) $b))))
 ;; Binary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2) $b))
-   ;; (trace! (👁 _bc-2 $kb $env (S $k) (: ($f $x1 $x2) $b))
+   (progn
+    (logger-tracef "Call (app-2): (_bc %w %w %w %w)"
+                   ($kb $env (S $k) (: ($f $x1 $x2) $b)))
    (let* (;; Recurse on binary rule
           ((: $f (-> $a1 $a2 $b))
            (_bc $kb $env Z (: $f (-> $a1 $a2 $b))))
@@ -545,181 +586,193 @@
           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
           ;; Recurse on premise 2
           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2))))
-     (: ($f $x1 $x2) $b)));)
+     (: ($f $x1 $x2) $b))))
 ;; Ternary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3) $b))
-   ;; (trace! (👁 _bc-3 $kb $env (S $k) (: ($f $x1 $x2 $x3) $b))
-   (let* (;; Recurse on ternary rule
-          ((: $f (-> $a1 $a2 $a3 $b))
-           (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3))))
-     (: ($f $x1 $x2 $x3) $b)));)
+   (progn
+    (logger-tracef "Call (app-3): (_bc %w %w %w %w)"
+                   ($kb $env (S $k) (: ($f $x1 $x2 $x3) $b)))
+    (let* (;; Recurse on ternary rule
+           ((: $f (-> $a1 $a2 $a3 $b))
+            (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3))))
+      (: ($f $x1 $x2 $x3) $b))))
 ;; Quaternary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4) $b))
-   ;; (trace! (👁 _bc-4 $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4) $b))
-   (let* (;; Recurse on quaternary rule
-          ((: $f (-> $a1 $a2 $a3 $a4 $b))
-           (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
-          ;; Recurse on premise 4
-          ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4))))
-     (: ($f $x1 $x2 $x3 $x4) $b)));)
+   (progn
+    (logger-tracef "Call (app-4): (_bc %w %w %w %w)"
+                   ($kb $env (S $k) (: ($f $x1 $x2 $x3 $x4) $b)))
+    (let* (;; Recurse on quaternary rule
+           ((: $f (-> $a1 $a2 $a3 $a4 $b))
+            (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
+           ;; Recurse on premise 4
+           ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4))))
+      (: ($f $x1 $x2 $x3 $x4) $b))))
 ;; Quintenary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5) $b))
-   ;; (trace! (👁 _bc-5 $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5) $b))
-   (let* (;; Recurse on quintenary rule
-          ((: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
-           (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
-          ;; Recurse on premise 4
-          ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
-          ;; Recurse on premise 5
-          ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5))))
-     (: ($f $x1 $x2 $x3 $x4 $x5) $b)));)
+   (progn
+    (logger-tracef "Call (app-5): (_bc %w %w %w %w)"
+                   ($kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5) $b)))
+    (let* (;; Recurse on quintenary rule
+           ((: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
+            (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
+           ;; Recurse on premise 4
+           ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
+           ;; Recurse on premise 5
+           ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5))))
+      (: ($f $x1 $x2 $x3 $x4 $x5) $b))))
 ;; Senary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))
-   ;; (trace! (👁 _bc-6 $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))
-   (let* (;; Recurse on senary rule
-          ((: $f (-> $a1 $a2 $a3 $a4 $a5 $6 $b))
-           (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
-          ;; Recurse on premise 4
-          ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
-          ;; Recurse on premise 5
-          ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
-          ;; Recurse on premise 6
-          ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6))))
-     (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)));)
+   (progn
+    (logger-tracef "Call (app-6): (_bc %w %w %w %w)"
+                   ($kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))
+    (let* (;; Recurse on senary rule
+           ((: $f (-> $a1 $a2 $a3 $a4 $a5 $6 $b))
+            (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
+           ;; Recurse on premise 4
+           ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
+           ;; Recurse on premise 5
+           ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
+           ;; Recurse on premise 6
+           ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6))))
+      (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))))
 ;; Septenary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))
-   ;; (trace! (👁 _bc-7 $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))
-   (let* (;; Recurse on septenary rule
-          ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
-           (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
-          ;; Recurse on premise 4
-          ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
-          ;; Recurse on premise 5
-          ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
-          ;; Recurse on premise 6
-          ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
-          ;; Recurse on premise 7
-          ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7))))
-     (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)));)
+   (progn
+    (logger-tracef "Call (app-7): (_bc %w %w %w %w)"
+                   ($kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))
+    (let* (;; Recurse on septenary rule
+           ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
+            (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
+           ;; Recurse on premise 4
+           ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
+           ;; Recurse on premise 5
+           ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
+           ;; Recurse on premise 6
+           ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
+           ;; Recurse on premise 7
+           ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7))))
+      (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))))
 ;; Octonary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))
-   ;; (trace! (👁 _bc-8 $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))
-   (let* (;; Recurse on octonary rule
-          ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
-           (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
-          ;; Recurse on premise 4
-          ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
-          ;; Recurse on premise 5
-          ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
-          ;; Recurse on premise 6
-          ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
-          ;; Recurse on premise 7
-          ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7)))
-          ;; Recurse on premise 8
-          ((: $x8 $a8) (_bc $kb $env $k (: $x8 $a8))))
-     (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)));)
+   (progn
+    (logger-tracef
+     "Call (app-8): (_bc %w %w %w %w)"
+     ($kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))
+    (let* (;; Recurse on octonary rule
+           ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
+            (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
+           ;; Recurse on premise 4
+           ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
+           ;; Recurse on premise 5
+           ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
+           ;; Recurse on premise 6
+           ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
+           ;; Recurse on premise 7
+           ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7)))
+           ;; Recurse on premise 8
+           ((: $x8 $a8) (_bc $kb $env $k (: $x8 $a8))))
+      (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))))
 ;; Nonary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))
-   ;; (trace! (👁 _bc-9 $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))
-   (let* (;; Recurse on nonary rule
-          ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
-           (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
-          ;; Recurse on premise 4
-          ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
-          ;; Recurse on premise 5
-          ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
-          ;; Recurse on premise 6
-          ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
-          ;; Recurse on premise 7
-          ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7)))
-          ;; Recurse on premise 8
-          ((: $x8 $a8) (_bc $kb $env $k (: $x8 $a8)))
-          ;; Recurse on premise 9
-          ((: $x9 $a9) (_bc $kb $env $k (: $x9 $a9))))
-     (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)));)
+   (progn
+    (logger-tracef
+     "Call (app-9): (_bc %w %w %w %w)"
+     ($kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))
+    (let* (;; Recurse on nonary rule
+           ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
+            (_bc $kb $env Z (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
+           ;; Recurse on premise 4
+           ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
+           ;; Recurse on premise 5
+           ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
+           ;; Recurse on premise 6
+           ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
+           ;; Recurse on premise 7
+           ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7)))
+           ;; Recurse on premise 8
+           ((: $x8 $a8) (_bc $kb $env $k (: $x8 $a8)))
+           ;; Recurse on premise 9
+           ((: $x9 $a9) (_bc $kb $env $k (: $x9 $a9))))
+      (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))))
 ;; Denary proof application
 (= (_bc $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))
-   ;; (trace! (👁 _bc-10 $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))
-   (let* (;; Recurse on denary rule
-          ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
-           (_bc $kb $env Z
-                (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
-          ;; Recurse on premise 1
-          ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
-          ;; Recurse on premise 2
-          ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
-          ;; Recurse on premise 3
-          ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
-          ;; Recurse on premise 4
-          ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
-          ;; Recurse on premise 5
-          ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
-          ;; Recurse on premise 6
-          ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
-          ;; Recurse on premise 7
-          ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7)))
-          ;; Recurse on premise 8
-          ((: $x8 $a8) (_bc $kb $env $k (: $x8 $a8)))
-          ;; Recurse on premise 9
-          ((: $x9 $a9) (_bc $kb $env $k (: $x9 $a9)))
-          ;; Recurse on premise 10
-          ((: $x10 $a10) (_bc $kb $env $k (: $x10 $a10))))
-     (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)));)
+   (progn
+    (logger-tracef
+     "Call (app-10): (_bc %w %w %w %w)"
+     ( $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))
+    (let* (;; Recurse on denary rule
+           ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
+            (_bc $kb $env Z
+                 (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
+           ;; Recurse on premise 1
+           ((: $x1 $a1) (_bc $kb $env $k (: $x1 $a1)))
+           ;; Recurse on premise 2
+           ((: $x2 $a2) (_bc $kb $env $k (: $x2 $a2)))
+           ;; Recurse on premise 3
+           ((: $x3 $a3) (_bc $kb $env $k (: $x3 $a3)))
+           ;; Recurse on premise 4
+           ((: $x4 $a4) (_bc $kb $env $k (: $x4 $a4)))
+           ;; Recurse on premise 5
+           ((: $x5 $a5) (_bc $kb $env $k (: $x5 $a5)))
+           ;; Recurse on premise 6
+           ((: $x6 $a6) (_bc $kb $env $k (: $x6 $a6)))
+           ;; Recurse on premise 7
+           ((: $x7 $a7) (_bc $kb $env $k (: $x7 $a7)))
+           ;; Recurse on premise 8
+           ((: $x8 $a8) (_bc $kb $env $k (: $x8 $a8)))
+           ;; Recurse on premise 9
+           ((: $x9 $a9) (_bc $kb $env $k (: $x9 $a9)))
+           ;; Recurse on premise 10
+           ((: $x10 $a10) (_bc $kb $env $k (: $x10 $a10))))
+      (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))))
 
 ;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;; ;;
 ;; ;; Tests ;; ;;
 ;; ;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;
-
-;; Import the propositional calculus corpus in the format
-;; (MkIndexed INDEX (MkAxiom LABEL AXIOM))
-;; (MkIndexed INDEX (MkTheorem LABEL PROOF THEOREM))
-!(if (reverse-arguments)
-     (import! &pc-idxd propositional-calculus-reversed-arguments)
-     (import! &pc-idxd propositional-calculus))
 
 ;; In case the input number is something, then return True iff it is
 ;; equal of the maximum index of the propositional calculus indexed
@@ -747,6 +800,8 @@
 ;; Enable occurs check to detect cycles in unification
 !(translatePredicate (set_prolog_flag occurs_check True))
 
+;; NEXT: decompose process-assertion-step into sub-functions
+
 ;; Process the assertion corresponding to the given index and return
 ;; the index of the next assertion to process.  Meaning, if the
 ;; assertion is an axiom, insert the axiom in the knowledge base, and
@@ -754,52 +809,64 @@
 ;; it in the knowledge base as if it were an axiom.
 (: process-assertion-step (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-step $midx)
-   ;; (trace! (👁 process-assertion-step $midx)
-   (case $midx
-     (;; Just
-      ((Just $idx)
-       (case (match &pc-idxd (MkIndexed $idx $asrt) $asrt)
-         (;; Axiom
-          ((MkAxiom $label $axiom)
-           (let $axiom-with-vars (replace-greeks-by-variables $axiom)
-             (progn (trace! (👁 (Iteration $idx Add axiom $label))
-                            (add-atom &pc-kb (: $label $axiom-with-vars)))
-                    (Just (+ $idx 1)))))
-          ;; Theorem
-          ((MkTheorem $label $proof $thrm)
-           (let* (;; Calculate depth of proof
-                  ($depth (term-depth $proof))
-                  ;; Replace greeks letters by variables in theorem
-                  ($thrm-with-vars (replace-greeks-by-variables $thrm)))
-             (if (search-proof)
-                 ;; Search proof
-                 (trace! (👁 (Iteration $idx Search proof of $label up to depth $depth))
-                 (let* (;; Replace proof body by variable
-                        ($proof-wo-bdy (remove-body $proof))
-                        ;; Call backward chainer to rediscover the proof
+   (progn
+    (logger-tracef "Call: (process-assertion-step %w)" ($midx))
+    (case $midx
+      (;; Just
+       ((Just $idx)
+        (case (match &pc-idxd (MkIndexed $idx $asrt) $asrt)
+          (;; Axiom
+           ((MkAxiom $label $axiom)
+            (let $axiom-with-vars (replace-greeks-by-variables $axiom)
+              (progn (logger-infof "Iteration %w: add axiom %w" ($idx $label))
+                     (add-atom &pc-kb (: $label $axiom-with-vars))
+                     (Just (+ $idx 1)))))
+           ;; Theorem
+           ((MkTheorem $label $proof $thrm)
+            (let* (;; Calculate depth of proof
+                   ($depth (term-depth $proof))
+                   ;; Replace greeks letters by variables in theorem
+                   ($thrm-with-vars (replace-greeks-by-variables $thrm)))
+              (if (search-proof)
+                  ;; Search proof
+                  (progn
+                   (logger-infof
+                    "Iteration %w: search proof of %w up to depth %w"
+                    ($idx $label $depth))
+                   (let* (;; Replace proof body by variable
+                          ($proof-wo-bdy (remove-body $proof))
+                          ;; Call backward chainer to rediscover the proof
+                          ((: $proof-wo-bdy $thrm)
+                           (once (bc &pc-kb
+                                     (fromNumber $depth)
+                                     (: $proof-wo-bdy $thrm)))))
+                     (case (: $proof-wo-bdy $thrm)
+                       (;; Found
                         ((: $proof-wo-bdy $thrm)
-                         (once (bc &pc-kb (fromNumber $depth) (: $proof-wo-bdy $thrm)))))
-                   (case (: $proof-wo-bdy $thrm)
-                     (;; Found
-                      ((: $proof-wo-bdy $thrm)
-                       (trace! (👁 (Found proof $proof-wo-bdy))
-                       (progn (add-atom &pc-kb (: $label $thrm-with-vars))
-                              (Just (+ $idx 1)))))
-                      ;; Not found
-                      (Empty (trace! (👁 (Proof not found) Nothing)))))))
-                 ;; Check proof
-                 (trace! (👁 (Iteration $idx "Verify proof of" $label "up to depth" $depth))
-                 (let (: $proof $thrm)
-                   (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
-                   (case (: $proof $thrm)
-                     (;; Verified
-                      ((: $proof $thrm) (progn (add-atom &pc-kb
-                                                         (: $label $thrm-with-vars))
-                                               (Just (+ $idx 1))))
-                      ;; Not verified
-                      (Empty Nothing)))))))))))
-      ;; Nothing
-      (Nothing Nothing))));)
+                         (progn
+                          (logger-infof "Found proof %w" ($proof-wo-bdy))
+                          (add-atom &pc-kb (: $label $thrm-with-vars))
+                          (Just (+ $idx 1))))
+                        ;; Not found
+                        (Empty (progn
+                                (logger-info "Proof not found")
+                                Nothing))))))
+                  ;; Check proof
+                  (progn
+                   (logger-infof
+                    "Iteration %w: verify proof of %w up to depth %w"
+                    ($idx $label $depth))
+                   (let (: $proof $thrm)
+                     (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
+                     (case (: $proof $thrm)
+                       (;; Verified
+                        ((: $proof $thrm)
+                         (progn (add-atom &pc-kb (: $label $thrm-with-vars))
+                                (Just (+ $idx 1))))
+                        ;; Not verified
+                        (Empty Nothing)))))))))))
+       ;; Nothing
+       (Nothing Nothing)))))
 
 ;; Run verification loop (skip the first 2 assertions idi and a1ii
 ;; which are only useful)
