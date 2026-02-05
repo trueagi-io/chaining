@@ -69,6 +69,26 @@
 ;; ;;;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;
+;; Assertion ;;
+;;;;;;;;;;;;;;;
+
+;; Assertion, either axiom or theorem
+(: Assertion Type)
+(: MkAxiom (-> Symbol ; Label
+               Atom   ; Axiom
+               Assertion))
+(: MkTheorem (-> Symbol ; Label
+                 Atom   ; Proof
+                 Atom   ; Theorem
+                 Assertion))
+
+;; Indexed assertion
+(: Indexed Type)
+(: MkIndexed (-> Number    ; Index
+                 Assertion ; Axiom or Theorem
+                 Indexed))
+
 ;;;;;;;;;
 ;; Nat ;;
 ;;;;;;;;;
