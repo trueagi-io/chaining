@@ -244,10 +244,6 @@
 ;; Until ;;
 ;;;;;;;;;;;
 
-;; Test if the input is equal to a given value
-(: equal-to-10 (-> Number Bool))
-(= (equal-to-10 $x) (== 10 $x))
-
 ;; Loop-like function ported from Haskell.  Iterate applying a given
 ;; function till some condition is reached.
 (: until (-> (-> $a Bool)               ; Predicate
@@ -258,8 +254,10 @@
    (if ($p $x) $x (until $p $f ($f $x))))
 
 ;; Test until
+(: test.equal-to-10 (-> Number Bool))
+(= (test.equal-to-10 $x) (== 10 $x))
 !(test
-  (until equal-to-10 succ 0)
+  (until test.equal-to-10 succ 0)
   10)
 
 ;;;;;;;;;;;;;;;;
