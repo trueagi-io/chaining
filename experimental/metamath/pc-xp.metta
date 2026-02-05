@@ -35,7 +35,7 @@
 (= (up-to-idx) 1526)
 
 ;; Log level
-(= (log-level) trace)
+(= (log-level) info)
 
 ;; Log file path
 (= (log-filepath) "pc-xp.log")
@@ -581,8 +581,7 @@
 ;;
 ;; Also, the proof abstraction is only searched shallowly, at depth 0,
 ;; because they are no higher order inference rules anyway.
-;;
-;; NEXT: re-enable type signature when fixed
+;; NEXT: re-enable when fixed
 ;; (: _bc (-> $a                            ; Knowledge base space
 ;;            (List $b)                     ; Environment
 ;;            Nat                           ; Maximum depth
