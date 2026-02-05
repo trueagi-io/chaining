@@ -819,13 +819,10 @@
 ;; corpus.  If the input number is nothing, then return True as well
 ;; because it means that a verification has failed and thus the
 ;; experiment should be aborted.
-(: equal-to-maxidx (-> (Maybe Number) Bool))
-(= (equal-to-maxidx $midx)
-   (case $midx
-     (;; Just
-      ;; ((Just $idx) (== (+ (max-index &pc-idxd) 1) $idx)) ; TODO: use &midx
-      ((Just $idx) (== (up-to-idx) $idx))
-      ;; Nothing
+(: equal-to-upidx-or-nothing (-> (Maybe Number) Bool))
+(= (equal-to-upidx-or-nothing $idxm)
+   (case $idxm
+     (((Just $idx) (== (up-to-idx) $idx))
       (Nothing True))))
 
 ;; Create a propositional calculus knowledge base, containing type
