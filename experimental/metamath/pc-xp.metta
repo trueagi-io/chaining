@@ -834,78 +834,109 @@
 ;; (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓))
 !(bind! &pc-kb (new-space))
 
-;; Enable occurs check to detect cycles in unification
+;; Enable occurs check to detect cycles in unification (note that it
+;; returns a variable, this is normal)
 !(translatePredicate (set_prolog_flag occurs_check True))
 
-;; NEXT: decompose process-assertion-step into sub-functions
+;; Add an axiom or a lemma to the pc-kb space.  Additionally it will
+;; replace greek letters by variables.
+(= (add-to-pc-kb $label $stmt)
+   (let $stmt-with-vars (replace-greeks-by-variables $stmt)
+     (add-atom &pc-kb (: $label $stmt-with-vars))))
+
+;; Process the axiom of given index, that is insert the axiom into
+;; pc-kb and return the next index.
+;; (: process-axiom (-> Number Assertion (Maybe Number)))
+(= (process-axiom $idx (MkAxiom $label $axiom))
+   (progn
+    (logger-infof "Iteration %w: add axiom %w" ($idx $label))
+    (add-to-pc-kb $label $axiom)
+    (Maybe.return (+ $idx 1))))
+
+;; Process the theorem of a given index by checking its proof, if it
+;; succeeds then insert the proof into pc-kb and return the next idx,
+;; or Nothing if it fails.
+;; NEXT: re-enable when fixed
+;; (: process-theorem-check (-> Number Number Assertion (Maybe Number)))
+(= (process-theorem-check $idx $depth (MkTheorem $label $proof $thrm))
+   (progn
+    (logger-infof "Iteration %w: verify proof of %w up to depth %w"
+                  ($idx $label $depth))
+    (let (: $proof $thrm)
+      (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
+      (case (: $proof $thrm)
+        (;; Verified
+         ((: $proof $thrm)
+          (progn (add-to-pc-kb $label $thrm)
+                 (Maybe.return (+ $idx 1))))
+           ;; Not verified
+           (Empty Nothing))))))
+
+;; Process the theorem of a given index by rediscovering its proof, if
+;; it succeeds then insert the proof into pc-kb and return the next
+;; idx, or Nothing if it fails.
+;; NEXT: re-enable when fixed
+;; (: process-theorem-search (-> Number Number Assertion (Maybe Number)))
+(= (process-theorem-search $idx $depth (MkTheorem $label $proof $thrm))
+   (progn
+    (logger-infof "Iteration %w: search proof of %w up to depth %w"
+                  ($idx $label $depth))
+    (let* (;; Replace proof body by variable
+           ($proof-wo-bdy (remove-body $proof))
+           ;; Call backward chainer to rediscover the proof
+           ((: $proof-wo-bdy $thrm)
+            (once (bc &pc-kb (fromNumber $depth) (: $proof-wo-bdy $thrm)))))
+      (case (: $proof-wo-bdy $thrm)
+        (;; Found
+         ((: $proof-wo-bdy $thrm)
+          (progn
+           ;; NEXT: create issue about (id) which shortcuts the logger
+           (logger-infof "Found proof%w %w" (: $proof-wo-bdy))
+           (add-to-pc-kb $label $thrm)
+           (Just (+ $idx 1))))
+         ;; Not found
+         (Empty (progn
+                 (logger-info "Proof not found")
+                 Nothing)))))))
+
+;; Process the theorem of a given index, that is either check or
+;; rediscover its proof, if it succeeds then insert the proof into
+;; pc-kb and return the next idx, or Nothing if it fails.
+;; NEXT: re-enable when fixed
+;; (: process-theorem (-> Number Assertion (Maybe Number)))
+(= (process-theorem $idx (MkTheorem $label $proof $thrm))
+   (let $depth (term-depth $proof)     ; Calculate proof depth
+     (if (search-proof)
+         (process-theorem-search $idx
+                                 $depth
+                                 (MkTheorem $label $proof $thrm))
+         (process-theorem-check $idx
+                                $depth
+                                (MkTheorem $label $proof $thrm)))))
 
 ;; Process the assertion corresponding to the given index and return
 ;; the index of the next assertion to process.  Meaning, if the
 ;; assertion is an axiom, insert the axiom in the knowledge base, and
-;; if the assertion is a theorem, verify the theorem and then insert
-;; it in the knowledge base as if it were an axiom.
-(: process-assertion-step (-> (Maybe Number) (Maybe Number)))
-(= (process-assertion-step $midx)
+;; if the assertion is a theorem, verify or proof the theorem and then
+;; insert it in the knowledge base as if it were an axiom.  If it
+;; fails to verify or proof then return Nothing instead of the next
+;; index.
+(: process-assertion (-> Number (Maybe Number)))
+(= (process-assertion $idx)
    (progn
-    (logger-tracef "Call: (process-assertion-step %w)" ($midx))
-    (case $midx
-      (;; Just
-       ((Just $idx)
-        (case (match &pc-idxd (MkIndexed $idx $asrt) $asrt)
-          (;; Axiom
-           ((MkAxiom $label $axiom)
-            (let $axiom-with-vars (replace-greeks-by-variables $axiom)
-              (progn (logger-infof "Iteration %w: add axiom %w" ($idx $label))
-                     (add-atom &pc-kb (: $label $axiom-with-vars))
-                     (Just (+ $idx 1)))))
-           ;; Theorem
-           ((MkTheorem $label $proof $thrm)
-            (let* (;; Calculate depth of proof
-                   ($depth (term-depth $proof))
-                   ;; Replace greeks letters by variables in theorem
-                   ($thrm-with-vars (replace-greeks-by-variables $thrm)))
-              (if (search-proof)
-                  ;; Search proof
-                  (progn
-                   (logger-infof
-                    "Iteration %w: search proof of %w up to depth %w"
-                    ($idx $label $depth))
-                   (let* (;; Replace proof body by variable
-                          ($proof-wo-bdy (remove-body $proof))
-                          ;; Call backward chainer to rediscover the proof
-                          ((: $proof-wo-bdy $thrm)
-                           (once (bc &pc-kb
-                                     (fromNumber $depth)
-                                     (: $proof-wo-bdy $thrm)))))
-                     (case (: $proof-wo-bdy $thrm)
-                       (;; Found
-                        ((: $proof-wo-bdy $thrm)
-                         (progn
-                          (logger-infof "Found proof %w" ($proof-wo-bdy))
-                          (add-atom &pc-kb (: $label $thrm-with-vars))
-                          (Just (+ $idx 1))))
-                        ;; Not found
-                        (Empty (progn
-                                (logger-info "Proof not found")
-                                Nothing))))))
-                  ;; Check proof
-                  (progn
-                   (logger-infof
-                    "Iteration %w: verify proof of %w up to depth %w"
-                    ($idx $label $depth))
-                   (let (: $proof $thrm)
-                     (bc &pc-kb (fromNumber $depth) (: $proof $thrm))
-                     (case (: $proof $thrm)
-                       (;; Verified
-                        ((: $proof $thrm)
-                         (progn (add-atom &pc-kb (: $label $thrm-with-vars))
-                                (Just (+ $idx 1))))
-                        ;; Not verified
-                        (Empty Nothing)))))))))))
-       ;; Nothing
-       (Nothing Nothing)))))
+    (logger-tracef "Call: (process-assertion %w)" ($idx))
+    (case (match &pc-idxd (MkIndexed $idx $asrt) $asrt)
+      (((MkAxiom $label $axiom) (process-axiom $idx $asrt))
+       ((MkTheorem $label $proof $thrm) (process-theorem $idx $asrt))
+       ($else Nothing)))))
 
-;; Run verification loop (skip the first 2 assertions idi and a1ii
-;; which are only useful)
-!(until equal-to-maxidx process-assertion-step (Just 2))
-!(get-atoms &pc-kb)
+;; Like process-assertion but wrapped in Maybe.bind to accept maybe a
+;; number, which the until construct needs.
+(: process-assertion-m (-> (Maybe Number) (Maybe Number)))
+(= (process-assertion-m $midx) (Maybe.bind $midx process-assertion))
+
+;; Loop over all assertions of the corpus
+!(until equal-to-upidx-or-nothing process-assertion-m (Just 2))
+
+;; Log the content of pc-kb
+!(logger-debugf "pc-kb: %w" ((get-atoms &pc-kb)))
