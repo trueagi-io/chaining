@@ -114,6 +114,28 @@
 (: Nothing (Maybe $a))
 (: Just (-> $a (Maybe $a)))
 
+;; Implement monad interface for return
+(: Maybe.return (-> $a (Maybe $a)))
+(= (Maybe.return $x) (Just $x))
+
+;; Implement monad interface for bind
+(: Maybe.bind (-> (Maybe $a) (-> $a (Maybe $b)) (Maybe $b)))
+(= (Maybe.bind Nothing $f) Nothing)
+(= (Maybe.bind (Just $x) $f) ($f $x))
+
+;; Test Maybe
+(: Maybe.test.foo (-> Number (Maybe String)))
+(= (Maybe.test.foo $x) (if (== $x 42) (Just "42") Nothing))
+!(test
+  (Maybe.bind Nothing Maybe.test.foo)
+  Nothing)
+!(test
+  (Maybe.bind (Just 0) Maybe.test.foo)
+  Nothing)
+!(test
+  (Maybe.bind (Just 42) Maybe.test.foo)
+  (Just "42"))
+
 ;;;;;;;;;;
 ;; List ;;
 ;;;;;;;;;;
