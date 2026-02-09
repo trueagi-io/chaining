@@ -33,6 +33,10 @@
 ;; be re-discovered instead of merely being checked.
 (= (search-proof) True)
 
+;; For each theorem, search for all possible proofs.  Otherwise, stop
+;; at the first one.
+(= (search-all-proofs) True)
+
 ;; Process assertions up to the provided index (excluded).  The
 ;; default is 1526 because the full corpus contains 1525 assertions.
 (= (up-to-idx) 1526)
