@@ -252,7 +252,9 @@
 ;;;;;;;;;;;
 
 ;; Loop-like function ported from Haskell.  Iterate applying a given
-;; function till some condition is reached.
+;; function till some condition is reached.  You may want to make sure
+;; that the predicate and the next function are deterministic,
+;; otherwise the behavior of until might be a bit unpredictable.
 (: until (-> (-> $a Bool)               ; Predicate
              (-> $a $a)                 ; Next
              $a                         ; Initial value
@@ -394,6 +396,12 @@
 !(test
   (replace-greeks-by-variables (-> (→ 𝜑 (→ 𝜓 𝜒)) 𝜓 𝜑 𝜒))
   (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 $𝜑 $𝜒))
+
+;;;;;;;;;;;;;;;
+;; Reduction ;;
+;;;;;;;;;;;;;;;
+
+;; NEXT
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
