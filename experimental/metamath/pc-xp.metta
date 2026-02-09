@@ -886,6 +886,19 @@
            ;; Not verified
            (Empty Nothing))))))
 
+;; Rediscover proof(s) of a theorem.  The results are returned as an
+;; expression, a tuple of solutions, instead of a superposition to
+;; avoid nondeterminism.
+(= (rediscover-proofs $depth $proof $thrm)
+   (let ;;Replace proof body by variable
+       $proof-wo-bdy
+       (remove-body $proof)
+     ;; Call backward chainer to rediscover the proof
+     (collapse
+      (if (search-all-proofs)
+          (bc &pc-kb (fromNumber $depth) (: $proof-wo-bdy $thrm))
+          (once (bc &pc-kb (fromNumber $depth) (: $proof-wo-bdy $thrm)))))))
+
 ;; Process the theorem of a given index by rediscovering its proof, if
 ;; it succeeds then insert the proof into pc-kb and return the next
 ;; idx, or Nothing if it fails.
@@ -895,23 +908,20 @@
    (progn
     (logger-infof "Iteration %w: search proof of %w up to depth %w"
                   ($idx $label $depth))
-    (let* (;; Replace proof body by variable
-           ($proof-wo-bdy (remove-body $proof))
-           ;; Call backward chainer to rediscover the proof
-           ((: $proof-wo-bdy $thrm)
-            (once (bc &pc-kb (fromNumber $depth) (: $proof-wo-bdy $thrm)))))
-      (case (: $proof-wo-bdy $thrm)
-        (;; Found
-         ((: $proof-wo-bdy $thrm)
+    (let $prfs-thrms
+        (rediscover-proofs $depth $proof $thrm)
+      (if (== $prfs-thrms ())
+          ;; No proof
+          (progn (logger-info "No proof found")
+                 Nothing)
+          ;; One or more proofs
           (progn
-           ;; NEXT: create issue about (id) which shortcuts the logger
-           (logger-infof "Found proof%w %w" (: $proof-wo-bdy))
+           ;; (logger-infof "Found proofs: %w" $prfs-thrms)
+           (collapse
+            (let (: $p $t) (superpose $prfs-thrms)
+                 (logger-infof "Found proof%w %w" (: $p))))
            (add-to-pc-kb $label $thrm)
-           (Just (+ $idx 1))))
-         ;; Not found
-         (Empty (progn
-                 (logger-info "Proof not found")
-                 Nothing)))))))
+           (Just (+ $idx 1)))))))
 
 ;; Process the theorem of a given index, that is either check or
 ;; rediscover its proof, if it succeeds then insert the proof into
