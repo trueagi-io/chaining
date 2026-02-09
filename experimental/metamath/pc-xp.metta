@@ -3,6 +3,9 @@
 
 ;; NEXT: look for reduction rules
 
+;; NEXT: in (f x y z), make sure that x, y and z are wff, not
+;;       inference rules like ax-mp.
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;; ;;
 ;; ;; Parameters ;; ;;
