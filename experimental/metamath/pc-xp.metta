@@ -76,6 +76,34 @@
 ;; ;;;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;
+;; When ;;
+;;;;;;;;;;
+
+;; Binary conditional.  Only execute branch if condition is True
+(: when (-> Bool Atom $a))
+(= (when $c $x) (if $c $x (empty)))
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Detect Arrow Type ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Return True iff the given term is an arrow type, meaning has the
+;; following format (-> A), (-> A B), (-> A B C), etc.
+(: is-arrow-type (-> Atom Bool))
+(= (is-arrow-type $x)
+   (and (== (get-metatype $x) Expression)
+        (and (not (== () $x))
+             (== (car-atom $x) ->))))
+
+;; Test is-arrow-type
+!(test
+  (is-arrow-type (F A B))
+  False)
+!(test
+  (is-arrow-type (-> $a $b))
+  True)
+
 ;;;;;;;;;;;;;;;
 ;; Assertion ;;
 ;;;;;;;;;;;;;;;
