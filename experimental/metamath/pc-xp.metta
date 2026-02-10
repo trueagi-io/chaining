@@ -968,7 +968,6 @@
                  Nothing)
           ;; One or more proofs
           (progn
-           ;; (logger-infof "Found proofs: %w" $prfs-thrms)
            (collapse
             (let (: $p $t) (superpose $prfs-thrms)
                  (logger-infof "Found proof%w %w" (: $p))))
