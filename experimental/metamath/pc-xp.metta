@@ -454,7 +454,109 @@
 ;; Reduction ;;
 ;;;;;;;;;;;;;;;
 
-;; NEXT
+;; Define space mapping proofs to label, with data of the form
+;;
+;; (Label PROOF LABEL)
+!(bind! &labels (new-space))
+
+;; Reduce a proof to its label if any, or nothing otherwise.
+;; (: reduce-to-label (-> $a (Maybe $a)))
+(= (reduce-to-label $x)
+   (case (once (match &labels (Label $x $y) $y))
+     (($y (Just $y))
+      (Empty Nothing))))
+
+;; Apply any reduction rules till a fixed point is reached.  The input
+;; is supposed to be closed, that is it does not contain free
+;; variables.  Also, in applications such as (f a), f can be assumed
+;; not to be reducible due to the lack of higher order rules in
+;; propositional calculus.
+;; (: reduce-proof (-> $a $a))
+(= (reduce-proof $x)
+   (if (is-expression $x)
+       ;; Recursive steps
+       (case $x
+         (;; Nullary tuple
+          (() ())
+          ;; Unary application
+          (($f $x1)
+           (let $nx1 (reduce-proof $x1)
+             (if (== $nx1 $x1)
+                 ;; $x1 already reduced, attempt to reduce $x to label
+                 (case (reduce-to-label $x)
+                   (;; Reduced, return $y
+                    ((Just $y) $y)
+                    ;; Not reduced, return $x
+                    (Nothing $x)))
+                 ;; $x1 is reducible, reapply reduction
+                 (reduce-proof ($f $nx1)))))
+          ;; Binary application
+          (($f $x1 $x2)
+           (let* (($nx1 (reduce-proof $x1))
+                  ($nx2 (reduce-proof $x2)))
+             (if (and (== $nx1 $x1)
+                      (== $nx2 $x2))
+                 ;; $x1 and $x2 are already reduced, attempt to reduce
+                 ;; $x to label
+                 (case (reduce-to-label $x)
+                   (;; Reduced, return $y
+                    ((Just $y) $y)
+                    ;; Not reduced, return $x
+                    (Nothing $x)))
+                 ;; $x1 and $x2 are reducible, reapply reduction
+                 (reduce-proof ($f $nx1 $nx2)))))
+          ;; Ternary application
+          (($f $x1 $x2 $x3)
+           (let* (($nx1 (reduce-proof $x1))
+                  ($nx2 (reduce-proof $x2))
+                  ($nx3 (reduce-proof $x3)))
+             (if (and (== $nx1 $x1)
+                      (and (== $nx2 $x2)
+                           (== $nx3 $x3)))
+                 ;; All arguments are already reduced, attempt to
+                 ;; reduce $x to label
+                 (case (reduce-to-label $x)
+                   (;; Reduced, return $y
+                    ((Just $y) $y)
+                    ;; Not reduced, return $x
+                    (Nothing $x)))
+                 ;; Arguments are reducible, reapply reduction
+                 (reduce-proof ($f $nx1 $nx2 $nx3)))))))
+       ;; Base case
+       (case (reduce-to-label $x)
+         (;; Reduced, return $y
+          ((Just $y) $y)
+          ;; Not reduced, return $x
+          (Nothing $x)))))
+
+;; ;; Test reduce
+;; !(add-atom &labels (Label (a1i id_) idd))
+;; !(add-atom &labels (Label (mpd ax-1 ax-1) id_))
+;; !(add-atom &labels (Label (3bitr2i bicom
+;;                                    (bibi2i notnotb)
+;;                                    notbi)
+;;                           con2bi))
+;; !(test
+;;   (reduce-to-label ax-1)
+;;   Nothing)
+;; !(test
+;;   (reduce-to-label (mpd ax-1 ax-1))
+;;   (Just id_))
+;; !(test
+;;   (reduce-proof ax-1)
+;;   ax-1)
+;; !(test
+;;   (reduce-proof id_)
+;;   id_)
+;; !(test
+;;   (reduce-proof (a1i id_))
+;;   idd)
+;; !(test
+;;   (reduce-proof (mpd ax-1 ax-1))
+;;   id_)
+;; !(test
+;;   (reduce-proof (3bitr2i bicom (bibi2i notnotb) notbi))
+;;   con2bi)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
