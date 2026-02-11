@@ -12,6 +12,18 @@
 ;; ;;;;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Experiment Parameters ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Process assertions up to the provided index (excluded).  The
+;; default is 1526 because the full corpus contains 1525 assertions.
+(= (up-to-idx) 1526)
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Search Parameters ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; Whether to reverse the order of arguments.  For instance
 ;;
 ;; (: ax-mp (-> $𝜑 (→ $𝜑 $𝜓) $𝜓))
@@ -37,9 +49,12 @@
 ;; at the first one.
 (= (search-all-proofs) True)
 
-;; Process assertions up to the provided index (excluded).  The
-;; default is 1526 because the full corpus contains 1525 assertions.
-(= (up-to-idx) 1526)
+;; Enable proof reduction during search
+(= (search-reduce-proof) False)
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Logger Parameters ;;
+;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Log level
 (= (log-level) info)
