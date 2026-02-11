@@ -1,10 +1,7 @@
 ;; Experiment to verify or rediscover proofs of the propositional
 ;; calculus fragment of set theory of Metamath.
 
-;; NEXT: look for reduction rules
-
-;; NEXT: in (f x y z), make sure that x, y and z are wff, not
-;;       inference rules like ax-mp.
+;; NEXT: integrate reduce-proof
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;; ;;
