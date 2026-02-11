@@ -192,6 +192,19 @@
 (: Nil (List $a))
 (: Cons (-> $a (List $a) (List $a)))
 
+;;;;;;;;;;;;
+;; Syntax ;;
+;;;;;;;;;;;;
+
+;; Return True iff the given term is an expression
+(: is-expression (-> $a Bool))
+(= (is-expression $x) (== (get-metatype $x) Expression))
+
+;; Test is-expression
+!(test
+  (is-expression id)
+  False)
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
 ;;;;;;;;;;;;;;;;;;;;;
