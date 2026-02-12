@@ -1,7 +1,7 @@
 ;; Experiment to verify or rediscover proofs of the propositional
 ;; calculus fragment of set theory of Metamath.
 
-;; NEXT: integrate reduce-proof
+;; NEXT: discover more reduction rules (maybe automate the discovery process)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;; ;;
@@ -1027,6 +1027,10 @@
 ;; ;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;
+;; Helpers ;;
+;;;;;;;;;;;;;
+
 ;; In case the input number is something, then return True iff it is
 ;; equal of the maximum index of the propositional calculus indexed
 ;; corpus.  If the input number is nothing, then return True as well
@@ -1180,6 +1184,10 @@
 ;; number, which the until construct needs.
 (: process-assertion-m (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-m $midx) (Maybe.bind $midx process-assertion))
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Process PC Corpus ;;
+;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Loop over all assertions of the corpus
 !(until equal-to-upidx-or-nothing process-assertion-m (Just 2))
