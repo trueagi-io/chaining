@@ -15,7 +15,9 @@
 
 ;; Process assertions up to the provided index (excluded).  The
 ;; default is 1526 because the full corpus contains 1525 assertions.
-(= (up-to-idx) 1526)
+;;
+;; It is set to 95 because the 95 theorem is too slow proof.
+(= (up-to-idx) 95)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search Parameters ;;
@@ -44,7 +46,7 @@
 
 ;; For each theorem, search for all possible proofs.  Otherwise, stop
 ;; at the first one.
-(= (search-all-proofs) True)
+(= (search-all-proofs) False)
 
 ;; Use proof reduction as pruning mechanism duing search
 (= (prune-reduct) True)
