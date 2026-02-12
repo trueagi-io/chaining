@@ -1054,14 +1054,19 @@
 ;; returns a variable, this is normal)
 !(translatePredicate (set_prolog_flag occurs_check True))
 
-;; Add assertion to propositional calculus knowledge bases.  If it is
-;; an axiom then add it to pc-ab.  If it is a rule then add it to
-;; pc-rb.  Additionally replace greek letters by variables.
-(= (add-to-pc-kb $label $stmt)
+;; Add assertion to knowledge bases.  If it is an axiom then add it to
+;; pc-ab.  If it is a rule then add it to pc-rb.  Additionally replace
+;; greek letters by variables.
+(= (add-to-kbs $label $stmt)
    (let $stmt-with-vars (replace-greeks-by-variables $stmt)
+     ;; Add to rule base or axiom base
      (if (is-arrow-type $stmt)
          (add-atom &pc-rb (: $label $stmt-with-vars))
          (add-atom &pc-ab (: $label $stmt-with-vars)))))
+
+;; Add proof to label mapping to labels space
+(= (add-to-labels $proof $label)
+   (add-atom &labels (Label $proof $label)))
 
 ;; Process the axiom of given index, that is insert the axiom into
 ;; pc-ab and return the next index.
@@ -1070,7 +1075,7 @@
 (= (process-axiom $idx (MkAxiom $label $axiom))
    (progn
     (logger-infof "Iteration %w: add axiom %w" ($idx $label))
-    (add-to-pc-kb $label $axiom)
+    (add-to-kbs $label $axiom)
     (Maybe.return (+ $idx 1))))
 
 ;; Process the theorem of a given index by checking its proof, if it
@@ -1087,7 +1092,7 @@
       (case (: $proof $thrm)
         (;; Verified
          ((: $proof $thrm)
-          (progn (add-to-pc-kb $label $thrm)
+          (progn (add-to-kbs $label $thrm)
                  (Maybe.return (+ $idx 1))))
            ;; Not verified
            (Empty Nothing))))))
@@ -1126,10 +1131,15 @@
                  Nothing)
           ;; One or more proofs
           (progn
+           ;; For each proof add mapping from proof to label
            (collapse
             (let (: $p $t) (superpose $prfs-thrms)
-                 (logger-infof "Found proof%w %w" (: $p))))
-           (add-to-pc-kb $label $thrm)
+                 (progn
+                  (logger-infof "Found proof%w %w" (: $p))
+                  (add-to-labels $p $label))))
+           ;; Add proved theorem as lemma in kbs
+           (add-to-kbs $label $thrm)
+           ;; Output next index
            (Just (+ $idx 1)))))))
 
 ;; Process the theorem of a given index, that is either check or
