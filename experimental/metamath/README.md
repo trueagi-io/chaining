@@ -50,3 +50,7 @@ been converted to
 [propositional-calculus.metta](propositional-calculus.metta) and
 [propositional-calculus-reversed-arguments.metta](propositional-calculus-reversed-arguments.metta)
 using [mm2metta](https://github.com/ngeiswei/mm2metta).
+
+### Usage
+
+For the most advanced experiment go to [pc-xp.metta](pc-xp.metta).
