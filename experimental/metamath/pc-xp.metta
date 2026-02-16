@@ -68,6 +68,7 @@
 ;;;;;;;;;;;;;;;;;;;
 
 ;; Import logger library
+!(git-import! "https://github.com/ngeiswei/petta_lib_logger")
 !(import! &self (library lib_logger))
 
 ;; Import the propositional calculus corpus in the format
