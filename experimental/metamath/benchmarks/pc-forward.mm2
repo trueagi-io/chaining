@@ -1,0 +1,106 @@
+;; Partial port of pc-xp.metta to Minimum MeTTa 2 specifically for the
+;; purpose of benchmarking forward chaining implementations between
+;; MM2 and PeTTa.  It is partial because there are no lambda
+;; abstraction and no environment, and instead of sequentially
+;; processing all axioms and theorems, they are added at the start up
+;; to the indices of interest (20 and 21).  Also, only rule
+;; applications with the arities of interest are implemented (1, 2, 3
+;; and 4).
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Knowledge Bases ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Rule base up to index 19 included
+(rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
+(rb (: mp2 (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 $𝜑 $𝜒)))
+(rb (: mp2b (-> (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) $𝜑 $𝜒)))
+(rb (: a1i (-> $𝜑 (→ $𝜓 $𝜑))))
+(rb (: 2a1i (-> $𝜑 (→ $𝜓 (→ $𝜒 $𝜑)))))
+(rb (: mp1i (-> (→ $𝜑 $𝜓) $𝜑 (→ $𝜒 $𝜓))))
+(rb (: a2i (-> (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+(rb (: mpd (-> (→ $𝜑 (→ $𝜓 $𝜒)) (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
+(rb (: imim2i (-> (→ $𝜑 $𝜓) (→ (→ $𝜒 $𝜑) (→ $𝜒 $𝜓)))))
+(rb (: syl (-> (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
+(rb (: 3syl (-> (→ $𝜒 $𝜃) (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) (→ $𝜑 $𝜃))))
+(rb (: 4syl (-> (→ $𝜃 𝜏) (→ $𝜒 $𝜃) (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) (→ $𝜑 𝜏))))
+(rb (: mpi (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 (→ $𝜑 $𝜒))))
+(rb (: mpisyl (-> (→ $𝜓 (→ $𝜒 $𝜃)) $𝜒 (→ $𝜑 $𝜓) (→ $𝜑 $𝜃))))
+
+;; Axiom base up to index 19 included
+(ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+(ab (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+(ab (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+(ab (: id (→ $𝜑 $𝜑)))
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Forward chaining ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; Operational rules.  Generate all exec commands for a given
+;; ;; iteration (counting backward from 3 to 0 excluded, as the iteration
+;; ;; 0 does not get executed).
+;; (exec (Operation (S Z))
+;;       ;; Patterns
+;;       (, ;; Itself
+;;          (exec (Operation (S $k)) $ptrn $tplt)
+;;          ;; Axioms
+;;          (ab (: $an $ap))
+;;          ;; Unary rules
+;;          (rb (: $f1 (-> $a11 $b1)))
+;;          ;; Binary rules
+;;          (rb (: $f2 (-> $a21 $a22 $b2))))
+;;       ;; Templates
+;;       (, ;; Axioms
+;;          (exec (Axiom (S $k))
+;;                (, (ab (: $an $ap)) (: $an $ap))
+;;                (, (: $an $ap)))
+;;          ;; Unary rules
+;;          (exec (Unary (S $k))
+;;                (, (rb (: $f1 (-> $a11 $b1)))
+;;                   (: $x11 $a11)
+;;                   (: ($f1 $x11) $b1))
+;;                (, (: ($f1 $x11) $b1)))
+;;          ;; Binary rules
+;;          (exec (Binary (S $k))
+;;                (, (rb (: $f2 (-> $a21 $a22 $b2)))
+;;                   (: $x21 $a21)
+;;                   (: $x22 $a22)
+;;                   (: ($f2 $x21 $x22) $b2))
+;;                (, (: ($f2 $x21 $x22) $b2)))
+;;          ;; Itself
+;;          (exec (Operation $k) $ptrn $tplt)))
+
+;; Like above but create fewer general exec commands instead of many
+;; specialized ones.
+(exec (Operation (S (S Z)))
+      ;; Patterns
+      (, ;; Itself
+         (exec (Operation (S $k)) $ptrn $tplt))
+      ;; Templates
+      (, ;; Axioms
+         (exec (Axiom (S $k))
+               (, (ab (: $an $ap)) (: $an $ap))
+               (, (: $an $ap)))
+         ;; Unary rules
+         (exec (Unary (S $k))
+               (, (rb (: $f1 (-> $a11 $b1)))
+                  (: $x11 $a11)
+                  (: ($f1 $x11) $b1))
+               (, (: ($f1 $x11) $b1)))
+         ;; Binary rules
+         (exec (Binary (S $k))
+               (, (rb (: $f2 (-> $a21 $a22 $b2)))
+                  (: $x21 $a21)
+                  (: $x22 $a22)
+                  (: ($f2 $x21 $x22) $b2))
+               (, (: ($f2 $x21 $x22) $b2)))
+         ;; Itself
+         (exec (Operation $k) $ptrn $tplt)))
+
+;;;;;;;;;;
+;; Main ;;
+;;;;;;;;;;
+
+;; Target
+(: $x $a)
