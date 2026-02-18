@@ -7,6 +7,8 @@
 ;; applications with the arities of interest are implemented (1, 2, 3
 ;; and 4).
 
+;; NEXT: fork using fully annotated proofs
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge Bases ;;
 ;;;;;;;;;;;;;;;;;;;;;
