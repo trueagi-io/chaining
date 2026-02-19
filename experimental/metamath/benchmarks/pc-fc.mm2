@@ -3,37 +3,23 @@
 ;; MM2 and PeTTa.  It is partial because there are no lambda
 ;; abstraction and no environment, and instead of sequentially
 ;; processing all axioms and theorems, they are added at the start up
-;; to the indices of interest (20 and 21).  Also, only rule
-;; applications with the arities of interest are implemented (1, 2, 3
-;; and 4).
-
-;; NEXT: fork using fully annotated proofs
+;; to the indices 8.  Also, only rule applications with the arities of
+;; interest are implemented (1, 2 and 3).
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge Bases ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; Rule base up to index 19 included
+;; Rule base up to index 8 included
 (rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
 (rb (: mp2 (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 $𝜑 $𝜒)))
 (rb (: mp2b (-> (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) $𝜑 $𝜒)))
 (rb (: a1i (-> $𝜑 (→ $𝜓 $𝜑))))
-(rb (: 2a1i (-> $𝜑 (→ $𝜓 (→ $𝜒 $𝜑)))))
-(rb (: mp1i (-> (→ $𝜑 $𝜓) $𝜑 (→ $𝜒 $𝜓))))
-(rb (: a2i (-> (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-(rb (: mpd (-> (→ $𝜑 (→ $𝜓 $𝜒)) (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
-(rb (: imim2i (-> (→ $𝜑 $𝜓) (→ (→ $𝜒 $𝜑) (→ $𝜒 $𝜓)))))
-(rb (: syl (-> (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))
-(rb (: 3syl (-> (→ $𝜒 $𝜃) (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) (→ $𝜑 $𝜃))))
-(rb (: 4syl (-> (→ $𝜃 𝜏) (→ $𝜒 $𝜃) (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) (→ $𝜑 𝜏))))
-(rb (: mpi (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 (→ $𝜑 $𝜒))))
-(rb (: mpisyl (-> (→ $𝜓 (→ $𝜒 $𝜃)) $𝜒 (→ $𝜑 $𝜓) (→ $𝜑 $𝜃))))
 
-;; Axiom base up to index 19 included
+;; Axiom base up to index 8 included
 (ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 (ab (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 (ab (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-(ab (: id (→ $𝜑 $𝜑)))
 
 ;;;;;;;;;;
 ;; Main ;;
