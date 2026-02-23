@@ -67,14 +67,6 @@
                      (dp $k (: $x3 $a3))
                      (rb (: $f (-> $a1 $a2 $a3 $b))))
                   (, (dp (S $k) (: ($f $x1 $x2 $x3) $b)))))
-         ;; Quaternary application
-         (+ (exec (4 Quaternary)
-                  (, (dp $k (: $x1 $a1))
-                     (dp $k (: $x2 $a2))
-                     (dp $k (: $x3 $a3))
-                     (dp $k (: $x4 $a4))
-                     (rb (: $f (-> $a1 $a2 $a3 $a4 $b))))
-                  (, (dp (S $k) (: ($f $x1 $x2 $x3 $x4) $b)))))
          ;; Update current target depth
          (+ (exec (5 UpdateCtd)
                   (, (ctd (S $k)))
