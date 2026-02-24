@@ -12,9 +12,6 @@
 
 ;; Rule base up to index 8 included
 (rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
-(rb (: mp2 (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 $𝜑 $𝜒)))
-(rb (: mp2b (-> (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) $𝜑 $𝜒)))
-(rb (: a1i (-> $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom base up to index 8 included
 (ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
@@ -46,28 +43,16 @@
       (, (ctd (S $k))
          (ne (S $l))
          (exec ($priority Expand) $ptrn $tplt))
-      (O ;; Copy proofs from previous depth
-         (+ (exec (0 Copy)
+      (O ;; Move proofs from previous depth
+         (+ (exec (0 Move)
                   (, (dp $k (: $x $a)))
                   (, (dp (S $k) (: $x $a)))))
-         ;; Unary application
-         (+ (exec (1 Unary)
-                  (, (dp $k (: $x $a))
-                     (rb (: $f (-> $a $b))))
-                  (, (dp (S $k) (: ($f $x) $b)))))
          ;; Binary application
          (+ (exec (2 Binary)
                   (, (dp $k (: $x1 $a1))
                      (dp $k (: $x2 $a2))
                      (rb (: $f (-> $a1 $a2 $b))))
                   (, (dp (S $k) (: ($f $x1 $x2) $b)))))
-         ;; Ternary application
-         (+ (exec (3 Ternary)
-                  (, (dp $k (: $x1 $a1))
-                     (dp $k (: $x2 $a2))
-                     (dp $k (: $x3 $a3))
-                     (rb (: $f (-> $a1 $a2 $a3 $b))))
-                  (, (dp (S $k) (: ($f $x1 $x2 $x3) $b)))))
          ;; Update current target depth and number of expansions
          (+ (exec (5 Update)
                   (, (ctd (S $k))

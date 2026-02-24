@@ -1,16 +1,11 @@
 ;; Like pc-fc.mm2 but proofs are fully type annotated.
 
-;; NEXT: to control final depth
-
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge Bases ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
 ;; Rule base up to index 8 included
 (rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
-(rb (: mp2 (-> (→ $𝜑 (→ $𝜓 $𝜒)) $𝜓 $𝜑 $𝜒)))
-(rb (: mp2b (-> (→ $𝜓 $𝜒) (→ $𝜑 $𝜓) $𝜑 $𝜒)))
-(rb (: a1i (-> $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom base up to index 8 included
 (ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
@@ -21,11 +16,11 @@
 ;; Main ;;
 ;;;;;;;;;;
 
-;; Current target depth of proofs to expand to
-(ctd Z)
+;; Number of expansions (decrease at each expansion)
+(ne (S (S (S Z))))
 
-;; Post final target depth to reach after iterative expansions
-(ftd (S (S Z)))
+;; Current target depth of proofs to expand to (increase at each expansion)
+(ctd Z)
 
 ;; Initialize proofs of depth Z
 (exec (0 Init)
@@ -38,46 +33,27 @@
          (+ (ctd (S Z)))))
 
 ;; Expand proofs to depth greater than Z
-(exec (9 Iter)
-      (I (== (ctd (S $k)) (ctd (S $k)))
-         (== (ftd (S $l)) (ftd (S $l)))
-         (!= (S $k) (S $l))
-         (== (exec ($priority Iter) $ptrn $tplt)
-             (exec ($priority Iter) $ptrn $tplt)))
-      (O ;; Copy proofs from previous depth
-         (+ (exec (0 Copy)
+(exec (9 Expand)
+      (, (ctd (S $k))
+         (ne (S $l))
+         (exec ($priority Expand) $ptrn $tplt))
+      (O ;; Move proofs from previous depth
+         (+ (exec (0 Move)
                   (, (dp $k (: $x $a)))
                   (, (dp (S $k) (: $x $a)))))
-         ;; Unary application
-         (+ (exec (1 Unary)
-                  (, (dp $k (: $x $a))
-                     (rb (: $f (-> $a $b))))
-                  (, (dp (S $k) (: ($f (: $x $a)) $b)))))
          ;; Binary application
          (+ (exec (2 Binary)
                   (, (dp $k (: $x1 $a1))
                      (dp $k (: $x2 $a2))
                      (rb (: $f (-> $a1 $a2 $b))))
                   (, (dp (S $k) (: ($f (: $x1 $a1) (: $x2 $a2)) $b)))))
-         ;; Ternary application
-         (+ (exec (3 Ternary)
-                  (, (dp $k (: $x1 $a1))
-                     (dp $k (: $x2 $a2))
-                     (dp $k (: $x3 $a3))
-                     (rb (: $f (-> $a1 $a2 $a3 $b))))
-                  (, (dp (S $k) (: ($f (: $x1 $a1) (: $x2 $a2) (: $x3 $a3)) $b)))))
-         ;; Quaternary application
-         (+ (exec (4 Quaternary)
-                  (, (dp $k (: $x1 $a1))
-                     (dp $k (: $x2 $a2))
-                     (dp $k (: $x3 $a3))
-                     (dp $k (: $x4 $a4))
-                     (rb (: $f (-> $a1 $a2 $a3 $a4 $b))))
-                  (, (dp (S $k) (: ($f (: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4)) $b)))))
-         ;; Update current target depth
-         (+ (exec (5 UpdateCtd)
-                  (, (ctd (S $k)))
+         ;; Update current target depth and number of expansions
+         (+ (exec (5 Update)
+                  (, (ctd (S $k))
+                     (ne (S $l)))
                   (O (- (ctd (S $k)))
-                     (+ (ctd (S (S $k)))))))
-         ;; Respawn iterator
-         (+ (exec ($priority Iter) $ptrn $tplt))))
+                     (- (ne (S $l)))
+                     (+ (ctd (S (S $k))))
+                     (+ (ne $l)))))
+         ;; Respawn expander
+         (+ (exec ($priority Expand) $ptrn $tplt))))
