@@ -1,10 +1,9 @@
 ;; Partial port of pc-xp.metta to Minimum MeTTa 2 specifically for the
 ;; purpose of benchmarking forward chaining implementations between
 ;; MM2 and PeTTa.  It is partial because there are no lambda
-;; abstraction and no environment, and instead of sequentially
-;; processing all axioms and theorems, they are added at the start up
-;; to the indices 8.  Also, only rule applications with the arities of
-;; interest are implemented (1, 2 and 3).
+;; abstraction and no environment, and lemmas are not sequentially
+;; added to the knowledge bases, rather the axioms and rules are fixed
+;; to ax-1, ax-2, ax-3 and ax-mp.
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge Bases ;;
