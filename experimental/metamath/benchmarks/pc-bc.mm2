@@ -1,0 +1,74 @@
+;; Like pc-fc.mm2 but for backward chaining
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Knowledge Bases ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Rule base up to index 8 included
+(rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
+
+;; Axiom base up to index 8 included
+(ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+(ab (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+(ab (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+
+;;;;;;;;;;
+;; Main ;;
+;;;;;;;;;;
+
+;; Pattern of the solution set of the form
+;;
+;; (ss PATH QUERY)
+;;
+;; where PATH denotes the path in the non-deterministic recursion,
+;; formatted as followed
+;;
+;; - `.` denotes the root of the path, thus the solutions associated
+;;   to the top query.
+;;
+;; - `(PREFIX RULE PREMISE_INDEX)` denotes the path with a given
+;;   prefix, recursing on a given rule over one of its given premise
+;;   index.
+;;
+;; Examples:
+;;
+;; ```
+;; (ss . (: ax-1 (→ 𝜑 (→ 𝜓 𝜑))))
+;; ```
+;;
+;; denotes a solution at the root, i.e. of the top query.
+;;
+;; ```
+;; (ss (. ax-mp 0) (: ax-2 (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)))))
+;; ```
+;;
+;; denotes a solution at the recursion starting from the root, then
+;; taking the ax-mp rule and recursing on its first premise.
+;;
+;; ```
+;; (ss ((. ax-mp 0) ax-mp 1) (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+;; ```
+;;
+;; denotes a solution at the recursion starting from the root, then
+;; taking the ax-mp rule, recursing on the its first premise, then
+;; taking the ax-mp rule again and recursing on the second premise.
+(ss . (: $x $a))
+
+;; Copy all base cases to the solution set regardless of the depth
+(exec Base
+      (, (ss $depth (: $x $a))
+         (ab (: $x $a))
+         (exec Base $ptrn $tplt))
+      (, (ss $depth (: $x $a))
+         (exec Base $ptrn $tplt)))
+
+;; Apply all binary rules consistent with all solution sets of depth
+;; (S $k) given the solution set below, i.e. of depth $k.
+(exec Binary
+      (, (ss (S $k) (: $y $b))
+         (rb (: $f (-> $a1 $a2 $b)))
+         (ss $k (: $x1 $a1))
+         (ss $k (: $x2 $a2))
+         (exec Binary $ptrn $tplt))
+      (, (ss (S $k) (: $y $b))
+         (exec Binary $ptrn $tplt)))
