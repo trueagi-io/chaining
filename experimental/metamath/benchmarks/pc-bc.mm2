@@ -16,9 +16,9 @@
 ;; Main ;;
 ;;;;;;;;;;
 
-;; Pattern of the solution set of the form
+;; A solution has the format
 ;;
-;; (ss PATH QUERY)
+;; (sl PATH QUERY)
 ;;
 ;; where PATH denotes the path in the non-deterministic recursion,
 ;; formatted as followed
@@ -33,42 +33,70 @@
 ;; Examples:
 ;;
 ;; ```
-;; (ss . (: ax-1 (→ 𝜑 (→ 𝜓 𝜑))))
+;; (sl . (: ax-1 (→ 𝜑 (→ 𝜓 𝜑))))
 ;; ```
 ;;
 ;; denotes a solution at the root, i.e. of the top query.
 ;;
 ;; ```
-;; (ss (. ax-mp 0) (: ax-2 (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)))))
+;; (sl (. ax-mp 0) (: ax-2 (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)))))
 ;; ```
 ;;
 ;; denotes a solution at the recursion starting from the root, then
 ;; taking the ax-mp rule and recursing on its first premise.
 ;;
 ;; ```
-;; (ss ((. ax-mp 0) ax-mp 1) (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
+;; (sl ((. ax-mp 0) ax-mp 1) (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
 ;; ```
 ;;
 ;; denotes a solution at the recursion starting from the root, then
 ;; taking the ax-mp rule, recursing on the its first premise, then
 ;; taking the ax-mp rule again and recursing on the second premise.
-(ss . (: $x $a))
+;;
+;; Likewise, a goal has the format
+;;
+;; (gl PATH QUERY)
+;;
+;; where PATH and QUERY have the same format as a solution with the
+;; exception they tend to contain free variables, unless the goal is
+;; to do type checking only.
 
-;; Copy all base cases to the solution set regardless of the depth
-(exec Base
-      (, (ss $depth (: $x $a))
-         (ab (: $x $a))
-         (exec Base $ptrn $tplt))
-      (, (ss $depth (: $x $a))
-         (exec Base $ptrn $tplt)))
+;; Top goal
+(gl . (: $x (→ 𝜑 (→ 𝜓 𝜑))))
+;; (gl . (: $x (→ 𝜑 𝜑)))
 
-;; Apply all binary rules consistent with all solution sets of depth
-;; (S $k) given the solution set below, i.e. of depth $k.
-(exec Binary
-      (, (ss (S $k) (: $y $b))
-         (rb (: $f (-> $a1 $a2 $b)))
-         (ss $k (: $x1 $a1))
-         (ss $k (: $x2 $a2))
-         (exec Binary $ptrn $tplt))
-      (, (ss (S $k) (: $y $b))
-         (exec Binary $ptrn $tplt)))
+;; Base case
+(exec ((S Z) 0 Base)
+      (, (gl $path (: $x $a))                   ; Goal
+         (ab (: $x $a)))                        ; Axiom
+      (, (sl $path (: $x $a))))                 ; Solution
+
+;; Recursive step
+(exec ((S Z) 9 Recursive)
+      (, (gl $path (: $x $a))                            ; Goal
+         ;; NEXT: the base exec has already been consummed
+         (exec ($k_base $priority_base Base)
+               $ptrn_base $tplt_base)                    ; Base
+         (exec ((S $k) $priority_rec Recursive)
+               $ptrn_rec $tplt_rec))                     ; Self
+      (, ;; Binary application 1st premise recurse downward
+         (exec ((S $k) 1 1stPremDownwardRec)
+               (, (rb (: $f (-> $a1 $a2 $b))))           ; Binary rule
+               (, (gl ($path $f 0) (: $x1 $a1))          ; 1st premise goal
+                  (exec ($k_base $priority_base Base)
+                        $ptrn_base $tplt_base)           ; Respawn base
+                  (exec ($k $priority_rec Recursive)
+                        $ptrn_rec $tplt_rec)))           ; Respawn self
+         ;; Binary application 2nd premise recurse downward
+         ;; NEXT: respawn for 2nd premise
+         (exec ((S $k) 2 2ndPremDownwardRec)
+               (, (rb (: $f (-> $a1 $a2 $b)))            ; Binary rule
+                  (sl ($path $f 0) (: $x1 $a1)))         ; 1st premise solution
+               (, (gl ($path $f 1) (: $x2 $a2))))        ; 2st premise goal
+         ;; Binary application recurse upward
+         (exec ((S $k) 8 UpwardRec)
+               (, (rb (: $f (-> $a1 $a2 $b)))            ; Binary rule
+                  (gl $path (: ($f $x1 $x2) $b))         ; Binary application goal
+                  (sl ($path $f 0) (: $x1 $a1))          ; 1st premise solution
+                  (sl ($path $f 1) (: $x2 $a2)))         ; 2nd premise solution
+               (, (sl $path (: ($f $x1 $2) $b))))))      ; Goal solution
