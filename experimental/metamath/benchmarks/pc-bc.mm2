@@ -28,7 +28,7 @@
 (= (bc (S $k) (: ($f $x) $b))
    (exec (1 (S $k) bc_unary_init)
          (, (rb (: $f (-> $a $b))))
-         (, (bc $k (: $x $a))
+         (, (! (bc $k (: $x $a)))
             (exec (9 (S $k) bc_unary_final)
                   (, (rb (: $f (-> $a $b)))
                      (sol $k (: $x $a)))
@@ -40,14 +40,14 @@
 ;; Main ;;
 ;;;;;;;;;;
 
-;; Main exec command, spawn backward chainer
+;; Evaluate function call
 (exec (5 * main)
-      (, (bc $depth (: $x $a))               ; Query BC call
-         (= (bc $depth (: $x $a)) $bdy)      ; Query BC definition
+      (, (! ($f $x1 $x2))                    ; Query function call
+         (= ($f $x1 $x2) $bdy)               ; Query function definition
          (exec (5 * main) $ptrn $tplt))      ; Query self
-      (O (- (bc $depth (: $x $a)))           ; Remove BC call
-         (+ $bdy)                            ; Add body definition
+      (O (- (! ($f $x1 $x2)))                ; Remove function call
+         (+ $bdy)                            ; Add function body
          (+ (exec (5 * main) $ptrn $tplt)))) ; Respawn self
 
 ;; Test backward chainer
-(bc (S (S Z)) (: $x (→ 𝜑 (→ 𝜓 𝜑))))
+(! (bc (S (S Z)) (: $x (→ 𝜑 (→ 𝜓 𝜑)))))
