@@ -1,159 +1,53 @@
-;; Like pc-fc.mm2 but for backward chaining
+;; Define backward chainer like in MeTTa but replace MeTTa body by
+;; exec commands.
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge Bases ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
 ;; Rule base up to index 8 included
-(rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
+(rb (: id (-> $𝜑 $𝜑)))
+;; (rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
 
 ;; Axiom base up to index 8 included
 (ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 (ab (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 (ab (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
+;;;;;;;;;;;;;;;;;;;;;;
+;; Backward Chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; Base case (nullary)
+(= (bc $depth (: $x $a))
+   (exec (0 $depth bc_nullary)
+         (, (ab (: $x $a)))
+         (, (sol $depth (: $x $a)))))
+
+;; Recursive step (unary)
+(= (bc (S $k) (: ($f $x) $b))
+   (exec (1 (S $k) bc_unary_init)
+         (, (rb (: $f (-> $a $b))))
+         (, (bc $k (: $x $a))
+            (exec (9 (S $k) bc_unary_final)
+                  (, (rb (: $f (-> $a $b)))
+                     (sol $k (: $x $a)))
+                  (, (sol (S $k) (: ($f $x) $b)))))))
+
+;; NEXT: add binary
+
 ;;;;;;;;;;
 ;; Main ;;
 ;;;;;;;;;;
 
-;; A solution has the format
-;;
-;; (sl PATH QUERY)
-;;
-;; where PATH denotes the path in the non-deterministic recursion,
-;; formatted as followed
-;;
-;; - `.` denotes the root of the path, thus the solutions associated
-;;   to the top query.
-;;
-;; - `(PREFIX RULE PREMISE_INDEX)` denotes the path with a given
-;;   prefix, recursing on a given rule over one of its given premise
-;;   index.
-;;
-;; Examples:
-;;
-;; ```
-;; (sl . (: ax-1 (→ 𝜑 (→ 𝜓 𝜑))))
-;; ```
-;;
-;; denotes a solution at the root, i.e. of the top query.
-;;
-;; ```
-;; (sl (. ax-mp 0) (: ax-2 (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)))))
-;; ```
-;;
-;; denotes a solution at the recursion starting from the root, then
-;; taking the ax-mp rule and recursing on its first premise.
-;;
-;; ```
-;; (sl ((. ax-mp 0) ax-mp 1) (: ax-3 (→ (→ (¬ 𝜑) (¬ 𝜓)) (→ 𝜓 𝜑))))
-;; ```
-;;
-;; denotes a solution at the recursion starting from the root, then
-;; taking the ax-mp rule, recursing on the its first premise, then
-;; taking the ax-mp rule again and recursing on the second premise.
-;;
-;; Likewise, a goal has the format
-;;
-;; (gl PATH QUERY)
-;;
-;; where PATH and QUERY have the same format as a solution with the
-;; exception they tend to contain free variables, unless the goal is
-;; to do type checking only.
+;; Main exec command, spawn backward chainer
+(exec (5 * main)
+      (, (bc $depth (: $x $a))               ; Query BC call
+         (= (bc $depth (: $x $a)) $bdy)      ; Query BC definition
+         (exec (5 * main) $ptrn $tplt))      ; Query self
+      (O (- (bc $depth (: $x $a)))           ; Remove BC call
+         (+ $bdy)                            ; Add body definition
+         (+ (exec (5 * main) $ptrn $tplt)))) ; Respawn self
 
-;; ;; Top goal
-;; (gl . (: $x (→ 𝜑 (→ 𝜓 𝜑))))
-;; ;; (gl . (: $x (→ 𝜑 𝜑)))
-
-;; ;; Base case
-;; (exec ((S Z) 0 Base)
-;;       (, (gl $path (: $x $a))                   ; Goal
-;;          (ab (: $x $a)))                        ; Axiom
-;;       (, (sl $path (: $x $a))))                 ; Solution
-
-;; ;; Recursive step
-;; (exec ((S Z) 9 Recursive)
-;;       (, (gl $path (: $x $a))                            ; Goal
-;;          ;; NEXT: the base exec has already been consummed
-;;          (exec ($k_base $priority_base Base)
-;;                $ptrn_base $tplt_base)                    ; Base
-;;          (exec ((S $k) $priority_rec Recursive)
-;;                $ptrn_rec $tplt_rec))                     ; Self
-;;       (, ;; Binary application 1st premise recurse downward
-;;          (exec ((S $k) 1 1stPremDownwardRec)
-;;                (, (rb (: $f (-> $a1 $a2 $b))))           ; Binary rule
-;;                (, (gl ($path $f 0) (: $x1 $a1))          ; 1st premise goal
-;;                   (exec ($k_base $priority_base Base)
-;;                         $ptrn_base $tplt_base)           ; Respawn base
-;;                   (exec ($k $priority_rec Recursive)
-;;                         $ptrn_rec $tplt_rec)))           ; Respawn self
-;;          ;; Binary application 2nd premise recurse downward
-;;          ;; NEXT: respawn for 2nd premise
-;;          (exec ((S $k) 2 2ndPremDownwardRec)
-;;                (, (rb (: $f (-> $a1 $a2 $b)))            ; Binary rule
-;;                   (sl ($path $f 0) (: $x1 $a1)))         ; 1st premise solution
-;;                (, (gl ($path $f 1) (: $x2 $a2))))        ; 2st premise goal
-;;          ;; Binary application recurse upward
-;;          (exec ((S $k) 8 UpwardRec)
-;;                (, (rb (: $f (-> $a1 $a2 $b)))            ; Binary rule
-;;                   (gl $path (: ($f $x1 $x2) $b))         ; Binary application goal
-;;                   (sl ($path $f 0) (: $x1 $a1))          ; 1st premise solution
-;;                   (sl ($path $f 1) (: $x2 $a2)))         ; 2nd premise solution
-;;                (, (sl $path (: ($f $x1 $2) $b))))))      ; Goal solution
-
-;; Backward chainer call
-;; NEXT: maybe add path
-;; (bc Z (: $x (→ 𝜑 (→ 𝜓 𝜑))))
-(bc (S Z) (: $x (→ 𝜑 (→ 𝜓 𝜑))))
-;; (bc (S (S Z)) (: $x (→ 𝜑 (→ 𝜓 𝜑))))
-
-;; Turn backward chainer call into exec commands
-
-;; Base case
-(exec (9 Z BC)
-      (, ;; Get backward chainer base call
-         (bc Z (: $x $a)))
-      (, ;; Produce exec command for axiom
-         (exec (1 Base)
-               (, ;; Get axiom
-                  (ab (: $x $a)))
-               (, ;; Produce corresponding solution
-                  (sl Z (: $x $a))))))
-
-;; Recursive case
-(exec (5 (S Z) BC)
-      (, ;; Get backward chainer recursive call
-         (bc (S $k) (: $x $a))
-         ;; Get self
-         (exec ($bc_prty (S $k) BC) $ptrn $tplt))
-      (, ;; Produce exec command for axiom
-         (exec (1 $k Axiom)
-               (, ;; Get axiom
-                  (ab (: $x $a)))
-               (, ;; Produce solution
-                  (sl (S $k) (: $x $a))))
-         ;; Produce exec command for binary rule
-         (exec (2 $k Binary)
-               (, ;; Get binary rule
-                  (rb (: $f (-> $a1 $a2 $b))))
-               (, ;; Produce call on 1st premise
-                  (bc $k (: $x1 $a1))
-                  ;; Produce corresponding exec command
-                  (exec ($bc_prty $k BC) $ptrn $tplt)
-                  ;; Produce exec command to get solution from 1st
-                  ;; premise and call bc on 2nd premise
-                  (exec (3 $k Inner)
-                        (, ;; Get solution of 1st premise
-                           (sl $k (: $x1 $a1)))
-                        (, ;; Produce backward chainer call on 2nd premise
-                           (bc $k (: $x2 $a2))
-                           ;; Produce corresponding exec command
-                           (exec ($bc_ptry $k BC) $ptrn $tplt)))
-                  ;; Produce exec command to get final solution
-                  (exec (4 $k Final)
-                        (, ;; Get solution of 1st premise
-                           (sl $k (: $x1 $a1))
-                           ;; Get solution of 2nd premise
-                           (sl $k (: $x2 $a2)))
-                        (, ;; Produce final solution
-                           (sl (S $k) (: ($f $x1 $x2) $b))))))))
+;; Test backward chainer
+(bc (S (S Z)) (: $x (→ 𝜑 (→ 𝜓 𝜑))))
