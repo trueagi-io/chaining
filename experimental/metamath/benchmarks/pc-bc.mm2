@@ -19,35 +19,52 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Base case (nullary)
-(= (bc $depth (: $x $a))
+(= (bc $depth $path (: $x $a))
    (exec (0 $depth bc_nullary)
          (, (ab (: $x $a)))
-         (, (sol $depth (: $x $a)))))
+         (, (sol $path (: $x $a)))))
 
 ;; Recursive step (unary)
-(= (bc (S $k) (: ($f $x) $b))
+(= (bc (S $k) $path (: ($f $x) $b))
    (exec (1 (S $k) bc_unary_init)
          (, (rb (: $f (-> $a $b))))
-         (, (! (bc $k (: $x $a)))
-            (exec (9 (S $k) bc_unary_final)
+         (, (! (bc $k ($path 0) (: $x $a)))
+            (exec (5 * main)
+                  (, (! $fx) (= $fx $bdy))
+                  (O (- (! $fx)) (+ $bdy)))
+            (exec (9 ($path 0) bc_unary_final)
                   (, (rb (: $f (-> $a $b)))
-                     (sol $k (: $x $a)))
-                  (, (sol (S $k) (: ($f $x) $b)))))))
+                     (sol ($path 0) (: $x $a)))
+                  (, (sol $path (: ($f $x) $b)))))))
 
-;; NEXT: add binary
+;; ;; Recursive step (binary)
+;; (= (bc (S $k) (: ($f $x) $b))
+;;    (exec (1 (S $k) bc_unary_init)
+;;          (, (rb (: $f (-> $a1 $a2 $b))))
+;;          (, (! (bc $k (: $x1 $a1)))
+;;             (exec (9 (S $k) bc_binary_2nd_arg)
+;;                   (, (rb (: $f (-> $a1 $a2 $b)))
+;;                      (sol $k (: $x1 $a1)))
+;;                   (, (! (bc $k (: $x2 $a2)))
+;;                      (exec (9 (S $k) bc_binary_final)
+;;                            (, (rb (: $f (-> $a1 $a2 $b)))
+;;                               (sol $k (: $x1 $a1))
+;;                               (sol $k (: $x2 $a2)))
+;;                            (, (sol (S $k) (: ($f $x1 $x2) $b)))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Function call evaluator ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Evaluate any function call prefixed by a bang
+(exec (5 * main)
+      (, (! $fx) (= $fx $bdy))
+      (O (- (! $fx)) (+ $bdy)))
 
 ;;;;;;;;;;
 ;; Main ;;
 ;;;;;;;;;;
 
-;; Evaluate function call
-(exec (5 * main)
-      (, (! ($f $x1 $x2))                    ; Query function call
-         (= ($f $x1 $x2) $bdy)               ; Query function definition
-         (exec (5 * main) $ptrn $tplt))      ; Query self
-      (O (- (! ($f $x1 $x2)))                ; Remove function call
-         (+ $bdy)                            ; Add function body
-         (+ (exec (5 * main) $ptrn $tplt)))) ; Respawn self
-
 ;; Test backward chainer
-(! (bc (S (S Z)) (: $x (→ 𝜑 (→ 𝜓 𝜑)))))
+;; (! (bc Z (: $a (→ $b (→ 𝜑 (→ 𝜓 𝜑))))))
+(! (bc (S (S (S (S Z)))) . (: $x (→ 𝜑 (→ 𝜓 𝜑)))))
