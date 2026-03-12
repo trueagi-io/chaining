@@ -50,6 +50,11 @@
 ;; ;; Full depth 4
 ;; !(bc (fromNumber 4) (: $x $a))
 
+;; NEXT: Look at density of each theorem up to 4
+
+;; ;; idrefl (from Identity Reflexion as suggested by Llama 4)
+;; !(bc (fromNumber 1) (: $x (→ (→ 𝜑 𝜓) (→ 𝜑 𝜑))))
+
 ;; ;; id
 ;; !(bc (fromNumber 2) (: $x (→ 𝜑 𝜑)))
 
