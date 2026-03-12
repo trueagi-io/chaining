@@ -22,7 +22,7 @@
 ;;;;;;;;;;
 
 ;; Number of expansions (decrease at each expansion)
-(ne (S (S (S Z))))
+(ne (S (S (S (S Z)))))
 
 ;; Current target depth of proofs to expand to (increase at each expansion)
 (ctd Z)
