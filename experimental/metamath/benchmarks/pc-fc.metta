@@ -1,5 +1,12 @@
 ;; Generate all proofs up to a certain depth in a forward way
 
+;;;;;;;;;;;;;;;;
+;; Parameters ;;
+;;;;;;;;;;;;;;;;
+
+;; Depth of the forward chaining
+(= (depth) 1)
+
 ;;;;;;;;;;;;;;;
 ;; Functions ;;
 ;;;;;;;;;;;;;;;
@@ -31,6 +38,10 @@
      (let $nss (superpose $ns)
        (add-atom $ss $nss))))
 
+;; ;; Binary conditional.  Only execute branch if condition is True
+;; (: when (-> Bool Expression $a))
+;; (= (when $c $x) (if $c $x (empty)))
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Knowledge Bases ;;
 ;;;;;;;;;;;;;;;;;;;;;
@@ -56,15 +67,19 @@
 !(match &ab (: $x $a) (add-atom &ss (: $x $a)))
 
 ;; Run step 1 of forward chaining
-!(fs-add-to-ss &rb &ss)
+;; !(when (<= 1 (depth)) (fs-add-to-ss &rb &ss))
+!(if (<= 1 (depth)) (fs-add-to-ss &rb &ss) (empty))
 
 ;; Run step 2 of forward chaining
-!(fs-add-to-ss &rb &ss)
+;; !(when (<= 2 (depth)) (fs-add-to-ss &rb &ss))
+!(if (<= 2 (depth)) (fs-add-to-ss &rb &ss) (empty))
 
 ;; Run step 3 of forward chainin
-!(fs-add-to-ss &rb &ss)
+;; !(when (<= 3 (depth)) (fs-add-to-ss &rb &ss))
+!(if (<= 3 (depth)) (fs-add-to-ss &rb &ss) (empty))
 
 ;; Run step 4 of forward chainin
-!(fs-add-to-ss &rb &ss)
+;; !(when (<= 4 (depth)) (fs-add-to-ss &rb &ss))
+!(if (<= 4 (depth)) (fs-add-to-ss &rb &ss) (empty))
 
 !(get-atoms &ss)
