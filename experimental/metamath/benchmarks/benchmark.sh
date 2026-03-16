@@ -84,7 +84,7 @@ for depth in {1..1}; do
     # MM2
     dst=pc-fc-depth_${depth}-mm2.stdout
     depth_peano="$(i2p $depth)"
-    sed -i "s/(ne [()S Z]\+)/(ne $depth_peano)/g" pc-fc.mm2 # set depth
+    sed -i "s/(ne [()S Z]\+)/(ne $depth_peano)/g" pc-fc.mm2
     /usr/bin/time --verbose "${hypdir}/MORK/target/release/mork" run pc-fc.mm2 &> $dst
     echo "* MM2"
     echo "  - File: $dst"
@@ -94,7 +94,7 @@ for depth in {1..1}; do
 
     # MeTTa
     dst=pc-fc-depth_${depth}-petta.stdout
-    sed -i "s/(= (depth) [0-9]\+)/(= (depth) $depth)/g" pc-fc.metta # set depth
+    sed -i "s/(= (depth) [0-9]\+)/(= (depth) $depth)/g" pc-fc.metta
     /usr/bin/time --verbose "${hypdir}/PeTTa/run.sh" pc-fc.metta --silent &> $dst
     echo "* PeTTa"
     echo "  - File: $dst"
@@ -121,7 +121,7 @@ for depth in {1..2}; do
     # Display statistics
     echo "* MM2"
     echo "  - File: $dst"
-    echo "  - Solution count: $(count_mm2_solutions . $dst)"
+    echo "  - Solution count: $(count_mm2_solutions "\." $dst)"
     echo "  - Time (in second): $(get_user_time $dst)"
     echo "  - Maximum RAM (in byte): $(get_max_ram $dst)"
 
@@ -164,7 +164,7 @@ for theorem_id in idrefl id 2a1 pm2.43 imim2 jarr; do
     # Display statistics
     echo "* MM2"
     echo "  - File: $dst"
-    echo "  - Solution count: $(count_mm2_solutions . $dst)"
+    echo "  - Solution count: $(count_mm2_solutions "\." $dst)"
     echo "  - Time (in second): $(get_user_time $dst)"
     echo "  - Maximum RAM (in byte): $(get_max_ram $dst)"
 
