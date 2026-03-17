@@ -10,7 +10,7 @@
 hypdir="/home/nilg/Work/TrueAGI"
 
 # CSV filename
-csv_fn="benchmark-hard.csv"
+csv_fn="benchmark.csv"
 
 # Directory where to put stdout files
 stdoutdir="stdout"
