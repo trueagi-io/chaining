@@ -12,6 +12,9 @@ hypdir="/home/nilg/Work/TrueAGI"
 # CSV filename
 csv_fn="benchmark-hard.csv"
 
+# Directory where to put stdout files
+stdoutdir="stdout"
+
 #############
 # Functions #
 #############
@@ -80,6 +83,7 @@ get_theorem() {
 # Run the full suite of benchmarks to produce benchmarking data
 # comparing PeTTa and MM2.
 
+mkdir "${stdoutdir}"
 echo "chainer,engine,problem,depth,solutions,time,ram" > ${csv_fn}
 
 # 1. Run forward chaining to produce all candidates up to depth 4
@@ -87,7 +91,7 @@ echo "*************** Full Forward Chaining ***************"
 for depth in {1..4}; do
     echo "------------ depth $depth ------------"
     # MM2
-    dst=pc-fc-depth_${depth}-mm2.stdout
+    dst="${stdoutdir}/pc-fc-depth_${depth}-mm2.stdout"
     depth_peano="$(i2p $depth)"
     sed -i "s/(ne [()S Z]\+)/(ne $depth_peano)/g" pc-fc.mm2
     /usr/bin/time --verbose "${hypdir}/MORK/target/release/mork" run pc-fc.mm2 &> $dst
@@ -104,7 +108,7 @@ for depth in {1..4}; do
     echo "forward,mork,full,${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 
     # MeTTa
-    dst=pc-fc-depth_${depth}-petta.stdout
+    dst="${stdoutdir}/pc-fc-depth_${depth}-petta.stdout"
     sed -i "s/(= (depth) [0-9]\+)/(= (depth) $depth)/g" pc-fc.metta
     /usr/bin/time --verbose "${hypdir}/PeTTa/run.sh" pc-fc.metta --silent &> $dst
     # Gather statistics
@@ -125,7 +129,7 @@ echo "*************** Full Backward Chaining ***************"
 for depth in {1..2}; do
     echo "------------ Depth: $depth ------------"
     # MM2
-    dst=pc-bc-depth_${depth}-mm2.stdout
+    dst="${stdoutdir}/pc-bc-depth_${depth}-mm2.stdout"
     depth_peano="$(i2p $depth)"
     query="(! (bc $depth_peano . (: \$x \$a)))"
     # Set query
@@ -148,7 +152,7 @@ for depth in {1..2}; do
     echo "backward,mork,full,${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 
     # MeTTa
-    dst=pc-bc-depth_${depth}-petta.stdout
+    dst="${stdoutdir}/pc-bc-depth_${depth}-petta.stdout"
     query="!(bc (fromNumber ${depth}) (: \$x \$a))"
     # Set query
     echo "$query" >> pc-bc.metta
@@ -178,7 +182,7 @@ for theorem_id in impid id 2a1 pm2.43 imim2 jarr; do
     theorem="$(get_theorem $theorem_id)"
     echo "------------ Theorem: $theorem_id, $theorem ------------"
     # # MM2
-    # dst=pc-bc-depth_${depth}-${theorem_id}-mm2.stdout
+    # dst="${stdoutdir}/pc-bc-depth_${depth}-${theorem_id}-mm2.stdout"
     # depth_peano="$(i2p $depth)"
     # query="(! (bc $depth_peano . (: \$x $theorem)))"
     # # Set query
@@ -201,7 +205,7 @@ for theorem_id in impid id 2a1 pm2.43 imim2 jarr; do
     # echo "backward,mork,${theorem_id},${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 
     # MeTTa
-    dst=pc-bc-depth_${depth}-${theorem_id}-petta.stdout
+    dst="${stdoutdir}/pc-bc-depth_${depth}-${theorem_id}-petta.stdout"
     query="!(bc (fromNumber ${depth}) (: \$x $theorem))"
     # Set query
     echo "$query" >> pc-bc.metta
