@@ -1,0 +1,120 @@
+;; Define backward chainer like in MeTTa but replace MeTTa body by
+;; exec commands.
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Knowledge Bases ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Rule base up to index 8 included
+;; (rb (: id (-> $𝜑 $𝜑)))
+(rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
+
+;; Axiom base up to index 8 included
+(ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+(ab (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+(ab (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Backward Chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; Base case (nullary)
+(= (bc $depth $path (: $x $a))
+   (exec (0 $depth bc_nullary)
+         (, (ab (: $x $a)))
+         (, (sol $path (: $x $a)))))
+
+;; Recursive step (unary)
+(= (bc (S $k) $path (: ($f $x) $b))
+   (exec (1 $path bc_unary_init)
+         (, (rb (: $f (-> $a $b))))
+         (, (! (bc $k ($path 0) (: $x $a)))
+            (exec (5 * main)
+                  (, (! $fx) (= $fx $bdy))
+                  (O (- (! $fx)) (+ $bdy)))
+            (exec (9 ($path 0) bc_unary_final)
+                  (, (rb (: $f (-> $a $b)))
+                     (sol ($path 0) (: $x $a)))
+                  (, (sol $path (: ($f $x) $b)))))))
+
+;; Recursive step (binary)
+(= (bc (S $k) $path (: ($f $x1 $x2) $b))
+   (exec (1 $path bc_binary_init)
+         (, (rb (: $f (-> $a1 $a2 $b))))
+         (, (! (bc $k ($path 0) (: $x1 $a1)))
+            (exec (5 * main)
+                  (, (! $fx) (= $fx $bdy))
+                  (O (- (! $fx)) (+ $bdy)))
+            (exec (9 ($path 0) bc_binary_2nd_arg)
+                  (, (sol ($path 0) (: $x1 $a1))
+                     (rb (: $f (-> $a1 $a2 $b))))
+                  (, (! (bc $k ($path 1) (: $x2 $a2)))
+                     (exec (5 * main)
+                           (, (! $fx) (= $fx $bdy))
+                           (O (- (! $fx)) (+ $bdy)))
+                     (exec (9 ($path 1) bc_binary_final)
+                           (, (sol ($path 0) (: $x1 $a1))
+                              (sol ($path 1) (: $x2 $a2))
+                              (rb (: $f (-> $a1 $a2 $b))))
+                           (, (sol $path (: ($f $x1 $x2) $b)))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Function call evaluator ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Evaluate any function call prefixed by a bang
+(exec (5 * main)
+      (, (! $fx) (= $fx $bdy))
+      (O (- (! $fx)) (+ $bdy)))
+
+;;;;;;;;;;
+;; Main ;;
+;;;;;;;;;;
+
+;; ;; Full depth 2
+;; (! (bc (S (S Z)) . (: $x $a)))
+
+;; ;; Full depth 3
+;; (! (bc (S (S (S Z))) . (: $x $a)))
+
+;; ;; Full depth 4
+;; (! (bc (S (S (S (S Z)))) . (: $x $a)))
+
+;; ;; id
+;; (! (bc (S (S Z)) . (: $x (→ 𝜑 𝜑))))
+
+;; ;; 2a1
+;; (! (bc (S (S (S Z))) . (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑))))))
+
+;; ;; pm2.27
+;; (! (bc (S (S (S (S (S Z))))) . (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓)))))
+
+;; ;; pm2.43
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)))))
+
+;; ;; imim2
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓))))))
+
+;; ;; imim1
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))))))
+
+;; ;; pm2.83
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))))))
+
+;; ;; peirceroll
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑))))))
+
+;; ;; imim12
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃)))))))
+
+;; ;; jarr
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)))))
+
+;; ;; pm2.86
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒))))))
+
+;; ;; loolin
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)))))
+
+;; ;; loowoz
+;; (! (bc (S (S (S Z))) . (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))))))

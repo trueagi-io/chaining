@@ -1,0 +1,59 @@
+;; Like pc-fc.mm2 but proofs are fully type annotated.
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Knowledge Bases ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Rule base up to index 8 included
+(rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
+
+;; Axiom base up to index 8 included
+(ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+(ab (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+(ab (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+
+;;;;;;;;;;
+;; Main ;;
+;;;;;;;;;;
+
+;; Number of expansions (decrease at each expansion)
+(ne (S (S (S Z))))
+
+;; Current target depth of proofs to expand to (increase at each expansion)
+(ctd Z)
+
+;; Initialize proofs of depth Z
+(exec (0 Init)
+      (, (ctd Z)
+         (ab (: $x $a)))
+      (O ;; Store proofs of depth Z
+         (+ (dp Z (: $x $a)))
+         ;; Update current target depth
+         (- (ctd Z))
+         (+ (ctd (S Z)))))
+
+;; Expand proofs to depth greater than Z
+(exec (9 Expand)
+      (, (ctd (S $k))
+         (ne (S $l))
+         (exec ($priority Expand) $ptrn $tplt))
+      (O ;; Move proofs from previous depth
+         (+ (exec (0 Move)
+                  (, (dp $k (: $x $a)))
+                  (, (dp (S $k) (: $x $a)))))
+         ;; Binary application
+         (+ (exec (2 Binary)
+                  (, (dp $k (: $x1 $a1))
+                     (dp $k (: $x2 $a2))
+                     (rb (: $f (-> $a1 $a2 $b))))
+                  (, (dp (S $k) (: ($f (: $x1 $a1) (: $x2 $a2)) $b)))))
+         ;; Update current target depth and number of expansions
+         (+ (exec (5 Update)
+                  (, (ctd (S $k))
+                     (ne (S $l)))
+                  (O (- (ctd (S $k)))
+                     (- (ne (S $l)))
+                     (+ (ctd (S (S $k))))
+                     (+ (ne $l)))))
+         ;; Respawn expander
+         (+ (exec ($priority Expand) $ptrn $tplt))))

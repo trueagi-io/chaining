@@ -54,3 +54,6 @@ using [mm2metta](https://github.com/ngeiswei/mm2metta).
 ### Usage
 
 For the most advanced experiment go to [pc-xp.metta](pc-xp.metta).
+
+For a comparison between PeTTa and MM2 go to the
+[benchmarks](benchmarks) subfolder.
