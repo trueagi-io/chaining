@@ -5,7 +5,7 @@
 ;;;;;;;;;;;;;;;;
 
 ;; Depth of the forward chaining
-(= (depth) 1)
+(= (depth) 4)
 
 ;;;;;;;;;;;;;;;
 ;; Functions ;;
