@@ -83,7 +83,7 @@ get_theorem() {
 # Run the full suite of benchmarks to produce benchmarking data
 # comparing PeTTa and MM2.
 
-mkdir "${stdoutdir}"
+mkdir -p "${stdoutdir}"
 echo "chainer,engine,problem,depth,solutions,time,ram" > ${csv_fn}
 
 # 1. Run forward chaining to produce all candidates up to depth 4
@@ -103,7 +103,7 @@ for depth in {1..4}; do
     echo "  - File: $dst"
     echo "  - Solution count: ${solutions}"
     echo "  - Time (in second): ${user_times}"
-    echo "  - Maximum RAM (in byte): ${max_ram}"
+    echo "  - Maximum RAM (in kb): ${max_ram}"
     # Write to CSV file
     echo "forward,mork,full,${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 
@@ -119,7 +119,7 @@ for depth in {1..4}; do
     echo "  - File: $dst"
     echo "  - Solution count: ${solutions}"
     echo "  - Time (in second): ${user_time}"
-    echo "  - Maximum RAM (in byte): ${max_ram}"
+    echo "  - Maximum RAM (in kb): ${max_ram}"
     # Write to CSV file
     echo "forward,petta,full,${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 done
@@ -147,7 +147,7 @@ for depth in {1..2}; do
     echo "  - File: $dst"
     echo "  - Solution count: ${solutions}"
     echo "  - Time (in second): ${user_time}"
-    echo "  - Maximum RAM (in byte): ${max_ram}"
+    echo "  - Maximum RAM (in kb): ${max_ram}"
     # Write to CSV file
     echo "backward,mork,full,${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 
@@ -169,7 +169,7 @@ for depth in {1..2}; do
     echo "  - File: $dst"
     echo "  - Solution count: ${solutions}"
     echo "  - Time (in second): ${user_time}"
-    echo "  - Maximum RAM (in byte): ${max_ram}"
+    echo "  - Maximum RAM (in kb): ${max_ram}"
     # Write to CSV file
     echo "backward,petta,full,${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 done
@@ -200,7 +200,7 @@ for theorem_id in impid id 2a1 pm2.43 imim2 jarr; do
     # echo "  - File: $dst"
     # echo "  - Solution count: $solutions"
     # echo "  - Time (in second): $user_time"
-    # echo "  - Maximum RAM (in byte): $max_ram"
+    # echo "  - Maximum RAM (in kb): $max_ram"
     # # Write to CSV file
     # echo "backward,mork,${theorem_id},${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 
@@ -222,7 +222,7 @@ for theorem_id in impid id 2a1 pm2.43 imim2 jarr; do
     echo "  - File: $dst"
     echo "  - Solution count: ${solutions}"
     echo "  - Time (in second): ${user_time}"
-    echo "  - Maximum RAM (in byte): ${max_ram}"
+    echo "  - Maximum RAM (in kb): ${max_ram}"
     # Write to CSV file
     echo "backward,petta,${theorem_id},${depth},${solutions},${user_time},${max_ram}" >> ${csv_fn}
 done
