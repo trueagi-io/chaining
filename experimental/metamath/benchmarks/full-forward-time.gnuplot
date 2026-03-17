@@ -6,9 +6,9 @@ set xlabel "Depth"
 set ylabel "Time(s)"
 set logscale y
 set autoscale y
-set output "full-forward-time.png"
+set output "plots/full-forward-time.png"
 set datafile missing NaN
 set datafile separator ","
 set datafile commentschars "c"
-plot "benchmark-hard.csv" using (strcol(1) eq "forward" && strcol(2) eq "petta" ? $4 : NaN):6 t "PeTTa" with lines, \
-     "benchmark-hard.csv" using (strcol(1) eq "forward" && strcol(2) eq "mork" ? $4 : NaN):6 t "MORK" with lines,
+plot "benchmark.csv" using (strcol(1) eq "forward" && strcol(2) eq "petta" ? $4 : NaN):6 t "PeTTa" with lines, \
+     "benchmark.csv" using (strcol(1) eq "forward" && strcol(2) eq "mork" ? $4 : NaN):6 t "MORK" with lines,
