@@ -9,10 +9,10 @@
 ;; Knowledge Bases ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; Rule base up to index 8 included
+;; Rule base
 (rb (: ax-mp (-> (→ $𝜑 $𝜓) $𝜑 $𝜓)))
 
-;; Axiom base up to index 8 included
+;; Axiom base
 (ab (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
 (ab (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 (ab (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
@@ -42,23 +42,23 @@
       (, (ctd (S $k))
          (ne (S $l))
          (exec ($priority Expand) $ptrn $tplt))
-      (O ;; Move proofs from previous depth
-         (+ (exec (0 Move)
-                  (, (sol $k (: $x $a)))
-                  (, (sol (S $k) (: $x $a)))))
-         ;; Binary application
-         (+ (exec (2 Binary)
-                  (, (sol $k (: $x1 $a1))
-                     (sol $k (: $x2 $a2))
-                     (rb (: $f (-> $a1 $a2 $b))))
-                  (, (sol (S $k) (: ($f $x1 $x2) $b)))))
+      (, ;; Move proofs from previous depth to current depth
+         (exec (0 Move)
+               (, (sol $k (: $x $a)))
+               (, (sol (S $k) (: $x $a))))
+         ;; Forward binary application
+         (exec (2 Binary)
+               (, (sol $k (: $x1 $a1))
+                  (sol $k (: $x2 $a2))
+                  (rb (: $f (-> $a1 $a2 $b))))
+               (, (sol (S $k) (: ($f $x1 $x2) $b))))
          ;; Update current target depth and number of expansions
-         (+ (exec (5 Update)
-                  (, (ctd (S $k))
-                     (ne (S $l)))
-                  (O (- (ctd (S $k)))
-                     (- (ne (S $l)))
-                     (+ (ctd (S (S $k))))
-                     (+ (ne $l)))))
+         (exec (5 Update)
+               (, (ctd (S $k))
+                  (ne (S $l)))
+               (O (- (ctd (S $k)))
+                  (- (ne (S $l)))
+                  (+ (ctd (S (S $k))))
+                  (+ (ne $l))))
          ;; Respawn expander
-         (+ (exec ($priority Expand) $ptrn $tplt))))
+         (exec ($priority Expand) $ptrn $tplt)))
