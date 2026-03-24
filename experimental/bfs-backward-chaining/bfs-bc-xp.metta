@@ -1,44 +1,38 @@
 ;; Breadth-first search backward chaining.  It works by iteratively
 ;; generating macro rules (lemmas) using dedicated combinators.
+;;
+;; By combining the bluebird and blackbird
+;; [combinators](https://hackage.haskell.org/package/data-aviary-0.4.0/docs/src/Data-Aviary-Birds.html)
+;; one can apply modus ponens backward while doing forward chaining.
+;;
+;; The blackbird operator can be used to create a specialized rule to
+;; expand modus ponens backward on the first argument of any abstract
+;; proof:
+;;
+;; .:mp = (λ z ((.: z) mp))
+;;
+;; with type signature
+;;
+;; (-> (-> $b $c)
+;;     (-> (→ $a $b) (-> $a $c)))
+;;
+;; or in Haskell
+;;
+;; (b -> c) -> ((→ a b) -> a -> c)
+;;
+;; meaning this rule can turn any abstract proof of type (b -> c) into
+;; am abstract proof of type (→ a b) -> a -> c.  In other words b is
+;; replaced by (→ a b) -> a, i.e. a monus ponens expansion on the
+;; first argument.
+;;
+;; Then the bluebird can be used to move this specialized rule to
+;; expand modus ponens backward to any argument of any abstract proof:
+;;
+;; (. .:mp) to expand the second argument, (. (. .:mp)) to expand the
+;; third argument, etc.
 
-;; In search for the combinators
-;;
-;; From https://hackage.haskell.org/package/data-aviary-0.4.0/docs/Data-Aviary-Birds.html
-;;
-;; we find relevant combinator
-;;
-;; - [blackbird](https://hackage.haskell.org/package/data-aviary-0.4.0/docs/src/Data-Aviary-Birds.html#blackbird)
-;;   - type: (c -> d) -> (a -> b -> c) -> a -> b -> d
-;;   - definition: blackbird f g x y = f (g x y)
-;;
-;; - ?
-;;   - type: (c -> d -> e) -> (a -> b -> d) -> c -> a -> b -> e
-;;   - definition: g >>:> h = \c a b -> g c (h a b)
-;;
-;; - [eagle](https://hackage.haskell.org/package/data-aviary-0.4.0/docs/src/Data-Aviary-Birds.html#eagle)
-;;   - type (a -> d -> e) -> a -> (b -> c -> d) -> b -> c -> e
-;;   - definition: eagle f x g y z = f x (g y z)
-;;
-;; Candidate: eaglebald, goldfinch
-
-;; How it works
-;;
-;; Given theorem TH
-;; Iteration 0:
-;; (: $x $a)
-;;
-;; Iteration 1:
-;; (: ax-mp (-> (→ $a $b) $a $b))
-;;
-;; Iteration 2:
-;; (: ax-mp (-> (→ $a $b) $a $b))
-;; - Gen ->
-;; 1. (: (λ x y z (ax-mp x (ax-mp y z))) (-> (→ $a $c) (→ $b $a) $b $c))
-;; 2. (: (λ x y z (ax-mp (ax-mp x y) z)) (-> (→ $b (→ $a $c)) $b $a $c))
-;; 3. (: (λ x y z w (ax-mp (ax-mp x y) (ax-mp z w)) ?)) ???
-;;
-;; Iteration 3:
-;; 
+;; Disable co-unification
+!(translatePredicate (set_prolog_flag occurs_check True))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;; ;;
@@ -127,14 +121,16 @@
 
 ;; Proof application
 (= (bc $kb $env $idx (S $k) (: ($f $x) $b))
+   ;; (trace! (👁 bc-app $kb $env $idx (S $k) (: ($f $x) $b))
    (let* (((: $f (-> $a $b)) (bc $kb $env $idx $k (: $f (-> $a $b))))
           ((: $x $a) (bc $kb $env $idx $k (: $x $a))))
-     (: ($f $x) $b)))
+     (: ($f $x) $b)));)
 ;; Proof abstraction
 (= (bc $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
+   ;; (trace! (👁 bc-abs $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
    (let (: $y $b)
      (bc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
-     (: (λ $x $y) (-> $a $b))))
+     (: (λ $x $y) (-> $a $b))));)
 
 ;; Like above, but fully annotated
 ;; ;; Proof application (fully annotated)
@@ -154,52 +150,144 @@
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-!(bind! &kb (new-space))
+;;;;;;;;;;;;;;
+;; Empty KB ;;
+;;;;;;;;;;;;;;
+
+;; Empty KN.  Convenient to limit the search to lambda expressions and
+;; nothing else
+!(bind! ∅-kb (new-space))
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Modus Ponens KB ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; KB with nothing but Modus Ponens
+!(bind! &mp-kb (new-space))
 
 ;; Modus ponens (curried representation)
-!(add-atom &kb (: mp (-> (→ $a $b)
-                         (-> $a
-                             $b))))
+!(add-atom &mp-kb (: mp (-> (→ $a $b)
+                            (-> $a
+                                $b))))
+
+;;;;;;;;;;;;;;;;
+;; General KB ;;
+;;;;;;;;;;;;;;;;
+
+;; KB with Modus Ponens and a few combinators
+!(bind! &gen-kb (new-space))
+
+;; Modus ponens (curried representation)
+!(add-atom &gen-kb (: mp (-> (→ $a $b)
+                             (-> $a
+                                 $b))))
+
+;; Bluebird
+!(add-atom &gen-kb (: . (-> (-> $b $c)
+                            (-> (-> $a $b)
+                                (-> $a
+                                    $c)))))
 
 ;; Blackbird
-!(add-atom &kb (: .: (-> (-> $c $d)
-                         (-> (-> $a (-> $b $c))
+!(add-atom &gen-kb (: .: (-> (-> $c $d)
+                             (-> (-> $a (-> $b $c))
+                                 (-> $a
+                                     (-> $b
+                                         $d))))))
+
+;;;;;;;;;;;;;;;;;;;;
+;; Specialized KB ;;
+;;;;;;;;;;;;;;;;;;;;
+
+;; KB with rules specialized for breadth-first search of propositional calculus
+!(bind! &spe-kb (new-space))
+
+;; Modus ponens (curried representation)
+!(add-atom &spe-kb (: mp (-> (→ $a $b)
                              (-> $a
-                                 (-> $b
-                                     $d))))))
+                                 $b))))
+
+;; Bluebird
+!(add-atom &spe-kb (: . (-> (-> $b $c)
+                            (-> (-> $a $b)
+                                (-> $a
+                                    $c)))))
 
 ;; Blackbird specialized for mp
-;; .mp = (λ z ((.: z) mp))
-!(add-atom &kb (: .mp (-> (-> $b $c)
-                          (-> (→ $a $b)
-                              (-> $a
-                                  $c)))))
-
-;; NEXT: write reduction rules to turn composition into application.
-;; NEXT: find way to inner apply .mp (hint: have the bc discover it).
-;; NEXT: prune search by only allowing inner to outer.
+;; .:mp = (λ z ((.: z) mp))
+!(add-atom &spe-kb (: .:mp (-> (-> $b $c)
+                               (-> (→ $a $b)
+                                   (-> $a
+                                       $c)))))
 
 ;;;;;;;;;;
 ;; Main ;;
 ;;;;;;;;;;
 
-;; !(bc &kb Nil z (fromNumber 0) (: $x $a))
-;; !(bc &kb Nil z (fromNumber 1) (: $x (-> $a (-> $b 𝜑))))
-;; !(bc &kb Nil z (fromNumber 2) (: ((λ z z) mp) (-> $a (-> $b 𝜑))))
-;; !(bc &kb Nil z (fromNumber 2) (: ((λ z z) $x) $a))
-;; !(bc &kb Nil z (fromNumber 2) (: $x (-> $a (-> $b (-> $c (-> $d 𝜑))))))
-;; !(bc &kb Nil z (fromNumber 2) (: $x (-> $a (-> $b (-> $c (-> $d 𝜑))))))
+;;;;;;;;;;;;;;;;;;;
+;; Test Empty KB ;;
+;;;;;;;;;;;;;;;;;;;
 
-;; !(bc &kb Nil z (fromNumber 2) (: (.mp (.mp mp)) $a))
-!(bc &kb Nil z (fromNumber 0) (: .mp $a))
-!(bc &kb Nil z (fromNumber 3) (: (λ z ((.: z) mp)) $a))
-;; !(bc &kb Nil z (fromNumber 4) (: $x (-> (-> b c)
-;;                                         (-> (→ a b)
-;;                                             (-> a
-;;                                                 c)))))
-;; !(bc &kb Nil z (fromNumber 4) (: (λ z $y)
-;;                                  (-> (-> b c)
-;;                                      (-> (→ a b)
-;;                                          (-> b
-;;                                              c)))))
-;; !(bc &kb Nil z (fromNumber 5) (: ((.: mp) mp) $a))
+;; ;; Rediscover bluebird and nothing else
+;; !(test
+;;   (bc &∅-kb Nil z (fromNumber 5) (: $x (-> (-> b c)
+;;                                            (-> (-> a b)
+;;                                                (-> a
+;;                                                    c)))))
+;;   (: (λ z (λ (s z) (λ (s (s z)) (z ((s z) (s (s z)))))))
+;;      (-> (-> b c) (-> (-> a b) (-> a c)))))
+
+;; ;; Rediscover blackbird and nothing else
+;; ;; !(test
+;; !(once (bc &∅-kb Nil z (fromNumber 6) (: $x (-> (-> c d)
+;;                                                 (-> (-> a (-> b c))
+;;                                                     (-> a
+;;                                                         (-> b
+;;                                                             d)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test Modus Ponens KB ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; Rediscover .:mp and nothing else
+;; ;; !(test
+;; !(bc &mp-kb Nil z (fromNumber 6) (: (λ z $x) (-> (-> b c) (-> (→ a b) (-> a c)))))
+;;   ;; (: (λ z ((.: z) mp)) (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Test General KB ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test Specialized KB ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Replace first argument by modus ponens
+!(test
+  (bc &spe-kb Nil z (fromNumber 0)
+      (: .:mp (-> (-> $b $c)
+                 (-> (→ $a $b) (-> $a $c)))))
+  (: .:mp (-> (-> $b $c)
+             (-> (→ $a $b) (-> $a $c)))))
+
+;; Replace second argument by modus ponens
+!(test
+  (bc &spe-kb Nil z (fromNumber 1)
+      (: (. .:mp) (-> (-> $a (-> $c $d))
+                     (-> $a (-> (→ $b $c) (-> $b $d))))))
+  (: (. .:mp) (-> (-> $a (-> $c $d))
+                 (-> $a (-> (→ $b $c) (-> $b $d))))))
+
+;; Replace third argument by modus ponens
+!(test
+  (bc &spe-kb Nil z (fromNumber 2)
+      (: (. (. .:mp))
+         (-> (-> $a (-> $b (-> $d $e)))
+             (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
+  (: (. (. .:mp))
+     (-> (-> $a (-> $b (-> $d $e)))
+         (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
+
+;; NEXT: write reduction rules to turn composition into application.
+
+;; NEXT: prune search by only allowing inner to outer.
