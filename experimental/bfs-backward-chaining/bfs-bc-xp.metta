@@ -13,8 +13,7 @@
 ;;
 ;; with type signature
 ;;
-;; (-> (-> $b $c)
-;;     (-> (→ $a $b) (-> $a $c)))
+;; (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))
 ;;
 ;; or in Haskell
 ;;
@@ -72,6 +71,228 @@
 (: List (-> $a Type))
 (: Nil (List $a))
 (: Cons (-> $a (List $a) (List $a)))
+
+;;;;;;;;;;;
+;; Maybe ;;
+;;;;;;;;;;;
+
+;; Define Maybe type
+(: Maybe (-> $a Type))
+(: Nothing (Maybe $a))
+(: Just (-> $a (Maybe $a)))
+
+;; ;;;;;;;;;;;;;;;;;;;
+;; ;; Curry/Uncurry ;;
+;; ;;;;;;;;;;;;;;;;;;;
+
+;; ;; Define is-expression
+;; (: is-expression (-> Atom Bool))
+;; (= (is-expression $term) (== (get-metatype $term) Expression))
+
+;; ;; Define cons-cons-atom, that applies const-atom twice
+;; (: cons-cons-atom (-> Atom Atom Atom Atom))
+;; (= (cons-cons-atom $head1 $head2 $tail)
+;;    (let $head2-tail (cons-atom $head2 $tail)
+;;      (cons-atom $head1 $head2-tail)))
+
+;; ;; Given a pair of arguments and a binary operator, flattened the
+;; ;; right argument if it contains the binary operator.  The
+;; ;; unflattening does not propagate recursively to left, only to the
+;; ;; right and only to the operator right below, and so on.
+;; ;;
+;; ;; For instance
+;; ;;
+;; ;; (right-dissociate (-> T1 (-> T2 (T3 A B))) ->)
+;; ;;
+;; ;; outputs
+;; ;;
+;; ;; (-> T1 T2 (T3 A B))
+;; (: right-dissociate (-> Atom Atom Atom))
+;; (= (right-dissociate $term $op)
+;;    (if (is-expression $term)
+;;        (if (== $term ())
+;;            ()
+;;            (case $term
+;;              ((($op $larg $rarg) (let* (($rd-larg (right-dissociate $larg $op))
+;;                                         ($rd-rarg (right-dissociate $rarg $op)))
+;;                                    (if (is-expression $rd-rarg)
+;;                                        (let* (($head (car-atom $rd-rarg))
+;;                                               ($tail (cdr-atom $rd-rarg)))
+;;                                          (if (== $head $op)
+;;                                              (cons-cons-atom $op $larg $tail)
+;;                                              (cons-cons-atom $op $larg ($rd-rarg))))
+;;                                        (cons-cons-atom $op $larg ($rd-rarg)))))
+;;               ($_ $term))))
+;;        $term))
+
+;; ;; Test right-associate-with
+;; !(test
+;;   (right-dissociate T ->)
+;;   T)
+;; !(test
+;;   (right-dissociate () ->)
+;;   ())
+;; !(test
+;;   (right-dissociate (T) ->)
+;;   (T))
+;; !(test
+;;   (right-dissociate (-> T1 T2) ->)
+;;   (-> T1 T2))
+;; !(test
+;;   (right-dissociate (-> T1 (T2 A B)) ->)
+;;   (-> T1 (T2 A B)))
+;; !(test
+;;   (right-dissociate (-> T1 (-> T2 T3)) ->)
+;;   (-> T1 T2 T3))
+;; !(test
+;;   (right-dissociate (-> T1 (-> T2 (T3 A B))) ->)
+;;   (-> T1 T2 (T3 A B)))
+;; !(test
+;;   (right-dissociate (-> (-> T1 (-> T2 T3)) T4) ->)
+;;   (-> (-> T1 T2 T3) T4))
+
+;; ;; Convert type from curried format to uncurried format.
+;; ;;
+;; ;; For instance
+;; ;;
+;; ;; (uncurry-type (: Trans (-> (=== $x $y) (-> (=== $y $z) (=== $x $z)))))
+;; ;;
+;; ;; outputs
+;; ;;
+;; ;; (: Trans (-> (=== $x $y) (=== $y $z) (=== $x $z)))
+;; ;;
+;; ;; Note that the uncurrying only occurs on the arrow operator, nowhere
+;; ;; else.
+;; (: uncurry-type (-> Atom Atom))
+;; (= (uncurry-type $term)
+;;    (if (is-expression $term)
+;;        (if (== $term ())
+;;            ()
+;;            (let* (($head (car-atom $term))
+;;                   ($tail (cdr-atom $term)))
+;;              (if (== $head ->)
+;;                  (right-dissociate $term $head)
+;;                  (let* (($ca-head (uncurry-type $head))
+;;                         ($ca-tail (uncurry-type $tail)))
+;;                    (cons-atom $ca-head $ca-tail)))))
+;;        $term))
+
+;; ;; Test uncurry-type
+;; !(test
+;;   (uncurry-type T)
+;;   T)
+;; !(test
+;;   (uncurry-type ())
+;;   ())
+;; !(test
+;;   (uncurry-type (T))
+;;   (T))
+;; !(test
+;;   (uncurry-type (R A B))
+;;   (R A B))
+;; !(test
+;;   (uncurry-type ((R A B)))
+;;   ((R A B)))
+;; !(test
+;;   (uncurry-type (-> T1 T2))
+;;   (-> T1 T2))
+;; !(test
+;;   (uncurry-type (-> T1 (-> T2 T3)))
+;;   (-> T1 T2 T3))
+;; !(test
+;;   (uncurry-type (-> (-> T1 (-> T2 T3)) T4))
+;;   (-> (-> T1 T2 T3) T4))
+
+;; ;; ;; Uncurry ((. f) g) to (. f g)
+;; ;; ;; (: bluebird-uncurry (-> Atom (Maybe Atom)))
+;; ;; (= (bluebird-uncurry $term)
+;; ;;    (case $term
+;; ;;      (((($bluebird $f) $g) (if (== $bluebird .)
+;; ;;                                (Just (. $f $g))
+;; ;;                                Nothing))
+;; ;;       ($else Nothing))))
+
+;; ;; ;; Test bluebird-uncurry
+;; ;; !(test
+;; ;;   (bluebird-uncurry ((. $f) $g))
+;; ;;   (Just (. $f $g)))
+;; ;; !(test
+;; ;;   (bluebird-uncurry (((Φ $f) $g) $h))
+;; ;;   Nothing)
+
+;; ;; ;; Uncurry term, so for instance
+;; ;; ;;
+;; ;; ;; ((. $f) $g)
+;; ;; ;;
+;; ;; ;; becomes
+;; ;; ;;
+;; ;; ;; (. $f $g)
+;; ;; ;;
+;; ;; ;; Take into account the arity of the operators involved.  For
+;; ;; ;; instance
+;; ;; ;;
+;; ;; ;; (((. $f) $g) $x)
+;; ;; ;;
+;; ;; ;; becomes
+;; ;; ;;
+;; ;; ;; ((. $f $g) $x)
+;; ;; ;;
+;; ;; ;; instead of
+;; ;; ;;
+;; ;; ;; (. $f $g $x)
+;; ;; ;;
+;; ;; ;; because . is binary, not trinary.
+;; ;; (: uncurry-term (-> Atom Atom))
+;; ;; (= (uncurry-term $term)
+;; ;;    (case (get-metatype $term)
+;; ;;      ((Variable $term)
+;; ;;       (Symbol $term)
+;; ;;       (Grounded $term)
+;; ;;       (Expression
+;; ;;        (if (== $term ())
+;; ;;            ()
+;; ;;            ;; Recursive steps
+;; ;;            (case $term
+;; ;;              ((($f $g) (let* (($νf (uncurry-term $f))
+;; ;;                               ($νg (uncurry-term $g)))
+;; ;;                          (if (and (== $νf $f) (== $νg $g))
+;; ;;                              ;; $f and $g are uncurried, try to match
+;; ;;                              ;; them to known uncurring rules
+;; ;;                              (case (bluebird-uncurry $term)
+;; ;;                                (;; They match, return the result
+;; ;;                                 ((Just $r) $r)
+;; ;;                                 ;; They do not match, return unchanged
+;; ;;                                 (Nothing ($f $g))))
+;; ;;                              ;; $f and $g changed, attempt to uncurry
+;; ;;                              ;; their application once more
+;; ;;                              (uncurry-term ($νf $νg)))))
+;; ;;               ;; Otherwise, return unchanged
+;; ;;               ($else $term))))))))
+
+;; ;; ;; Test uncurry-term
+;; ;; !(test
+;; ;;   (uncurry-term ((. $f) $g))
+;; ;;   (. $f $g))
+;; ;; !(test
+;; ;;   (uncurry-term ((. $h) ((. $i) $j)))
+;; ;;   (. $h (. $i $j)))
+;; ;; !(test
+;; ;;   (uncurry-term (. (. .:mp)))
+;; ;;   (. (. .:mp)))
+
+;; ;; ;; Uncurry a type definition
+;; ;; (: uncurry (-> Atom Atom))
+;; ;; (= (uncurry (: $x $a)) (: (uncurry-term $x) (uncurry-type $a)))
+
+;; ;; ;; ;; test uncurry
+;; ;; ;; ;; !(test
+;; ;; ;;   !(uncurry (: (. (. .:mp))
+;; ;; ;;               (-> (-> $a (-> $b (-> $d $e)))
+;; ;; ;;                   (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
+;; ;; ;;   ;; (: (. (. .:mp)) (-> (-> $a $b $d $e)
+;; ;; ;;   ;;                     $a $b (→ $c $d) $c $e)))
+;; ;; ;; (: (. (. .:mp)) (-> (-> $_365620 (-> $_365638 (-> $_365656 $_365662)))
+;; ;; ;;                     $_365620 $_365638 (→ $_365692 $_365656) $_365692 $_365662))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
@@ -143,6 +364,21 @@
 ;;    (let (: $y $b)
 ;;      (bc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
 ;;      (: (λ (: $x $a) $y) (-> $a $b))))
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Forward Chainer ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+;; Apply one forward chaining step by applying each rule in the rule
+;; base space, $rb, to the argument (: $x $a).
+(: fc-step (-> $a $b $c))
+(= (fc-step $rb (: $x $a)) (match $rb (: $f (-> $a $b)) (: ($f $x) $b)))
+
+;; Iteratively apply forward chaining growing the results at each
+;; iteration.
+;; (: fc-step (-> $a $b Nat $b))
+(= (fc $rb (: $x $a) $depth) (: $x $a))
+(= (fc $rb (: $x $a) (S $k)) (fc $rb (fc-step $rb (: $x $a)) $k))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
@@ -220,9 +456,11 @@
                                    (-> $a
                                        $c)))))
 
-;;;;;;;;;;
-;; Main ;;
-;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;; ;;;;;;;;;; ;;
+;; ;; Main ;; ;;
+;; ;;;;;;;;;; ;;
+;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;
 ;; Test Empty KB ;;
@@ -266,17 +504,17 @@
 !(test
   (bc &spe-kb Nil z (fromNumber 0)
       (: .:mp (-> (-> $b $c)
-                 (-> (→ $a $b) (-> $a $c)))))
+                  (-> (→ $a $b) (-> $a $c)))))
   (: .:mp (-> (-> $b $c)
-             (-> (→ $a $b) (-> $a $c)))))
+              (-> (→ $a $b) (-> $a $c)))))
 
 ;; Replace second argument by modus ponens
 !(test
   (bc &spe-kb Nil z (fromNumber 1)
       (: (. .:mp) (-> (-> $a (-> $c $d))
-                     (-> $a (-> (→ $b $c) (-> $b $d))))))
+                      (-> $a (-> (→ $b $c) (-> $b $d))))))
   (: (. .:mp) (-> (-> $a (-> $c $d))
-                 (-> $a (-> (→ $b $c) (-> $b $d))))))
+                  (-> $a (-> (→ $b $c) (-> $b $d))))))
 
 ;; Replace third argument by modus ponens
 !(test
@@ -291,3 +529,30 @@
 ;; NEXT: write reduction rules to turn composition into application.
 
 ;; NEXT: prune search by only allowing inner to outer.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test forward chainer on expansion rules ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Expansion rules
+!(bind &er (new-space))
+
+;; Add bluebird
+!(add-atom &er (: . (-> (-> $b $c)
+                        (-> (-> $a $b)
+                            (-> $a
+                                $c)))))
+
+;; Test one step forward chainer
+!(test
+  (fc-step &er
+           (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
+  (: (. .:mp) (-> (-> $a (-> $c $d)) (-> $a (-> (→ $b $c) (-> $b $d))))))
+
+;; Test forward chainer at depth 1
+!(test
+  (collapse (fc &er
+                (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
+                (fromNumber 1)))
+  ((: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
+   (: (. .:mp) (-> (-> $a' (-> $c' $d')) (-> $a' (-> (→ $b' $c') (-> $b' $d')))))))
