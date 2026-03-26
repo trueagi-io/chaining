@@ -534,25 +534,42 @@
 ;; Test forward chainer on expansion rules ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Expansion rules
-!(bind &er (new-space))
-
-;; Add bluebird
-!(add-atom &er (: . (-> (-> $b $c)
+;; Expansion meta-theory (bluebird) to produce backward expansion rules
+!(bind &emt (new-space))
+!(add-atom &emt (: . (-> (-> $b $c)
                         (-> (-> $a $b)
                             (-> $a
                                 $c)))))
 
 ;; Test one step forward chainer
 !(test
-  (fc-step &er
+  (fc-step &emt
            (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
   (: (. .:mp) (-> (-> $a (-> $c $d)) (-> $a (-> (→ $b $c) (-> $b $d))))))
 
 ;; Test forward chainer at depth 1
 !(test
-  (collapse (fc &er
+  (collapse (fc &emt
                 (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
                 (fromNumber 1)))
   ((: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
    (: (. .:mp) (-> (-> $a' (-> $c' $d')) (-> $a' (-> (→ $b' $c') (-> $b' $d')))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test forward chainer on backward expansion ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Backward expansion theory
+!(bind &bet (new-space))
+
+;; Populate backward expansion theory using the expansion meta-theory
+!(let $res (fc &emt
+               (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
+               (fromNumber 10))
+   (add-atom &bet $res))
+
+;; Expand backward theorem (→ 𝜑 𝜑)
+
+;; Looking for something like
+;; (: (λ x y z w (ax-mp x (ax-mp (ax-mp y z) w))) (-> $a $b $c $d (→ 𝜑 𝜑)))
+!(fc &bet (: ax-mp (-> (→ $a (→ 𝜑 𝜑)) (-> $a (→ 𝜑 𝜑)))) (fromNumber 7))
