@@ -1,5 +1,12 @@
-;; Breadth-first search backward chaining.  It works by iteratively
-;; generating macro rules (lemmas) using dedicated combinators.
+;; Backward via forward chaining.  It works by forwadly generating
+;; hypothetical truths (and their associated proof abstractions)
+;; instead of absolute truths (and their associated proofs), then,
+;; still going forward, by applying these hypothetical truths to the
+;; axioms to reach absolute truths.  The idea being that only
+;; hypothetical truth proving given theorems are produced and nothing
+;; else.
+;;
+;; Hypothetical truths are produced using dedicated combinators.
 ;;
 ;; By combining the bluebird and blackbird
 ;; [combinators](https://hackage.haskell.org/package/data-aviary-0.4.0/docs/src/Data-Aviary-Birds.html)
@@ -372,7 +379,10 @@
 ;; Apply one forward chaining step by applying each rule in the rule
 ;; base space, $rb, to the argument (: $x $a).
 (: fc-step (-> $a $b $c))
+;; Unary application given argument
 (= (fc-step $rb (: $x $a)) (match $rb (: $f (-> $a $b)) (: ($f $x) $b)))
+;; Unary application given abstraction
+(= (fc-step $rb (: $f (-> $a $b))) (match $rb (: $x $a $b) (: ($f $x) $b)))
 
 ;; Iteratively apply forward chaining growing the results at each
 ;; iteration.
@@ -390,7 +400,7 @@
 ;; Empty KB ;;
 ;;;;;;;;;;;;;;
 
-;; Empty KN.  Convenient to limit the search to lambda expressions and
+;; Empty KB.  Convenient to limit the search to lambda expressions and
 ;; nothing else
 !(bind! ∅-kb (new-space))
 
@@ -431,27 +441,57 @@
                                      (-> $b
                                          $d))))))
 
-;;;;;;;;;;;;;;;;;;;;
-;; Specialized KB ;;
-;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Specialized KB for Breadth-first Search ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; KB with rules specialized for breadth-first search of propositional calculus
-!(bind! &spe-kb (new-space))
+!(bind! &bfs-kb (new-space))
 
+;; NEXT: do you really need mp since we have .:mp ?
 ;; Modus ponens (curried representation)
-!(add-atom &spe-kb (: mp (-> (→ $a $b)
+!(add-atom &bfs-kb (: mp (-> (→ $a $b)
                              (-> $a
                                  $b))))
 
 ;; Bluebird
-!(add-atom &spe-kb (: . (-> (-> $b $c)
+!(add-atom &bfs-kb (: . (-> (-> $b $c)
                             (-> (-> $a $b)
                                 (-> $a
                                     $c)))))
 
 ;; Blackbird specialized for mp
 ;; .:mp = (λ z ((.: z) mp))
-!(add-atom &spe-kb (: .:mp (-> (-> $b $c)
+!(add-atom &bfs-kb (: .:mp (-> (-> $b $c)
+                               (-> (→ $a $b)
+                                   (-> $a
+                                       $c)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Specialized KB for Depth-first Search ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; KB with rules specialized for breadth-first search of propositional calculus
+!(bind! &dfs-kb (new-space))
+
+;; NEXT: do you really need mp since we have .:mp ?
+;; Modus ponens (curried representation)
+!(add-atom &dfs-kb (: mp (-> (→ $a $b)
+                             (-> $a
+                                 $b))))
+
+;; Axiom of the principle of simplification
+!(add-atom &dfs-kb (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+
+;; Axiom of Frege
+!(add-atom &dfs-kb (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+
+;; Axiom of the principle of transposition
+!(add-atom &dfs-kb (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+
+;; Blackbird specialized for mp
+;; .:mp = (λ z ((.: z) mp))
+!(add-atom &dfs-kb (: .:mp (-> (-> $b $c)
                                (-> (→ $a $b)
                                    (-> $a
                                        $c)))))
@@ -496,13 +536,13 @@
 ;; Test General KB ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Test Specialized KB ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test Specialized KB for Breadth-first ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Replace first argument by modus ponens
 !(test
-  (bc &spe-kb Nil z (fromNumber 0)
+  (bc &bfs-kb Nil z (fromNumber 0)
       (: .:mp (-> (-> $b $c)
                   (-> (→ $a $b) (-> $a $c)))))
   (: .:mp (-> (-> $b $c)
@@ -510,7 +550,7 @@
 
 ;; Replace second argument by modus ponens
 !(test
-  (bc &spe-kb Nil z (fromNumber 1)
+  (bc &bfs-kb Nil z (fromNumber 1)
       (: (. .:mp) (-> (-> $a (-> $c $d))
                       (-> $a (-> (→ $b $c) (-> $b $d))))))
   (: (. .:mp) (-> (-> $a (-> $c $d))
@@ -518,7 +558,7 @@
 
 ;; Replace third argument by modus ponens
 !(test
-  (bc &spe-kb Nil z (fromNumber 2)
+  (bc &bfs-kb Nil z (fromNumber 2)
       (: (. (. .:mp))
          (-> (-> $a (-> $b (-> $d $e)))
              (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
@@ -572,4 +612,10 @@
 
 ;; Looking for something like
 ;; (: (λ x y z w (ax-mp x (ax-mp (ax-mp y z) w))) (-> $a $b $c $d (→ 𝜑 𝜑)))
-!(fc &bet (: ax-mp (-> (→ $a (→ 𝜑 𝜑)) (-> $a (→ 𝜑 𝜑)))) (fromNumber 7))
+;; !(fc &bet (: ax-mp (-> (→ $a (→ 𝜑 𝜑)) (-> $a (→ 𝜑 𝜑)))) (fromNumber 7))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test depth-first search backward chaining via forward chaining ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; NEXT
