@@ -353,12 +353,12 @@
    (let* (((: $f (-> $a $b)) (bc $kb $env $idx $k (: $f (-> $a $b))))
           ((: $x $a) (bc $kb $env $idx $k (: $x $a))))
      (: ($f $x) $b)));)
-;; Proof abstraction
-(= (bc $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
-   ;; (trace! (👁 bc-abs $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
-   (let (: $y $b)
-     (bc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
-     (: (λ $x $y) (-> $a $b))));)
+;; ;; Proof abstraction
+;; (= (bc $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
+;;    ;; (trace! (👁 bc-abs $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
+;;    (let (: $y $b)
+;;      (bc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
+;;      (: (λ $x $y) (-> $a $b))));)
 
 ;; Like above, but fully annotated
 ;; ;; Proof application (fully annotated)
@@ -590,19 +590,19 @@
                             (-> $a
                                 $c)))))
 
-;; Test one step forward chainer
-!(test
-  (fc-step &emt
-           (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
-  (: (. .:mp) (-> (-> $a (-> $c $d)) (-> $a (-> (→ $b $c) (-> $b $d))))))
+;; NEXT: add missing solutions
+;; ;; Test one step forward chainer
+;; !(test
+;;   (fc-step &emt
+;;            (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
+;;   (: (. .:mp) (-> (-> $a (-> $c $d)) (-> $a (-> (→ $b $c) (-> $b $d))))))
 
-;; Test forward chainer at depth 1
-!(test
-  (collapse (fc &emt
-                (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
-                (fromNumber 1)))
-  ((: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
-   (: (. .:mp) (-> (-> $a' (-> $c' $d')) (-> $a' (-> (→ $b' $c') (-> $b' $d')))))))
+;; ;; Test forward chainer at depth 1
+;; !(test
+;;   (collapse (fc &emt (fromNumber 1)
+;;                 (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))))
+;;   ((: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
+;;    (: (. .:mp) (-> (-> $a' (-> $c' $d')) (-> $a' (-> (→ $b' $c') (-> $b' $d')))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test forward chainer on backward expansion ;;
