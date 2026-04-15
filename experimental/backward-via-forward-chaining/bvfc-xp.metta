@@ -382,13 +382,13 @@
 ;; Unary application given argument
 (= (fc-step $rb (: $x $a)) (match $rb (: $f (-> $a $b)) (: ($f $x) $b)))
 ;; Unary application given abstraction
-(= (fc-step $rb (: $f (-> $a $b))) (match $rb (: $x $a $b) (: ($f $x) $b)))
+(= (fc-step $rb (: $f (-> $a $b))) (match $rb (: $x $a) (: ($f $x) $b)))
 
 ;; Iteratively apply forward chaining growing the results at each
 ;; iteration.
-;; (: fc-step (-> $a $b Nat $b))
-(= (fc $rb (: $x $a) $depth) (: $x $a))
-(= (fc $rb (: $x $a) (S $k)) (fc $rb (fc-step $rb (: $x $a)) $k))
+;; (: fc (-> $a Nat $b $b))
+(= (fc $rb $depth (: $x $a)) (: $x $a))
+(= (fc $rb (S $k) (: $x $a)) (fc $rb $k (fc-step $rb (: $x $a))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
