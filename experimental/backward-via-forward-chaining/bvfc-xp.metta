@@ -378,7 +378,9 @@
 
 ;; Apply one forward chaining step by applying each rule in the rule
 ;; base space, $rb, to the argument (: $x $a).
-(: fc-step (-> $a $b $c))
+(: fc-step (-> $a                       ; Knowledge base
+               $b                       ; Query
+               $b))
 ;; Unary application given argument
 (= (fc-step $rb (: $x $a)) (match $rb (: $f (-> $a $b)) (: ($f $x) $b)))
 ;; Unary application given abstraction
