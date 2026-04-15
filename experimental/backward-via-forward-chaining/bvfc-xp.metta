@@ -469,12 +469,6 @@
 ;; KB with rules specialized for breadth-first search of propositional calculus
 !(bind! &bfs-kb (new-space))
 
-;; NEXT: do you really need mp since we have .:mp ?
-;; Modus ponens (curried representation)
-!(add-atom &bfs-kb (: mp (-> (→ $a $b)
-                             (-> $a
-                                 $b))))
-
 ;; Bluebird
 !(add-atom &bfs-kb (: . (-> (-> $b $c)
                             (-> (-> $a $b)
@@ -494,12 +488,6 @@
 
 ;; KB with rules specialized for breadth-first search of propositional calculus
 !(bind! &dfs-kb (new-space))
-
-;; NEXT: do you really need mp since we have .:mp ?
-;; Modus ponens (curried representation)
-!(add-atom &dfs-kb (: mp (-> (→ $a $b)
-                             (-> $a
-                                 $b))))
 
 ;; Axiom of the principle of simplification
 !(add-atom &dfs-kb (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
