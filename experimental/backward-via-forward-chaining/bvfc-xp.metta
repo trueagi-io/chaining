@@ -612,19 +612,19 @@
 !(bind &bet (new-space))
 
 ;; Populate backward expansion theory using the expansion meta-theory
-!(let $res (fc &emt
-               (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
-               (fromNumber 10))
+!(let $res (fc &emt (fromNumber 10)
+               (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
    (add-atom &bet $res))
 
 ;; Expand backward theorem (→ 𝜑 𝜑)
 
 ;; Looking for something like
 ;; (: (λ x y z w (ax-mp x (ax-mp (ax-mp y z) w))) (-> $a $b $c $d (→ 𝜑 𝜑)))
-;; !(fc &bet (: ax-mp (-> (→ $a (→ 𝜑 𝜑)) (-> $a (→ 𝜑 𝜑)))) (fromNumber 7))
+;; !(fc &bet (fromNumber 7) (: ax-mp (-> (→ $a (→ 𝜑 𝜑)) (-> $a (→ 𝜑 𝜑)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test depth-first search backward chaining via forward chaining ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; NEXT
+!(bc &pc-kb Nil z (fromNumber 4) (: $x (→ 𝜑 𝜑)))
+!(fc &dfs-kb (fromNumber 5) (: ax-id (-> (→ 𝜑 𝜑) (→ 𝜑 𝜑))))
