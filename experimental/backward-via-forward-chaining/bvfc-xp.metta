@@ -416,6 +416,27 @@
                             (-> $a
                                 $b))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Propositional Calculus KB ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; KB with propositional calculus rules and axioms
+!(bind! &pc-kb (new-space))
+
+;; Modus ponens (curried representation)
+!(add-atom &pc-kb (: mp (-> (→ $a $b)
+                            (-> $a
+                                $b))))
+
+;; Axiom of the principle of simplification
+!(add-atom &pc-kb (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+
+;; Axiom of Frege
+!(add-atom &pc-kb (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+
+;; Axiom of the principle of transposition
+!(add-atom &pc-kb (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+
 ;;;;;;;;;;;;;;;;
 ;; General KB ;;
 ;;;;;;;;;;;;;;;;
