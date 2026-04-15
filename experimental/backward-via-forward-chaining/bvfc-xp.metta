@@ -388,9 +388,28 @@
 
 ;; Iteratively apply forward chaining growing the results at each
 ;; iteration.
-;; (: fc (-> $a Nat $b $b))
-(= (fc $rb $depth (: $x $a)) (: $x $a))
-(= (fc $rb (S $k) (: $x $a)) (fc $rb $k (fc-step $rb (: $x $a))))
+;; (: fc (-> $a                            ; Knowledge base
+;;           Nat                           ; Maximum depth
+;;           $b                            ; Target Query
+;;           $b                            ; Query
+;;           $b))
+;; Base case.  If $a equals $trgt then return, otherwise prune.
+(= (fc $rb $depth (: $tx $ta) (: $x $a))
+   (trace! (👁 fc-base $rb $depth $trgt (: $x $a))
+           (let (: $x $a) (: $tx $ta) (: $x $a))))
+;; Recursive step
+(= (fc $rb (S $k) (: $tx $ta) (: $x $a))
+   (trace! (👁 fc-rec $rb (S $k) (: $tx $ta) (: $x $a))
+           (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a)))))
+
+;; Backward via forward chaining
+;; (: (bvfc (-> $a                         ; Knowledge base
+;;              Nat                        ; Maximum depth
+;;              $b                         ; Query
+;;              $b)))
+(= (bvfc $rb $depth (: $x $a))
+   (trace! (👁 fc $rb $depth (: $x $a) (: id (-> $a $a)))
+           (fc $rb $depth (: $x $a) (: id (-> $a $a)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
@@ -628,5 +647,5 @@
 ;; Test depth-first search backward chaining via forward chaining ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-!(bc &pc-kb Nil z (fromNumber 4) (: $x (→ 𝜑 𝜑)))
-!(fc &dfs-kb (fromNumber 5) (: id (-> (→ 𝜑 𝜑) (→ 𝜑 𝜑))))
+;; !(bc &pc-kb Nil z (fromNumber 4) (: $x (→ 𝜑 𝜑)))
+!(bvfc &dfs-kb (fromNumber 5) (: $x (→ 𝜑 𝜑)))
