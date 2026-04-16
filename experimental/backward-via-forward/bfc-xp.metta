@@ -59,6 +59,14 @@
 (: fromNumber (-> Number Nat))
 (= (fromNumber $n) (if (<= $n 0) Z (S (fromNumber (- $n 1)))))
 
+;;;;;;;;;;
+;; When ;;
+;;;;;;;;;;
+
+;; Run the code if the condition is true, otherwise prune the branch
+(: when (-> Bool Atom $a))
+(= (when $c $x) (if $c $x (empty)))
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; De Bruijn Index ;;
 ;;;;;;;;;;;;;;;;;;;;;
@@ -331,56 +339,68 @@
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-;; Curried backward chainer with lambda abstraction
+;; Curried backward chainer
 (: bc (-> $a                            ; Knowledge base space
-          $b                            ; Environment
-          DeBruijn                      ; De Bruijn Index
           Nat                           ; Maximum depth
-          $c                            ; Query
+          $b                            ; Query
           $c))                          ; Result
 
 ;; Base cases
-(= (bc $kb $env $idx $_ (: $x $a))
+(= (bc $kb $_ (: $x $a)) (match $kb (: $x $a) (: $x $a)))
+
+;; Recursive steps
+;; Proof application
+(= (bc $kb (S $k) (: ($f $x) $b))
+   (let* (((: $f (-> $a $b)) (bc $kb $k (: $f (-> $a $b))))
+          ((: $x $a) (bc $kb $k (: $x $a))))
+     ;; Filter out mp because it is not a proposition
+     (when (!= $x mp) (: ($f $x) $b))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Backward chainer with λ abstraction ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Curried backward chainer with lambda abstraction
+(: λbc (-> $a                            ; Knowledge base space
+           $b                            ; Environment
+           DeBruijn                      ; De Bruijn Index
+           Nat                           ; Maximum depth
+           $c                            ; Query
+           $d))                          ; Result
+
+;; Base cases
+(= (λbc $kb $env $idx $_ (: $x $a))
    (match $kb (: $x $a) (: $x $a)))
-(= (bc $kb $env $idx $_ (: $x $a))
+(= (λbc $kb $env $idx $_ (: $x $a))
    (match' $env (: $x $a) (: $x $a)))
 
 ;; Recursive steps
 
 ;; Proof application
-(= (bc $kb $env $idx (S $k) (: ($f $x) $b))
-   ;; (trace! (👁 bc-app $kb $env $idx (S $k) (: ($f $x) $b))
-   (let* (((: $f (-> $a $b)) (bc $kb $env $idx $k (: $f (-> $a $b))))
-          ((: $x $a) (bc $kb $env $idx $k (: $x $a))))
+(= (λbc $kb $env $idx (S $k) (: ($f $x) $b))
+   ;; (trace! (👁 λbc-app $kb $env $idx (S $k) (: ($f $x) $b))
+   (let* (((: $f (-> $a $b)) (λbc $kb $env $idx $k (: $f (-> $a $b))))
+          ((: $x $a) (λbc $kb $env $idx $k (: $x $a))))
      (: ($f $x) $b)));)
-;; ;; Proof abstraction
-;; (= (bc $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
-;;    ;; (trace! (👁 bc-abs $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
-;;    (let (: $y $b)
-;;      (bc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
-;;      (: (λ $x $y) (-> $a $b))));)
-
-;; Like above, but fully annotated
-;; ;; Proof application (fully annotated)
-;; (= (bc $kb $env $idx (S $k) (: ($f (: $x $a)) $b))
-;;    (let* (((: $f (-> $a $b)) (bc $kb $env $idx $k (: $f (-> $a $b))))
-;;           ((: $x $a) (bc $kb $env $idx $k (: $x $a))))
-;;      (: ($f (: $x $a)) $b)))
-;; ;; Proof abstraction (fully annotated)
-;; (= (bc $kb $env $x (S $k) (: (λ (: $x $a) $y) (-> $a $b)))
-;;    (let (: $y $b)
-;;      (bc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
-;;      (: (λ (: $x $a) $y) (-> $a $b))))
+;; Proof abstraction
+(= (λbc $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
+   ;; (trace! (👁 λbc-abs $kb $env $x (S $k) (: (λ $x $y) (-> $a $b)))
+   (let (: $y $b)
+     (λbc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
+     (: (λ $x $y) (-> $a $b))));)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Forward Chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+;; NEXT: examine if we can filter so that only propositions are used
+;; as arguments.
+
 ;; Apply one forward chaining step by applying each rule in the rule
 ;; base space, $rb, to the argument (: $x $a).
-(: fc-step (-> $a                       ; Knowledge base
-               $b                       ; Query
-               $b))
+;; (: fc-step (-> $a                       ; Knowledge base
+;;                $b                       ; Query
+;;                $c))
 ;; Unary application given argument
 (= (fc-step $rb (: $x $a)) (match $rb (: $f (-> $a $b)) (: ($f $x) $b)))
 ;; Unary application given abstraction
@@ -393,23 +413,27 @@
 ;;           $b                            ; Target Query
 ;;           $b                            ; Query
 ;;           $b))
-;; Base case.  If $a equals $trgt then return, otherwise prune.
+;; Base case.
 (= (fc $rb $depth (: $tx $ta) (: $x $a))
-   (trace! (👁 fc-base $rb $depth $trgt (: $x $a))
-           (let (: $x $a) (: $tx $ta) (: $x $a))))
+   ;; (trace! (👁 fc-b $rb $depth (: $tx $ta) (: $x $a))
+           (let (: $x $a) (: $tx $ta) (: $x $a)));)
 ;; Recursive step
 (= (fc $rb (S $k) (: $tx $ta) (: $x $a))
-   (trace! (👁 fc-rec $rb (S $k) (: $tx $ta) (: $x $a))
-           (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a)))))
+   ;; (trace! (👁 fc-r $rb (S $k) (: $tx $ta) (: $x $a))
+           (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a))));)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Backward chainer via forward chaining ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Backward via forward chaining
-;; (: (bvfc (-> $a                         ; Knowledge base
-;;              Nat                        ; Maximum depth
-;;              $b                         ; Query
-;;              $b)))
-(= (bvfc $rb $depth (: $x $a))
-   (trace! (👁 fc $rb $depth (: $x $a) (: id (-> $a $a)))
-           (fc $rb $depth (: $x $a) (: id (-> $a $a)))))
+;; (: (bfc (-> $a                         ; Knowledge base
+;;             Nat                        ; Maximum depth
+;;             $b                         ; Query
+;;             $b)))
+(= (bfc $rb $depth (: $x $a))
+   ;; (trace! (👁 bfc $rb $depth (: $x $a))
+           (fc $rb $depth (: $x $a) (: id (-> $a $a))));)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
@@ -538,20 +562,20 @@
 
 ;; ;; Rediscover bluebird and nothing else
 ;; !(test
-;;   (bc &∅-kb Nil z (fromNumber 5) (: $x (-> (-> b c)
-;;                                            (-> (-> a b)
-;;                                                (-> a
-;;                                                    c)))))
+;;   (λbc &∅-kb Nil z (fromNumber 5) (: $x (-> (-> b c)
+;;                                             (-> (-> a b)
+;;                                                 (-> a
+;;                                                     c)))))
 ;;   (: (λ z (λ (s z) (λ (s (s z)) (z ((s z) (s (s z)))))))
 ;;      (-> (-> b c) (-> (-> a b) (-> a c)))))
 
 ;; ;; Rediscover blackbird and nothing else
 ;; ;; !(test
-;; !(once (bc &∅-kb Nil z (fromNumber 6) (: $x (-> (-> c d)
-;;                                                 (-> (-> a (-> b c))
-;;                                                     (-> a
-;;                                                         (-> b
-;;                                                             d)))))))
+;; !(once (λbc &∅-kb Nil z (fromNumber 6) (: $x (-> (-> c d)
+;;                                                  (-> (-> a (-> b c))
+;;                                                      (-> a
+;;                                                          (-> b
+;;                                                              d)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test Modus Ponens KB ;;
@@ -559,7 +583,7 @@
 
 ;; ;; Rediscover .:mp and nothing else
 ;; ;; !(test
-;; !(bc &mp-kb Nil z (fromNumber 6) (: (λ z $x) (-> (-> b c) (-> (→ a b) (-> a c)))))
+;; !(λbc &mp-kb Nil z (fromNumber 6) (: (λ z $x) (-> (-> b c) (-> (→ a b) (-> a c)))))
 ;;   ;; (: (λ z ((.: z) mp)) (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -572,7 +596,7 @@
 
 ;; Replace first argument by modus ponens
 !(test
-  (bc &bfs-kb Nil z (fromNumber 0)
+  (bc &bfs-kb (fromNumber 0)
       (: .:mp (-> (-> $b $c)
                   (-> (→ $a $b) (-> $a $c)))))
   (: .:mp (-> (-> $b $c)
@@ -580,7 +604,7 @@
 
 ;; Replace second argument by modus ponens
 !(test
-  (bc &bfs-kb Nil z (fromNumber 1)
+  (bc &bfs-kb (fromNumber 1)
       (: (. .:mp) (-> (-> $a (-> $c $d))
                       (-> $a (-> (→ $b $c) (-> $b $d))))))
   (: (. .:mp) (-> (-> $a (-> $c $d))
@@ -588,7 +612,7 @@
 
 ;; Replace third argument by modus ponens
 !(test
-  (bc &bfs-kb Nil z (fromNumber 2)
+  (bc &bfs-kb (fromNumber 2)
       (: (. (. .:mp))
          (-> (-> $a (-> $b (-> $d $e)))
              (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
@@ -643,9 +667,92 @@
 ;; (: (λ x y z w (ax-mp x (ax-mp (ax-mp y z) w))) (-> $a $b $c $d (→ 𝜑 𝜑)))
 ;; !(fc &bet (fromNumber 7) (: ax-mp (-> (→ $a (→ 𝜑 𝜑)) (-> $a (→ 𝜑 𝜑)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test regular backward chaing ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; id
+!(once (bc &pc-kb (fromNumber 4) (: $x (→ 𝜑 𝜑))))
+
+;; pm2.43
+!(once (bc &pc-kb (fromNumber 4) (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)))))
+
+;; 2a1
+!(once (bc &pc-kb (fromNumber 5) (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑))))))
+
+;; imim2
+!(once (bc &pc-kb (fromNumber 5) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓))))))
+
+;; jarr
+!(once (bc &pc-kb (fromNumber 6) (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)))))
+
+;; loowoz
+!(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))))))
+
+;; NEXT: determine depths
+
+;; ;; pm2.27
+;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓)))))
+
+;; ;; imim1
+;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))))))
+
+;; ;; pm2.83
+;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))))))
+
+;; ;; peirceroll
+;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑))))))
+
+;; ;; imim12
+;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃)))))))
+
+;; ;; pm2.86
+;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒))))))
+
+;; ;; loolin
+;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test depth-first search backward chaining via forward chaining ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; !(bc &pc-kb Nil z (fromNumber 4) (: $x (→ 𝜑 𝜑)))
-!(bvfc &dfs-kb (fromNumber 5) (: $x (→ 𝜑 𝜑)))
+;; id
+!(once (bfc &dfs-kb (fromNumber 5) (: $x (→ 𝜑 𝜑))))
+
+;; pm2.43
+!(once (bfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)))))
+
+;; 2a1
+!(once (bfc &dfs-kb (fromNumber 7) (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑))))))
+
+;; imim2
+!(once (bfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓))))))
+
+;; jarr
+!(once (bfc &dfs-kb (fromNumber 13) (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)))))
+
+;; pm2.27
+!(once (bfc &dfs-kb (fromNumber 13) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓)))))
+
+;; imim1
+!(once (bfc &dfs-kb (fromNumber 15) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))))))
+
+;; loowoz
+!(once (bfc &dfs-kb (fromNumber 19) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))))))
+
+;; NEXT: determine depths
+
+;; ;; pm2.83
+;; !(once (bfc &dfs-kb (fromNumber 22) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))))))
+
+;; ;; peirceroll
+;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑))))))
+
+;; ;; imim12
+;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃)))))))
+
+;; ;; pm2.86
+;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒))))))
+
+;; ;; loolin
+;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)))))
