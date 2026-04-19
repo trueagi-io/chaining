@@ -689,10 +689,10 @@
 ;; loowoz
 !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))))))
 
-;; NEXT: determine depths
+;; pm2.27
+!(once (bc &pc-kb (fromNumber 7) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓)))))
 
-;; ;; pm2.27
-;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓)))))
+;; NEXT: determine depths
 
 ;; ;; imim1
 ;; !(once (bc &pc-kb (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))))))
@@ -740,19 +740,19 @@
 ;; loowoz
 !(once (bfc &dfs-kb (fromNumber 19) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))))))
 
+;; imim12
+!(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃)))))))
+
+;; pm2.83
+!(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))))))
+
 ;; NEXT: determine depths
 
-;; ;; pm2.83
-;; !(once (bfc &dfs-kb (fromNumber 22) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))))))
-
 ;; ;; peirceroll
-;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑))))))
-
-;; ;; imim12
-;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃)))))))
+;; !(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑))))))
 
 ;; ;; pm2.86
-;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒))))))
+;; !(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒))))))
 
 ;; ;; loolin
-;; !(once (bfc &dfs-kb (fromNumber 21) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)))))
+;; !(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)))))
