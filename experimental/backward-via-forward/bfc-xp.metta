@@ -422,12 +422,40 @@
      (λbc $kb (Cons (: $x $a) $env) (s $x) $k (: $y $b))
      (: (λ $x $y) (-> $a $b))));)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Backward chainer with maximum proof size ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; Backward chainer with maximum proof size, specialized for
+;; ;; propositional calculus.  It is curried but the notion of proof size
+;; ;; is independent of it.
+;; (: sbc (Nat                           ; Maximum size
+;;         $a                            ; Query
+;;         (Sized $b)))                  ; Sized result
+
+;; Base cases, axioms ax-1, ax-2, ax-3
+(= (sbc Z (: $x $a)) (empty))
+(= (sbc (S $k) (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkSized (S Z) (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
+(= (sbc (S $k) (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (MkSized (S Z) (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
+(= (sbc (S $k) (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (MkSized (S Z) (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
+
+;; Recursive step, inference rule mp
+(= (sbc (S $k) (: (mp $f $x) $b))
+   (let* (((MkSized $fs (: $f (→ $a $b))) (sbc $k (: $f (→ $a $b))))
+          ((MkSized $xs (: $x $a)) (sbc (minus $k $fs) (: $x $a))))
+     (MkSized (S (plus $fs $xs)) (: (mp $f $x) $b))))
+
+;; NEXT: re-implement the same as above but using Number instead of
+;; Nat
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Forward Chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; NEXT: examine if we can filter so that only propositions are used
-;; as arguments.
+;; NEXT: make sur that arguments of .:mp are propositions (and not functions)
 
 ;; Apply one forward chaining step by applying each rule in the rule
 ;; base space, $rb, to the argument (: $x $a).
