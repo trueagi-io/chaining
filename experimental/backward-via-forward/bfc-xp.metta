@@ -777,43 +777,109 @@
 ;; Test depth-first search backward chaining via forward chaining ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; NEXT: find out how to have bfc and sbc explore the same space
+
+;; Exhausively generate all proofs of certain sizes
+!(bfc &dfs-kb (fromNumber 1) (: $x $a))
+!(bfc &dfs-kb (fromNumber 2) (: $x $a))
+!(bfc &dfs-kb (fromNumber 3) (: $x $a))
+!(bfc &dfs-kb (fromNumber 4) (: $x $a))
+!(bfc &dfs-kb (fromNumber 5) (: $x $a))
+!(bfc &dfs-kb (fromNumber 6) (: $x $a))
+!(bfc &dfs-kb (fromNumber 7) (: $x $a))
+!(bfc &dfs-kb (fromNumber 8) (: $x $a))
+!(bfc &dfs-kb (fromNumber 9) (: $x $a))
+!(bfc &dfs-kb (fromNumber 10) (: $x $a))
+!(bfc &dfs-kb (fromNumber 11) (: $x $a))
+!(bfc &dfs-kb (fromNumber 12) (: $x $a))
+!(bfc &dfs-kb (fromNumber 13) (: $x $a))
+
 ;; id
-!(once (bfc &dfs-kb (fromNumber 5) (: $x (→ 𝜑 𝜑))))
+!(bfc &dfs-kb (fromNumber 5) (: $x (→ 𝜑 𝜑)))
 
 ;; pm2.43
-!(once (bfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)))))
+!(bfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
 
 ;; 2a1
-!(once (bfc &dfs-kb (fromNumber 7) (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑))))))
+!(bfc &dfs-kb (fromNumber 7) (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑)))))
 
 ;; imim2
-!(once (bfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓))))))
+!(bfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
 
 ;; jarr
-!(once (bfc &dfs-kb (fromNumber 13) (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)))))
+!(bfc &dfs-kb (fromNumber 13) (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; pm2.27
-!(once (bfc &dfs-kb (fromNumber 13) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓)))))
+!(bfc &dfs-kb (fromNumber 13) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
 
 ;; imim1
-!(once (bfc &dfs-kb (fromNumber 15) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))))))
+!(bfc &dfs-kb (fromNumber 15) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
 
 ;; loowoz
-!(once (bfc &dfs-kb (fromNumber 19) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))))))
+!(bfc &dfs-kb (fromNumber 19) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
 
 ;; imim12
-!(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃)))))))
+!(bfc &dfs-kb (fromNumber 25) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
 
 ;; pm2.83
-!(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))))))
+!(bfc &dfs-kb (fromNumber 25) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
 
 ;; NEXT: determine depths
 
 ;; ;; peirceroll
-;; !(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑))))))
+;; !(bfc &dfs-kb (fromNumber 26) (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑)))))
 
 ;; ;; pm2.86
-;; !(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒))))))
+;; !(bfc &dfs-kb (fromNumber 26) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒)))))
 
 ;; ;; loolin
-;; !(once (bfc &dfs-kb (fromNumber 25) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)))))
+;; !(bfc &dfs-kb (fromNumber 26) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test proof-sized bound backward chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Exhausively generate all proofs of certain sizes
+!(sbc (fromNumber 1) (: $x $a))
+!(sbc (fromNumber 2) (: $x $a))
+!(sbc (fromNumber 3) (: $x $a))
+!(sbc (fromNumber 4) (: $x $a))
+!(sbc (fromNumber 5) (: $x $a))
+!(sbc (fromNumber 6) (: $x $a))
+!(sbc (fromNumber 7) (: $x $a))
+!(sbc (fromNumber 8) (: $x $a))
+!(sbc (fromNumber 9) (: $x $a))
+!(sbc (fromNumber 10) (: $x $a))
+!(sbc (fromNumber 11) (: $x $a))
+!(sbc (fromNumber 12) (: $x $a))
+!(sbc (fromNumber 13) (: $x $a))
+
+;; id
+!(sbc (fromNumber 5) (: $x (→ 𝜑 𝜑)))
+
+;; pm2.43
+!(sbc (fromNumber 7) (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
+
+;; 2a1
+!(sbc (fromNumber 7) (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑)))))
+
+;; imim2
+!(sbc (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
+
+;; jarr
+!(sbc (fromNumber 13) (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+
+;; pm2.27
+!(sbc (fromNumber 13) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
+
+;; imim1
+!(sbc (fromNumber 15) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
+
+;; loowoz
+!(sbc (fromNumber 19) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+
+;; imim12
+!(sbc (fromNumber 25) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
+
+;; pm2.83
+!(sbc (fromNumber 25) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
