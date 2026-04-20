@@ -59,6 +59,31 @@
 (: fromNumber (-> Number Nat))
 (= (fromNumber $n) (if (<= $n 0) Z (S (fromNumber (- $n 1)))))
 
+;; Add two natural numbers
+(: plus (-> Nat Nat Nat))
+(= (plus $x Z) $x)
+(= (plus $x (S $y)) (plus (S $x) $y))
+
+;; Test plus
+!(test
+  (plus (S (S Z)) (S (S (S Z))))
+  (S (S (S (S (S Z))))))
+
+;; Subtrack two natural numbers.  If the second natural is greater
+;; than the first then return zero.
+(: minus (-> Nat Nat Nat))
+(= (minus $x Z) $x)
+(= (minus (S $x) (S $y)) (minus $x $y))
+(= (minus Z (S $y)) Z)
+
+;; Test minus
+!(test
+  (minus (S (S Z)) (S (S (S Z))))
+  Z)
+!(test
+  (minus (S (S (S Z))) (S (S Z)))
+  (S Z))
+
 ;;;;;;;;;;
 ;; When ;;
 ;;;;;;;;;;
