@@ -121,6 +121,14 @@
 (: Nothing (Maybe $a))
 (: Just (-> $a (Maybe $a)))
 
+;;;;;;;;;;;
+;; Sized ;;
+;;;;;;;;;;;
+
+;; ;; Associate a size to a term
+;; (: Sized (-> $a Type))
+;; (: MkSized (-> Nat $a (Sized $a)))
+
 ;; ;;;;;;;;;;;;;;;;;;;
 ;; ;; Curry/Uncurry ;;
 ;; ;;;;;;;;;;;;;;;;;;;
