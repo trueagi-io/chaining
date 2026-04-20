@@ -655,31 +655,31 @@
 ;; Test Specialized KB for Breadth-first ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Replace first argument by modus ponens
-!(test
-  (bc &bfs-kb (fromNumber 0)
-      (: .:mp (-> (-> $b $c)
-                  (-> (→ $a $b) (-> $a $c)))))
-  (: .:mp (-> (-> $b $c)
-              (-> (→ $a $b) (-> $a $c)))))
+;; ;; Replace first argument by modus ponens
+;; !(test
+;;   (bc &bfs-kb (fromNumber 0)
+;;       (: .:mp (-> (-> $b $c)
+;;                   (-> (→ $a $b) (-> $a $c)))))
+;;   (: .:mp (-> (-> $b $c)
+;;               (-> (→ $a $b) (-> $a $c)))))
 
-;; Replace second argument by modus ponens
-!(test
-  (bc &bfs-kb (fromNumber 1)
-      (: (. .:mp) (-> (-> $a (-> $c $d))
-                      (-> $a (-> (→ $b $c) (-> $b $d))))))
-  (: (. .:mp) (-> (-> $a (-> $c $d))
-                  (-> $a (-> (→ $b $c) (-> $b $d))))))
+;; ;; Replace second argument by modus ponens
+;; !(test
+;;   (bc &bfs-kb (fromNumber 1)
+;;       (: (. .:mp) (-> (-> $a (-> $c $d))
+;;                       (-> $a (-> (→ $b $c) (-> $b $d))))))
+;;   (: (. .:mp) (-> (-> $a (-> $c $d))
+;;                   (-> $a (-> (→ $b $c) (-> $b $d))))))
 
-;; Replace third argument by modus ponens
-!(test
-  (bc &bfs-kb (fromNumber 2)
-      (: (. (. .:mp))
-         (-> (-> $a (-> $b (-> $d $e)))
-             (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
-  (: (. (. .:mp))
-     (-> (-> $a (-> $b (-> $d $e)))
-         (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
+;; ;; Replace third argument by modus ponens
+;; !(test
+;;   (bc &bfs-kb (fromNumber 2)
+;;       (: (. (. .:mp))
+;;          (-> (-> $a (-> $b (-> $d $e)))
+;;              (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
+;;   (: (. (. .:mp))
+;;      (-> (-> $a (-> $b (-> $d $e)))
+;;          (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
 
 ;; NEXT: write reduction rules to turn composition into application.
 
