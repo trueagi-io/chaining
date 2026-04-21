@@ -708,7 +708,8 @@
 
 ;; NEXT: write reduction rules to turn composition into application.
 
-;; NEXT: prune search by only allowing inner to outer.
+;; NEXT: for breadth-first search, prune search by only allowing inner
+;;       to outer.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test forward chainer on expansion rules ;;
