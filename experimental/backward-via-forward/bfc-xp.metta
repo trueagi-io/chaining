@@ -129,9 +129,9 @@
 ;; (: Sized (-> $a Type))
 ;; (: MkSized (-> Nat $a (Sized $a)))
 
-;; ;;;;;;;;;;;;;;;;;;;
-;; ;; Curry/Uncurry ;;
-;; ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;
+;; Curry/Uncurry ;;
+;;;;;;;;;;;;;;;;;;;
 
 ;; ;; Define is-expression
 ;; (: is-expression (-> Atom Bool))
@@ -342,6 +342,13 @@
 ;; ;; ;; (: (. (. .:mp)) (-> (-> $_365620 (-> $_365638 (-> $_365656 $_365662)))
 ;; ;; ;;                     $_365620 $_365638 (→ $_365692 $_365656) $_365692 $_365662))
 
+;;;;;;;;;;;;;;;
+;; Reduction ;;
+;;;;;;;;;;;;;;;
+
+;; Reduce proofs with .:mp into equivalent proofs with mp
+;; NEXT: implement
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
 ;;;;;;;;;;;;;;;;;;;;;
@@ -426,9 +433,12 @@
 ;; Backward chainer with maximum proof size ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; ;; Backward chainer with maximum proof size, specialized for
-;; ;; propositional calculus.  It is curried but the notion of proof size
-;; ;; is independent of it.
+;; Backward chainer with maximum proof size, specialized for
+;; propositional calculus.  Note that here, contrary to depth, leaves
+;; (i.e. axioms) have a size of 1.  Internal nodes (i.e. inference
+;; rules) also have a size of 1.  However to apply an n-ary inference
+;; rule requires at least a size of 1 + arity, one for the internal
+;; node, arity for the children.
 ;; (: sbc (Nat                           ; Maximum size
 ;;         $a                            ; Query
 ;;         (Sized $b)))                  ; Sized result
