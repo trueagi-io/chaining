@@ -453,13 +453,28 @@
    (MkSized (S Z) (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
 
 ;; Recursive step, inference rule mp
-(= (sbc (S $k) (: (mp $f $x) $b))
-   (let* (((MkSized $fs (: $f (→ $a $b))) (sbc $k (: $f (→ $a $b))))
-          ((MkSized $xs (: $x $a)) (sbc (minus $k $fs) (: $x $a))))
+(= (sbc (S (S (S $k))) (: (mp $f $x) $b))
+   (let* (((MkSized $fs (: $f (→ $a $b))) (sbc (S $k) (: $f (→ $a $b))))
+          ((MkSized $xs (: $x $a)) (sbc (minus (S (S $k)) $fs) (: $x $a))))
      (MkSized (S (plus $fs $xs)) (: (mp $f $x) $b))))
 
-;; NEXT: re-implement the same as above but using Number instead of
-;; Nat
+;; Same as above but uses Number instead of Nat
+(= (nbc-gtz $s (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkSized 1 (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
+(= (nbc-gtz $s (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (MkSized 1 (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
+(= (nbc-gtz $s (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (MkSized 1 (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
+(= (nbc-gtz $s (: (mp $f $x) $b))
+   (if (< 2 $s)
+       (let* (((MkSized $fs (: $f (→ $a $b))) (nbc (- $s 2) (: $f (→ $a $b))))
+              ((MkSized $xs (: $x $a)) (nbc (- (- $s 1) $fs) (: $x $a))))
+         (MkSized (+ (+ $fs $xs) 1) (: (mp $f $x) $b)))
+       (empty)))
+(= (nbc $s (: $x $a))
+   (if (< 0 $s)
+       (nbc-gtz $s (: $x $a))
+       (empty)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Forward Chainer ;;
