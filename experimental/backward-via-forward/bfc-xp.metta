@@ -458,29 +458,34 @@
           ((MkSized $xs (: $x $a)) (sbc (minus (S (S $k)) $fs) (: $x $a))))
      (MkSized (S (plus $fs $xs)) (: (mp $f $x) $b))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Optimized backward chainer with maximum proof size ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; Same as above but uses Number instead of Nat
-(= (nbc-gtz $s (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+(= (obc-gtz $s (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
    (MkSized 1 (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
-(= (nbc-gtz $s (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+(= (obc-gtz $s (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
    (MkSized 1 (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
-(= (nbc-gtz $s (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+(= (obc-gtz $s (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
    (MkSized 1 (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
-(= (nbc-gtz $s (: (mp $f $x) $b))
+(= (obc-gtz $s (: (mp $f $x) $b))
    (if (< 2 $s)
-       (let* (((MkSized $fs (: $f (→ $a $b))) (nbc (- $s 2) (: $f (→ $a $b))))
-              ((MkSized $xs (: $x $a)) (nbc (- (- $s 1) $fs) (: $x $a))))
+       (let* (((MkSized $fs (: $f (→ $a $b))) (obc (- $s 2) (: $f (→ $a $b))))
+              ((MkSized $xs (: $x $a)) (obc (- (- $s 1) $fs) (: $x $a))))
          (MkSized (+ (+ $fs $xs) 1) (: (mp $f $x) $b)))
        (empty)))
-(= (nbc $s (: $x $a))
+(= (obc $s (: $x $a))
    (if (< 0 $s)
-       (nbc-gtz $s (: $x $a))
+       (obc-gtz $s (: $x $a))
        (empty)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Forward Chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; NEXT: make sur that arguments of .:mp are propositions (and not functions)
+;; NEXT: make sure that arguments of .:mp are propositions (and not functions)
+;; NEXT: make sure to not expand with .:mp if there aren't at least 3 size left
 
 ;; Apply one forward chaining step by applying each rule in the rule
 ;; base space, $rb, to the argument (: $x $a).
@@ -507,6 +512,44 @@
 (= (fc $rb (S $k) (: $tx $ta) (: $x $a))
    ;; (trace! (👁 fc-r $rb (S $k) (: $tx $ta) (: $x $a))
            (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a))));)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Optimized Forward Chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Like above but specialized for inversed propositional calculus,
+;; uses Number instead of Nat and avoid using .:mp as arguments.
+
+;; NEXT: implement
+
+;; ;; NEXT: make sure that arguments of .:mp are propositions (and not functions)
+;; ;; NEXT: make sure to not expand with .:mp if there aren't at least 3 size left
+
+;; ;; Apply one forward chaining step by applying each rule in the rule
+;; ;; base space, $rb, to the argument (: $x $a).
+;; ;; (: fc-step (-> $a                       ; Knowledge base
+;; ;;                $b                       ; Query
+;; ;;                $c))
+;; ;; Unary application given argument
+;; (= (fc-step $rb (: $x $a)) (match $rb (: $f (-> $a $b)) (: ($f $x) $b)))
+;; ;; Unary application given abstraction
+;; (= (fc-step $rb (: $f (-> $a $b))) (match $rb (: $x $a) (: ($f $x) $b)))
+
+;; ;; Iteratively apply forward chaining growing the results at each
+;; ;; iteration.
+;; ;; (: fc (-> $a                            ; Knowledge base
+;; ;;           Nat                           ; Maximum depth
+;; ;;           $b                            ; Target Query
+;; ;;           $b                            ; Query
+;; ;;           $b))
+;; ;; Base case.
+;; (= (fc $rb $depth (: $tx $ta) (: $x $a))
+;;    ;; (trace! (👁 fc-b $rb $depth (: $tx $ta) (: $x $a))
+;;            (let (: $x $a) (: $tx $ta) (: $x $a)));)
+;; ;; Recursive step
+;; (= (fc $rb (S $k) (: $tx $ta) (: $x $a))
+;;    ;; (trace! (👁 fc-r $rb (S $k) (: $tx $ta) (: $x $a))
+;;            (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a))));)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer via forward chaining ;;
@@ -910,51 +953,51 @@
 ;; ;; pm2.83
 ;; !(sbc (fromNumber 25) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Test proof-sized bound backward chainer (using Number instead of Nat ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test proof-sized bound optimized backward chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Exhausively generate all proofs of certain sizes
-;; !(nbc 1 (: $x $a))
-;; !(nbc 2 (: $x $a))
-;; !(nbc 3 (: $x $a))
-;; !(nbc 4 (: $x $a))
-;; !(nbc 5 (: $x $a))
-;; !(nbc 6 (: $x $a))
-;; !(nbc 7 (: $x $a))
-;; !(nbc 8 (: $x $a))
-;; !(nbc 9 (: $x $a))
-;; !(nbc 10 (: $x $a))
-;; !(nbc 11 (: $x $a))
-;; !(nbc 12 (: $x $a))
-;; !(nbc 13 (: $x $a))
+;; !(obc 1 (: $x $a))
+;; !(obc 2 (: $x $a))
+;; !(obc 3 (: $x $a))
+;; !(obc 4 (: $x $a))
+;; !(obc 5 (: $x $a))
+;; !(obc 6 (: $x $a))
+;; !(obc 7 (: $x $a))
+;; !(obc 8 (: $x $a))
+;; !(obc 9 (: $x $a))
+;; !(obc 10 (: $x $a))
+;; !(obc 11 (: $x $a))
+;; !(obc 12 (: $x $a))
+;; !(obc 13 (: $x $a))
 
 ;; ;; id
-;; !(nbc 5 (: $x (→ 𝜑 𝜑)))
+;; !(obc 5 (: $x (→ 𝜑 𝜑)))
 
 ;; ;; pm2.43
-;; !(nbc 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
+;; !(obc 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
 
 ;; ;; 2a1
-;; !(nbc 7 (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑)))))
+;; !(obc 7 (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑)))))
 
 ;; ;; imim2
-;; !(nbc 7 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
+;; !(obc 7 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
 
 ;; ;; jarr
-;; !(nbc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; !(obc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; ;; pm2.27
-;; !(nbc 13 (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
+;; !(obc 13 (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
 
 ;; ;; imim1
-;; !(nbc 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
+;; !(obc 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
 
 ;; ;; loowoz
-;; !(nbc 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+;; !(obc 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
 
 ;; ;; imim12
-;; !(nbc 25 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
+;; !(obc 25 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
 
 ;; ;; pm2.83
-;; !(nbc 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
+;; !(obc 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
