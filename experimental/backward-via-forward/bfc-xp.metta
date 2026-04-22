@@ -419,7 +419,8 @@
    (let* (((: $f (-> $a $b)) (bc $kb $k (: $f (-> $a $b))))
           ((: $x $a) (bc $kb $k (: $x $a))))
      ;; Filter out mp because it is not a proposition
-     (when (!= $x mp) (: ($f $x) $b))))
+     (if (!= $x mp) (: ($f $x) $b) (empty))))
+     ;; (when (!= $x mp) (: ($f $x) $b))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer with λ abstraction ;;
@@ -504,13 +505,17 @@
    (if (< 0 $s)
        (obc-gtz $s (: $x $a))
        (empty)))
+;; (= (obc-gtz $s (: (mp $f $x) $b))
+;;    (when (< 2 $s)
+;;      (let* (((MkSized $fs (: $f (→ $a $b))) (obc (- $s 2) (: $f (→ $a $b))))
+;;             ((MkSized $xs (: $x $a)) (obc (- (- $s 1) $fs) (: $x $a))))
+;;        (MkSized (+ (+ $fs $xs) 1) (: (mp $f $x) $b)))))
+;; (= (obc $s (: $x $a))
+;;    (when (< 0 $s) (obc-gtz $s (: $x $a))))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Forward Chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;
-
-;; NEXT: make sure that arguments of .:mp are propositions (and not functions)
-;; NEXT: make sure to not expand with .:mp if there aren't at least 3 size left
 
 ;; Apply one forward chaining step by applying each rule in the rule
 ;; base space, $rb, to the argument (: $x $a).
