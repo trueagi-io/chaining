@@ -84,13 +84,38 @@
   (minus (S (S (S Z))) (S (S Z)))
   (S Z))
 
+;; Less than or equal comparison for natural numbers
+(= (lte Z Z) True)
+(= (lte Z (S $y)) True)
+(= (lte (S $x) Z) False)
+(= (lte (S $x) (S $y))
+   (trace! (👁 (=== lte (S $x) (S $y) (lte $x $y)))
+   (lte $x $y)))
+;; (= (lte Z Z) True)
+;; (= (lte Z (S $y)) True)
+;; (= (lte (S $x) Z) False)
+;; (= (lte (S $x) (S $y)) (lte $x $y))
+
+;; Test lte
+!(test
+  (lte (S (S Z)) (S (S Z)))
+  True)
+!(test
+  (lte (S (S Z)) (S Z))
+  False)
+!(test
+  (lte (S Z) (S (S Z)))
+  True)
+
 ;;;;;;;;;;
 ;; When ;;
 ;;;;;;;;;;
 
-;; Run the code if the condition is true, otherwise prune the branch
-(: when (-> Bool Atom $a))
-(= (when $c $x) (if $c $x (empty)))
+;; NEXT: disabled because it results in massive slowdown or freeze
+
+;; ;; Run the code if the condition is true, otherwise prune the branch
+;; (: when (-> Bool Atom $a))
+;; (= (when $c $x) (if $c $x (empty)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; De Bruijn Index ;;
