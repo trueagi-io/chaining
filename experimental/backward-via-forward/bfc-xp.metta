@@ -537,49 +537,11 @@
 ;; Base case.
 (= (fc $rb $depth (: $tx $ta) (: $x $a))
    ;; (trace! (👁 fc-b $rb $depth (: $tx $ta) (: $x $a))
-           (let (: $x $a) (: $tx $ta) (: $x $a)));)
+   (let (: $x $a) (: $tx $ta) (: $x $a)));)
 ;; Recursive step
 (= (fc $rb (S $k) (: $tx $ta) (: $x $a))
    ;; (trace! (👁 fc-r $rb (S $k) (: $tx $ta) (: $x $a))
-           (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a))));)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Optimized Forward Chainer ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Like above but specialized for inversed propositional calculus,
-;; uses Number instead of Nat and avoid using .:mp as arguments.
-
-;; NEXT: implement
-
-;; ;; NEXT: make sure that arguments of .:mp are propositions (and not functions)
-;; ;; NEXT: make sure to not expand with .:mp if there aren't at least 3 size left
-
-;; ;; Apply one forward chaining step by applying each rule in the rule
-;; ;; base space, $rb, to the argument (: $x $a).
-;; ;; (: fc-step (-> $a                       ; Knowledge base
-;; ;;                $b                       ; Query
-;; ;;                $c))
-;; ;; Unary application given argument
-;; (= (fc-step $rb (: $x $a)) (match $rb (: $f (-> $a $b)) (: ($f $x) $b)))
-;; ;; Unary application given abstraction
-;; (= (fc-step $rb (: $f (-> $a $b))) (match $rb (: $x $a) (: ($f $x) $b)))
-
-;; ;; Iteratively apply forward chaining growing the results at each
-;; ;; iteration.
-;; ;; (: fc (-> $a                            ; Knowledge base
-;; ;;           Nat                           ; Maximum depth
-;; ;;           $b                            ; Target Query
-;; ;;           $b                            ; Query
-;; ;;           $b))
-;; ;; Base case.
-;; (= (fc $rb $depth (: $tx $ta) (: $x $a))
-;;    ;; (trace! (👁 fc-b $rb $depth (: $tx $ta) (: $x $a))
-;;            (let (: $x $a) (: $tx $ta) (: $x $a)));)
-;; ;; Recursive step
-;; (= (fc $rb (S $k) (: $tx $ta) (: $x $a))
-;;    ;; (trace! (👁 fc-r $rb (S $k) (: $tx $ta) (: $x $a))
-;;            (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a))));)
+   (fc $rb $k (: $tx $ta) (fc-step $rb (: $x $a))));)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer via forward chaining ;;
@@ -593,6 +555,99 @@
 (= (bfc $rb $depth (: $x $a))
    ;; (trace! (👁 bfc $rb $depth (: $x $a))
            (fc $rb $depth (: $x $a) (: id (-> $a $a))));)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Optimized Forward Chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Like above but specialized for inversed propositional calculus,
+;; uses Number instead of Nat and avoid placing .:mp as arguments.
+
+;; ;; Iteratively apply forward chaining growing the results at each
+;; ;; iteration.
+;; ;; (: ofc (-> Number                        ; Maximum depth
+;; ;;            Number                        ; Hypotheses count
+;; ;;            $b                            ; Target Query
+;; ;;            $b                            ; Query
+;; ;;            $b))
+;; ;; Base case.
+;; (= (ofc $depth $hypcnt (: $tx $ta) (: $x $a))
+;;    (if (== $hypcnt 0)
+;;        (let (: $x $a) (: $tx $ta) (: $x $a))
+;;        (empty)))
+
+;; ;; Recursive steps
+;; ;; Specialized application given argument of .:mp
+;; (= (ofc $depth $hypcnt (: $tx $ta) (: $f (-> $b $c)))
+;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
+;;        (ofc (- $depth 1) (+ $hypcnt 1) (: $tx $ta)
+;;             (: (.:mp $f) (-> (→ $a $b) (-> $a $c))))
+;;        (empty)))
+;; ;; Specialized application given abstraction
+;; (= (ofc $depth $hypcnt (: $tx $ta) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
+;;        (ofc (- $depth 1) (- $hypcnt 1) (: $tx $ta) (: ($f ax-1) $b))
+;;        (empty)))
+;; (= (ofc $depth $hypcnt (: $tx $ta)
+;;         (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
+;;        (ofc (- $depth 1) (- $hypcnt 1) (: $tx $ta) (: ($f ax-2) $b))
+;;        (empty)))
+;; (= (ofc $depth $hypcnt (: $tx $ta) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
+;;        (ofc (- $depth 1) (- $hypcnt 1) (: $tx $ta) (: ($f ax-3) $b))
+;;        (empty)))
+
+;; Iteratively apply forward chaining growing the results at each
+;; iteration.
+;; (: ofc (-> Nat                           ; Maximum depth
+;;            Nat                           ; Hypotheses count
+;;            $b                            ; Target Query
+;;            $b                            ; Query
+;;            $b))
+;; Base case.
+(= (ofc $depth Z (: $tx $ta) (: $x $a))
+   (let (: $x $a) (: $tx $ta) (: $x $a)))
+
+;; Recursive steps
+;; Specialized application given argument of .:mp
+(= (ofc (S $k) (S $l) (: $tx $ta) (: $f (-> $b $c)))
+   (if (lte $l $k)
+       (ofc $k (S (S $l)) (: $tx $ta)
+            (: (.:mp $f) (-> (→ $a $b) (-> $a $c))))
+       (empty)))
+;; Specialized application given abstraction
+(= (ofc (S $k) (S $l) (: $tx $ta) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+   (if (lte $l $k)
+       (ofc $k $l (: $tx $ta) (: ($f ax-1) $b))
+       (empty)))
+(= (ofc (S $k) (S $l) (: $tx $ta)
+        (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+   (if (lte $l $k)
+       (ofc $k $l (: $tx $ta) (: ($f ax-2) $b))
+       (empty)))
+(= (ofc (S $k) (S $l) (: $tx $ta) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+   (if (lte $l $k)
+       (ofc $k $l (: $tx $ta) (: ($f ax-3) $b))
+       (empty)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Optimized backward chainer via forward chaining ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; Backward via forward chaining
+;; ;; (: (obfc (-> Number                     ; Maximum depth
+;; ;;              $b                         ; Query
+;; ;;              $b)))
+;; (= (obfc $depth (: $x $a))
+;;    (ofc $depth 1 (: $x $a) (: id (-> $a $a))))
+
+;; Backward via forward chaining
+;; (: (obfc (-> Nat                        ; Maximum depth
+;;              $b                         ; Query
+;;              $b)))
+(= (obfc $depth (: $x $a))
+   (ofc $depth (S Z) (: $x $a) (: id (-> $a $a))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
