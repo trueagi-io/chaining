@@ -554,43 +554,12 @@
 ;; Optimized Forward Chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Like above but specialized for inversed propositional calculus,
-;; uses Number instead of Nat and avoid placing .:mp as arguments.
+;; Like above but specialized for inversed propositional calculus, and
+;; avoid placing .:mp as arguments.
 
-;; ;; Iteratively apply forward chaining growing the results at each
-;; ;; iteration.
-;; ;; (: ofc (-> Number                        ; Maximum depth
-;; ;;            Number                        ; Hypotheses count
-;; ;;            $b                            ; Target Query
-;; ;;            $b                            ; Query
-;; ;;            $b))
-;; ;; Base case.
+;; NEXT: re-implement Number variation but make sure that unifications
+;; happen after proof size and hyptheses count conditioning.
 ;; (= (ofc $depth $hypcnt (: $tx $ta) (: $x $a))
-;;    (if (== $hypcnt 0)
-;;        (let (: $x $a) (: $tx $ta) (: $x $a))
-;;        (empty)))
-
-;; ;; Recursive steps
-;; ;; Specialized application given argument of .:mp
-;; (= (ofc $depth $hypcnt (: $tx $ta) (: $f (-> $b $c)))
-;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
-;;        (ofc (- $depth 1) (+ $hypcnt 1) (: $tx $ta)
-;;             (: (.:mp $f) (-> (→ $a $b) (-> $a $c))))
-;;        (empty)))
-;; ;; Specialized application given abstraction
-;; (= (ofc $depth $hypcnt (: $tx $ta) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
-;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
-;;        (ofc (- $depth 1) (- $hypcnt 1) (: $tx $ta) (: ($f ax-1) $b))
-;;        (empty)))
-;; (= (ofc $depth $hypcnt (: $tx $ta)
-;;         (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
-;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
-;;        (ofc (- $depth 1) (- $hypcnt 1) (: $tx $ta) (: ($f ax-2) $b))
-;;        (empty)))
-;; (= (ofc $depth $hypcnt (: $tx $ta) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
-;;    (if (and (< 0 $depth) (<= $hypcnt $depth))
-;;        (ofc (- $depth 1) (- $hypcnt 1) (: $tx $ta) (: ($f ax-3) $b))
-;;        (empty)))
 
 ;; Iteratively apply forward chaining growing the results at each
 ;; iteration.
