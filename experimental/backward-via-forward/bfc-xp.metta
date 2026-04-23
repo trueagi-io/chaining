@@ -499,13 +499,6 @@
    (if (< 0 $s)
        (obc-gtz $s (: $x $a))
        (empty)))
-;; (= (obc-gtz $s (: (mp $f $x) $b))
-;;    (when (< 2 $s)
-;;      (let* (((MkSized $fs (: $f (→ $a $b))) (obc (- $s 2) (: $f (→ $a $b))))
-;;             ((MkSized $xs (: $x $a)) (obc (- (- $s 1) $fs) (: $x $a))))
-;;        (MkSized (+ (+ $fs $xs) 1) (: (mp $f $x) $b)))))
-;; (= (obc $s (: $x $a))
-;;    (when (< 0 $s) (obc-gtz $s (: $x $a))))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Forward Chainer ;;
