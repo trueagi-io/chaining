@@ -88,13 +88,7 @@
 (= (lte Z Z) True)
 (= (lte Z (S $y)) True)
 (= (lte (S $x) Z) False)
-(= (lte (S $x) (S $y))
-   (trace! (👁 (=== lte (S $x) (S $y) (lte $x $y)))
-   (lte $x $y)))
-;; (= (lte Z Z) True)
-;; (= (lte Z (S $y)) True)
-;; (= (lte (S $x) Z) False)
-;; (= (lte (S $x) (S $y)) (lte $x $y))
+(= (lte (S $x) (S $y)) (lte $x $y))
 
 ;; Test lte
 !(test
