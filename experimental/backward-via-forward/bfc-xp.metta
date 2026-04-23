@@ -56,11 +56,11 @@
 (: S (-> Nat Nat))
 
 ;; Cast Number into Nat
-(: fromNumber (-> Number Nat))
+;; (: fromNumber (-> Number Nat))
 (= (fromNumber $n) (if (<= $n 0) Z (S (fromNumber (- $n 1)))))
 
 ;; Add two natural numbers
-(: plus (-> Nat Nat Nat))
+;; (: plus (-> Nat Nat Nat))
 (= (plus $x Z) $x)
 (= (plus $x (S $y)) (plus (S $x) $y))
 
@@ -71,7 +71,7 @@
 
 ;; Subtrack two natural numbers.  If the second natural is greater
 ;; than the first then return zero.
-(: minus (-> Nat Nat Nat))
+;; (: minus (-> Nat Nat Nat))
 (= (minus $x Z) $x)
 (= (minus (S $x) (S $y)) (minus $x $y))
 (= (minus Z (S $y)) Z)
@@ -405,10 +405,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Curried backward chainer
-(: bc (-> $a                            ; Knowledge base space
-          Nat                           ; Maximum depth
-          $b                            ; Query
-          $c))                          ; Result
+;; (: bc (-> $a                            ; Knowledge base space
+;;           Nat                           ; Maximum depth
+;;           $b                            ; Query
+;;           $c))                          ; Result
 
 ;; Base cases
 (= (bc $kb $_ (: $x $a)) (match $kb (: $x $a) (: $x $a)))
@@ -427,12 +427,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Curried backward chainer with lambda abstraction
-(: λbc (-> $a                            ; Knowledge base space
-           $b                            ; Environment
-           DeBruijn                      ; De Bruijn Index
-           Nat                           ; Maximum depth
-           $c                            ; Query
-           $d))                          ; Result
+;; (: λbc (-> $a                            ; Knowledge base space
+;;            $b                            ; Environment
+;;            DeBruijn                      ; De Bruijn Index
+;;            Nat                           ; Maximum depth
+;;            $c                            ; Query
+;;            $d))                          ; Result
 
 ;; Base cases
 (= (λbc $kb $env $idx $_ (: $x $a))
