@@ -10,5 +10,5 @@ set output "plots/regular-vs-emulated-bc-all.png"
 set datafile missing NaN
 set datafile separator ","
 set datafile commentschars "t"
-plot "benchmark.csv" using (strcol(1) eq "all" ? $3 : NaN):5 t "Regular backward" with lines smooth unique, \
-     "benchmark.csv" using (strcol(1) eq "all" ? $3 : NaN):6 t "Forward emulation" with lines smooth unique
+plot "regular-vs-emulated-petta-benchmark.csv" using (strcol(1) eq "all" ? $3 : NaN):5 t "Regular backward" with lines smooth unique, \
+     "regular-vs-emulated-petta-benchmark.csv" using (strcol(1) eq "all" ? $3 : NaN):6 t "Forward emulation" with lines smooth unique
