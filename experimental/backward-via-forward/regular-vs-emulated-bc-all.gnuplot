@@ -1,4 +1,4 @@
-set title "Regular backward vs forward emulated chainer wrt proof size for all theorems"
+set title "Regular backward vs forward emulation w.r.t. proof size for all theorems"
 unset multiplot
 set style data lines
 set term png
@@ -11,4 +11,4 @@ set datafile missing NaN
 set datafile separator ","
 set datafile commentschars "t"
 plot "benchmark.csv" using (strcol(1) eq "all" ? $3 : NaN):5 t "Regular backward" with lines smooth unique, \
-     "benchmark.csv" using (strcol(1) eq "all" ? $3 : NaN):6 t "Forward emulated" with lines smooth unique
+     "benchmark.csv" using (strcol(1) eq "all" ? $3 : NaN):6 t "Forward emulation" with lines smooth unique
