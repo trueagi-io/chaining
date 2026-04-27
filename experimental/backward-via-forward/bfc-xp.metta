@@ -549,61 +549,45 @@
 
 ;; Like above but specialized for inversed propositional calculus, and
 ;; avoid placing .:mp as arguments.
+;; (: ofc (-> Number                    ; Maximum depth
+;;                Number                    ; Hypotheses count
+;;                $b                        ; Target query
+;;                $b                        ; Source query
+;;                $b))
+(= (ofc $depth $hypcnt $tgt (: $x $a))
+   ;; (trace! (👁 ofc $depth $hypcnt $tgt (: $x $a))
+   (if (< 0 $hypcnt)
+       ;; Recursive steps
+       (if (and (< 0 $depth) (<= $hypcnt $depth))
+           (ofc-rec (- $depth 1) (- $hypcnt 1) $tgt (: $x $a))
+           (empty))
+       ;; Base case
+       (let (: $x $a) $tgt (: $x $a))))
 
-;; NEXT: re-implement Number variation but make sure that unifications
-;; happen after proof size and hyptheses count conditioning.
-;; (= (ofc $depth $hypcnt (: $tx $ta) (: $x $a))
-
-;; Iteratively apply forward chaining growing the results at each
-;; iteration.
-;; (: ofc (-> Nat                           ; Maximum depth
-;;            Nat                           ; Hypotheses count
-;;            $b                            ; Target Query
-;;            $b                            ; Query
-;;            $b))
-;; Base case.
-(= (ofc $depth Z (: $tx $ta) (: $x $a))
-   (let (: $x $a) (: $tx $ta) (: $x $a)))
-
-;; Recursive steps
+;; Recursive steps (note that depth and hypcnt have already been decremented)
 ;; Specialized application given argument of .:mp
-(= (ofc (S $k) (S $l) (: $tx $ta) (: $f (-> $b $c)))
-   (if (lte $l $k)
-       (ofc $k (S (S $l)) (: $tx $ta)
-            (: (.:mp $f) (-> (→ $a $b) (-> $a $c))))
-       (empty)))
+(= (ofc-rec $depth $hypcnt $tgt (: $f (-> $b $c)))
+   (ofc $depth (+ $hypcnt 2) $tgt (: (.:mp $f) (-> (→ $a $b) (-> $a $c)))))
 ;; Specialized application given abstraction
-(= (ofc (S $k) (S $l) (: $tx $ta) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
-   (if (lte $l $k)
-       (ofc $k $l (: $tx $ta) (: ($f ax-1) $b))
-       (empty)))
-(= (ofc (S $k) (S $l) (: $tx $ta)
-        (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
-   (if (lte $l $k)
-       (ofc $k $l (: $tx $ta) (: ($f ax-2) $b))
-       (empty)))
-(= (ofc (S $k) (S $l) (: $tx $ta) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
-   (if (lte $l $k)
-       (ofc $k $l (: $tx $ta) (: ($f ax-3) $b))
-       (empty)))
+(= (ofc-rec $depth $hypcnt $tgt (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+   (ofc $depth $hypcnt $tgt (: ($f ax-1) $b)))
+(= (ofc-rec $depth $hypcnt $tgt
+                (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+   (ofc $depth $hypcnt $tgt (: ($f ax-2) $b)))
+(= (ofc-rec $depth $hypcnt $tgt
+                (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+   (ofc $depth $hypcnt $tgt (: ($f ax-3) $b)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Optimized backward chainer via forward chaining ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; ;; Backward via forward chaining
-;; ;; (: (obfc (-> Number                     ; Maximum depth
-;; ;;              $b                         ; Query
-;; ;;              $b)))
-;; (= (obfc $depth (: $x $a))
-;;    (ofc $depth 1 (: $x $a) (: id (-> $a $a))))
-
 ;; Backward via forward chaining
-;; (: (obfc (-> Nat                        ; Maximum depth
+;; (: (obfc (-> Number                     ; Maximum depth
 ;;              $b                         ; Query
 ;;              $b)))
 (= (obfc $depth (: $x $a))
-   (ofc $depth (S Z) (: $x $a) (: id (-> $a $a))))
+   (ofc $depth 1 (: $x $a) (: id (-> $a $a))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
@@ -950,60 +934,60 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ;; Exhausively generate all proofs of certain sizes
-;; !(obfc &dfs-kb (fromNumber 1) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 2) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 3) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 4) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 5) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 6) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 7) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 8) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 9) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 10) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 11) (: $x $a))
-;; !(obfc &dfs-kb (fromNumber 12) (: $x $a))
+;; !(obfc 1 (: $x $a))
+;; !(obfc 2 (: $x $a))
+;; !(obfc 3 (: $x $a))
+;; !(obfc 4 (: $x $a))
+;; !(obfc 5 (: $x $a))
+;; !(obfc 6 (: $x $a))
+;; !(obfc 7 (: $x $a))
+;; !(obfc 8 (: $x $a))
+;; !(obfc 9 (: $x $a))
+;; !(obfc 10 (: $x $a))
+;; !(obfc 11 (: $x $a))
+;; !(obfc 12 (: $x $a))
 ;; !(obfc 13 (: $x $a))
 
 ;; ;; id
-;; !(obfc &dfs-kb (fromNumber 5) (: $x (→ 𝜑 𝜑)))
+;; !(obfc 5 (: $x (→ 𝜑 𝜑)))
 
 ;; ;; pm2.43
-;; !(obfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
+;; !(obfc 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
 
 ;; ;; 2a1
-;; !(obfc &dfs-kb (fromNumber 7) (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑)))))
+;; !(obfc 7 (: $x (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑)))))
 
 ;; ;; imim2 (82ms)
-;; !(obfc &dfs-kb (fromNumber 7) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
+;; !(obfc 7 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
 
 ;; ;; jarr (100ms)
-;; !(obfc (fromNumber 13) (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; !(obfc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; ;; pm2.27
-;; !(obfc &dfs-kb (fromNumber 13) (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
+;; !(obfc 13 (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
 
 ;; ;; imim1 (200ms)
-;; !(obfc (fromNumber 15) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
+;; !(obfc 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
 
-;; ;; loowoz (~7s)
-;; !(obfc (fromNumber 19) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+;; ;; loowoz (5.761s)
+;; !(obfc 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
 
-;; ;; imim12 (?)
-;; !(obfc (fromNumber 25) (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
+;; ;; pm2.83 (37m40.783s)
+;; !(obfc 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
 
-;; ;; pm2.83 (46m16.482s)
-;; !(obfc (fromNumber 25) (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
-
-;; ;; loolin (44m25.347s)
-;; !(obfc (fromNumber 26) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑))))
+;; ;; loolin (32m17.697s)
+;; !(obfc 26 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑))))
 
 ;; NEXT: determine depths
 
+;; ;; imim12 (?)
+;; !(obfc 25 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
+
 ;; ;; peirceroll
-;; !(obfc &dfs-kb (fromNumber 26) (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑)))))
+;; !(obfc 26 (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑)))))
 
 ;; ;; pm2.86
-;; !(obfc &dfs-kb (fromNumber 26) (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒)))))
+;; !(obfc 26 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test proof-sized bound backward chainer ;;
@@ -1094,22 +1078,22 @@
 ;; ;; imim1 (140ms)
 ;; !(obc 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
 
-;; ;; loowoz (~3s)
+;; ;; loowoz (~3.309s)
 ;; !(obc 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
 
-;; ;; pm2.83 (20m21.544s)
+;; ;; pm2.83 (19m29.217s)
 ;; !(obc 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
 
-;; ;; loolin (15m47.282s)
+;; ;; loolin (16m16.625s)
 ;; !(obc 26 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑))))
 
 ;; NEXT: determine depths
 
 ;; ;; imim12 (?) (was 25 and supposedly worked)
-;; !(obc 28 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
+;; !(obc 30 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
 
 ;; ;; peirceroll
-;; !(obc 30 (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑)))))
+;; !(obc 32 (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑)))))
 
 ;; ;; pm2.86
-;; !(obc 30 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒)))))
+;; !(obc 32 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ 𝜑 (→ 𝜓 𝜒)))))
