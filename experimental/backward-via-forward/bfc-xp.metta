@@ -16,7 +16,7 @@
 ;; expand modus ponens backward on the first argument of any abstract
 ;; proof:
 ;;
-;; .:mp = (λ z ((.: z) mp))
+;; mpⁱ = (λ z ((.: z) mp))
 ;;
 ;; with type signature
 ;;
@@ -34,8 +34,11 @@
 ;; Then the bluebird can be used to move this specialized rule to
 ;; expand modus ponens backward to any argument of any abstract proof:
 ;;
-;; (. .:mp) to expand the second argument, (. (. .:mp)) to expand the
+;; (. mpⁱ) to expand the second argument, (. (. mpⁱ)) to expand the
 ;; third argument, etc.
+;;
+;; For more naming conventions of combinators, see
+;; https://wiki.xxiivv.com/site/logic.html
 
 ;; Disable co-unification
 !(translatePredicate (set_prolog_flag occurs_check True))
@@ -344,8 +347,8 @@
 ;; ;;   (uncurry-term ((. $h) ((. $i) $j)))
 ;; ;;   (. $h (. $i $j)))
 ;; ;; !(test
-;; ;;   (uncurry-term (. (. .:mp)))
-;; ;;   (. (. .:mp)))
+;; ;;   (uncurry-term (. (. mpⁱ)))
+;; ;;   (. (. mpⁱ)))
 
 ;; ;; ;; Uncurry a type definition
 ;; ;; (: uncurry (-> Atom Atom))
@@ -353,19 +356,19 @@
 
 ;; ;; ;; ;; test uncurry
 ;; ;; ;; ;; !(test
-;; ;; ;;   !(uncurry (: (. (. .:mp))
+;; ;; ;;   !(uncurry (: (. (. mpⁱ))
 ;; ;; ;;               (-> (-> $a (-> $b (-> $d $e)))
 ;; ;; ;;                   (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
-;; ;; ;;   ;; (: (. (. .:mp)) (-> (-> $a $b $d $e)
+;; ;; ;;   ;; (: (. (. mpⁱ)) (-> (-> $a $b $d $e)
 ;; ;; ;;   ;;                     $a $b (→ $c $d) $c $e)))
-;; ;; ;; (: (. (. .:mp)) (-> (-> $_365620 (-> $_365638 (-> $_365656 $_365662)))
+;; ;; ;; (: (. (. mpⁱ)) (-> (-> $_365620 (-> $_365638 (-> $_365656 $_365662)))
 ;; ;; ;;                     $_365620 $_365638 (→ $_365692 $_365656) $_365692 $_365662))
 
 ;;;;;;;;;;;;;;;
 ;; Reduction ;;
 ;;;;;;;;;;;;;;;
 
-;; Reduce proofs with .:mp into equivalent proofs with mp
+;; Reduce proofs with mpⁱ into equivalent proofs with mp
 ;; NEXT: implement
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -548,12 +551,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Like above but specialized for inversed propositional calculus, and
-;; avoid placing .:mp as arguments.
+;; avoid placing mpⁱ as arguments.
 ;; (: ofc (-> Number                    ; Maximum depth
-;;                Number                    ; Hypotheses count
-;;                $b                        ; Target query
-;;                $b                        ; Source query
-;;                $b))
+;;            Number                    ; Hypotheses count
+;;            $b                        ; Target query
+;;            $b                        ; Source query
+;;            $b))
 (= (ofc $depth $hypcnt $tgt (: $x $a))
    ;; (trace! (👁 ofc $depth $hypcnt $tgt (: $x $a))
    (if (< 0 $hypcnt)
@@ -565,9 +568,6 @@
        (let (: $x $a) $tgt (: $x $a))))
 
 ;; Recursive steps (note that depth and hypcnt have already been decremented)
-;; Specialized application given argument of .:mp
-(= (ofc-rec $depth $hypcnt $tgt (: $f (-> $b $c)))
-   (ofc $depth (+ $hypcnt 2) $tgt (: (.:mp $f) (-> (→ $a $b) (-> $a $c)))))
 ;; Specialized application given abstraction
 (= (ofc-rec $depth $hypcnt $tgt (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
    (ofc $depth $hypcnt $tgt (: ($f ax-1) $b)))
@@ -577,6 +577,9 @@
 (= (ofc-rec $depth $hypcnt $tgt
                 (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
    (ofc $depth $hypcnt $tgt (: ($f ax-3) $b)))
+;; Specialized application given argument of mpⁱ
+(= (ofc-rec $depth $hypcnt $tgt (: $f (-> $b $c)))
+   (ofc $depth (+ $hypcnt 2) $tgt (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Optimized backward chainer via forward chaining ;;
@@ -675,11 +678,11 @@
                                     $c)))))
 
 ;; Blackbird specialized for mp
-;; .:mp = (λ z ((.: z) mp))
-!(add-atom &bfs-kb (: .:mp (-> (-> $b $c)
-                               (-> (→ $a $b)
-                                   (-> $a
-                                       $c)))))
+;; mpⁱ = (λ z ((.: z) mp))
+!(add-atom &bfs-kb (: mpⁱ (-> (-> $b $c)
+                              (-> (→ $a $b)
+                                  (-> $a
+                                      $c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Specialized KB for Depth-first Search ;;
@@ -698,11 +701,11 @@
 !(add-atom &dfs-kb (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;; Blackbird specialized for mp
-;; .:mp = (λ z ((.: z) mp))
-!(add-atom &dfs-kb (: .:mp (-> (-> $b $c)
-                               (-> (→ $a $b)
-                                   (-> $a
-                                       $c)))))
+;; mpⁱ = (λ z ((.: z) mp))
+!(add-atom &dfs-kb (: mpⁱ (-> (-> $b $c)
+                              (-> (→ $a $b)
+                                  (-> $a
+                                      $c)))))
 
 ;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;; ;;
@@ -735,7 +738,7 @@
 ;; Test Modus Ponens KB ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; ;; Rediscover .:mp and nothing else
+;; ;; Rediscover mpⁱ and nothing else
 ;; ;; !(test
 ;; !(λbc &mp-kb Nil z (fromNumber 6) (: (λ z $x) (-> (-> b c) (-> (→ a b) (-> a c)))))
 ;;   ;; (: (λ z ((.: z) mp)) (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
@@ -751,26 +754,26 @@
 ;; ;; Replace first argument by modus ponens
 ;; !(test
 ;;   (bc &bfs-kb (fromNumber 0)
-;;       (: .:mp (-> (-> $b $c)
-;;                   (-> (→ $a $b) (-> $a $c)))))
-;;   (: .:mp (-> (-> $b $c)
-;;               (-> (→ $a $b) (-> $a $c)))))
+;;       (: mpⁱ (-> (-> $b $c)
+;;                  (-> (→ $a $b) (-> $a $c)))))
+;;   (: mpⁱ (-> (-> $b $c)
+;;              (-> (→ $a $b) (-> $a $c)))))
 
 ;; ;; Replace second argument by modus ponens
 ;; !(test
 ;;   (bc &bfs-kb (fromNumber 1)
-;;       (: (. .:mp) (-> (-> $a (-> $c $d))
+;;       (: (. mpⁱ) (-> (-> $a (-> $c $d))
 ;;                       (-> $a (-> (→ $b $c) (-> $b $d))))))
-;;   (: (. .:mp) (-> (-> $a (-> $c $d))
+;;   (: (. mpⁱ) (-> (-> $a (-> $c $d))
 ;;                   (-> $a (-> (→ $b $c) (-> $b $d))))))
 
 ;; ;; Replace third argument by modus ponens
 ;; !(test
 ;;   (bc &bfs-kb (fromNumber 2)
-;;       (: (. (. .:mp))
+;;       (: (. (. mpⁱ))
 ;;          (-> (-> $a (-> $b (-> $d $e)))
 ;;              (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
-;;   (: (. (. .:mp))
+;;   (: (. (. mpⁱ))
 ;;      (-> (-> $a (-> $b (-> $d $e)))
 ;;          (-> $a (-> $b (-> (→ $c $d) (-> $c $e)))))))
 
@@ -794,15 +797,15 @@
 ;; ;; Test one step forward chainer
 ;; !(test
 ;;   (fc-step &emt
-;;            (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
-;;   (: (. .:mp) (-> (-> $a (-> $c $d)) (-> $a (-> (→ $b $c) (-> $b $d))))))
+;;            (: mpⁱ (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
+;;   (: (. mpⁱ) (-> (-> $a (-> $c $d)) (-> $a (-> (→ $b $c) (-> $b $d))))))
 
 ;; ;; Test forward chainer at depth 1
 ;; !(test
 ;;   (collapse (fc &emt (fromNumber 1)
-;;                 (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))))
-;;   ((: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
-;;    (: (. .:mp) (-> (-> $a' (-> $c' $d')) (-> $a' (-> (→ $b' $c') (-> $b' $d')))))))
+;;                 (: mpⁱ (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))))
+;;   ((: mpⁱ (-> (-> $b $c) (-> (→ $a $b) (-> $a $c))))
+;;    (: (. mpⁱ) (-> (-> $a' (-> $c' $d')) (-> $a' (-> (→ $b' $c') (-> $b' $d')))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test forward chainer on backward expansion ;;
@@ -813,7 +816,7 @@
 
 ;; Populate backward expansion theory using the expansion meta-theory
 !(let $res (fc &emt (fromNumber 10)
-               (: .:mp (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
+               (: mpⁱ (-> (-> $b $c) (-> (→ $a $b) (-> $a $c)))))
    (add-atom &bet $res))
 
 ;; Expand backward theorem (→ 𝜑 𝜑)
@@ -935,18 +938,14 @@
 
 ;; ;; Exhausively generate all proofs of certain sizes
 ;; !(obfc 1 (: $x $a))
-;; !(obfc 2 (: $x $a))
 ;; !(obfc 3 (: $x $a))
-;; !(obfc 4 (: $x $a))
 ;; !(obfc 5 (: $x $a))
-;; !(obfc 6 (: $x $a))
 ;; !(obfc 7 (: $x $a))
-;; !(obfc 8 (: $x $a))
 ;; !(obfc 9 (: $x $a))
-;; !(obfc 10 (: $x $a))
-;; !(obfc 11 (: $x $a))
-;; !(obfc 12 (: $x $a))
-;; !(obfc 13 (: $x $a))
+;; !(obfc 11 (: $x $a)) ; 5523, 0.457s
+;; !(obfc 13 (: $x $a)) ; 35064, 2.905s
+;; !(obfc 15 (: $x $a)) ; 233681, 19.622s
+;; !(obfc 17 (: $x $a)) ; 1591750, 196.30s
 
 ;; ;; id
 ;; !(obfc 5 (: $x (→ 𝜑 𝜑)))
@@ -1044,18 +1043,14 @@
 
 ;; Exhausively generate all proofs of certain sizes
 ;; !(obc 1 (: $x $a))
-;; !(obc 2 (: $x $a))
 ;; !(obc 3 (: $x $a))
-;; !(obc 4 (: $x $a))
 ;; !(obc 5 (: $x $a))
-;; !(obc 6 (: $x $a))
 ;; !(obc 7 (: $x $a))
-;; !(obc 8 (: $x $a))
 ;; !(obc 9 (: $x $a))
-;; !(obc 10 (: $x $a))
-;; !(obc 11 (: $x $a))
-;; !(obc 12 (: $x $a))
-;; !(obc 13 (: $x $a))
+;; !(obc 11 (: $x $a)) ; 5523, 0.391s
+;; !(obc 13 (: $x $a)) ; 35064, 2.458s
+;; !(obc 15 (: $x $a)) ; 233681, 18.471s
+;; !(obc 17 (: $x $a)) ; 1591750, 142.83s
 
 ;; ;; id
 ;; !(obc 5 (: $x (→ 𝜑 𝜑)))
@@ -1090,7 +1085,7 @@
 ;; NEXT: determine depths
 
 ;; ;; imim12 (?) (was 25 and supposedly worked)
-;; !(obc 30 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
+;; !(obc 31 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜃) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜃))))))
 
 ;; ;; peirceroll
 ;; !(obc 32 (: $x (→ (→ (→ (→ 𝜑 𝜓) 𝜑) 𝜑) (→ (→ (→ 𝜑 𝜓) 𝜒) (→ (→ 𝜒 𝜑) 𝜑)))))
