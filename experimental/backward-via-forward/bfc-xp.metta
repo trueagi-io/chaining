@@ -565,7 +565,7 @@
            (ofc-rec (- $depth 1) (- $hypcnt 1) $tgt (: $x $a))
            (empty))
        ;; Base case
-       (let (: $x $a) $tgt (: $x $a))))
+       (let (: $x $a) $tgt (: $x $a))));)
 
 ;; Recursive steps (note that depth and hypcnt have already been decremented)
 ;; Specialized application given abstraction
