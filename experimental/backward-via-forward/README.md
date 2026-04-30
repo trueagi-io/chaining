@@ -106,10 +106,23 @@ The data obtained from these experiments have been compiled in
 and are plotted below.
 
 ![Regular vs Emulated for Exhaustive Enumeration](plots/regular-vs-emulated-bc-all.png)
-
 ![Regular vs Emulated for Exhaustive Enumeration (Ratio)](plots/regular-vs-emulated-bc-all-ratio.png)
+
+As indicated in the figure above the slowdown incurred by the
+emulation for exhaustive enumeration of proofs and theorems ranges
+from a bit over 1.05x to a bit under 1.4x.
 
 ![Regular vs Emulated for a Selection of Theorems](plots/regular-vs-emulated-bc-some.png)
 
 ![Regular vs Emulated for a Selection of Theorems (Ratio)](plots/regular-vs-emulated-bc-some-ratio.png)
 
+As indicated in the figure above the slowdown incurred by the
+emulation for a selection of theorems ranges from a bit over 1.4x to a
+bit under 2x.  The factor seems to increase with the size of the
+proof.  It is unclear however if the factor converges to a limit as
+the size increases, or diverges to infinity.  Either way, we do see
+the trend as problematic because the sizes considered are already
+quite high, 26, and even if it diverges it seems to be in a
+logarithmic fashion.  In other words, the forward emulation of
+backward chaining looks like it could be a competitive approach for a
+rewriting system like MORK, which we will study next.
