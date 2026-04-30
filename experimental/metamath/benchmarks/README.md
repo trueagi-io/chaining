@@ -88,3 +88,32 @@ under the `plots` subfolder.
 
 Both `benchmark.csv` and the plots have been pre-computed and are
 already provided.
+
+## Discussion
+
+It takes 75s for MORK to generate all possible 6087113 proofs within a
+depth of 4 of all possible theorems (with proofs of depth 4 at most).
+This is likely near the optimal speed to generate all these proofs.
+
+It takes about 0.05ms (50μs) in average for PeTTa to discover a proof
+of a theorem by going backward, thus we can estimate that generating
+all proofs going backward would take 0.00005 * 6087113 = 304s.  This
+is only 4 times more than 75s.  So the overhead of PeTTa to go
+backward instead of going forward (assuming it would know exactly what
+rules to apply, which it does not), is only 4x.  I believe it says
+that PeTTa is extremely competitive when it comes to backward
+chaining.
+
+10us per solution forward MORK
+
+50us per solution backward PeTTa 4-5x slower than what I would
+consider to be the upper limit optimal
+
+## Backward chaining
+
+- impid: (→ (→ 𝜑 𝜓) (→ 𝜑 𝜑))
+- id: (→ 𝜑 𝜑)
+- 2a1: (→ 𝜑 (→ 𝜓 (→ 𝜒 𝜑)))
+- pm2.43: (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))
+- imim2: (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))
+- jarr: (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))
