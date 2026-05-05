@@ -1,44 +1,79 @@
 ;; Generate less than equal relationships between all natural numbers
 ;; up to a certain depth.
 
-;; Generate all numbers up to a certain depth (here 3)
-(: Z Nat3)
-(exec (0 (S (S (S Z))))
-      (, (: $k Nat3)
-         (exec (0 (S $l)) $ptrn $tplt))
-      (, (: (S $k) Nat3)
-         (exec (0 $l) $ptrn $tplt)))
+;; Natural number representing a bound (here 26)
+(Bound (S
+        (S
+         (S
+          (S
+           (S
+            (S
+             (S
+              (S
+               (S
+                (S
+                 (S
+                  (S
+                   (S
+                    (S
+                     (S
+                      (S
+                       (S
+                        (S
+                         (S
+                          (S
+                           (S
+                            (S
+                             (S
+                              (S
+                               (S
+                                (S Z)))))))))))))))))))))))))))
 
-;; Generate all lte relationships between all numbers of Nat3
-(= (lte Z Z) True)
-;; If (lte l r) then (lte (S l) (S r))
-(exec (1 (S (S (S Z))) (S (S (S Z))) t)
-      (, (= (lte $lhs $rhs) True)
-         (: (S $lhs) Nat3)
-         (: (S $rhs) Nat3)
-         (exec (1 (S $k) (S $l) t) $ptrn $tplt))
-      (, (= (lte (S $lhs) (S $rhs)) True)
-         (exec (1 $k $l t) $ptrn $tplt)))
-;; If (lte l r) then (lte l (S r))
-(exec (1 (S (S (S Z))) (S (S (S Z))) t)
-      (, (= (lte $lhs $rhs) True)
-         (: $lhs Nat3)
-         (: (S $rhs) Nat3)
-         (exec (1 $k (S $l) t) $ptrn $tplt))
-      (, (= (lte $lhs (S $rhs)) True)
-         (exec (1 $k $l t) $ptrn $tplt)))
-;; If (lte x x) then ¬(lte (S x) x)
-(exec (2 (S (S (S Z))) t f)
-      (, (= (lte $x $x) True)
-         (: (S $x) Nat3)
-         (exec (2 (S $k) t f) $ptrn $tplt))
-      (, (= (lte (S $x) $x) False)
-         (exec (2 x t f) $ptrn $tplt)))
-;; If ¬(lte l r) then ¬(lte (S l) r) (i.e. if r < l then r < (S l))
-(exec (3 (S (S (S Z))) (S (S (S Z))) f)
-      (, (= (lte $lhs $rhs) False)
-         (: (S $lhs) Nat3)
-         (: $rhs Nat3)
-         (exec (3 (S $k) $l f) $ptrn $tplt))
-      (, (= (lte (S $lhs) $rhs) False)
-         (exec (3 $k $l f) $ptrn $tplt)))
+;; Initialize
+(exec 0
+      (, (Bound $b))
+      (, ;; Generate all numbers up to a certain bound
+         (: Z BndNat)
+         (exec (0 $b)
+               (, (: $k BndNat)
+                  (exec (0 (S $l)) $pat $tmp))
+               (, (: (S $k) BndNat)
+                  (exec (0 $l) $pat $tmp)))
+         ;; Generate all positive lte relationships between all
+         ;; numbers up to a certain bound.  We duplicate the
+         ;; computational front (cf1 and cf2) because each instance of
+         ;; (lte x y) is used twice, once to produce (lte (S l) (S r)),
+         ;; and another one to produce (lte l (S r)).  It is not
+         ;; pretty but it does the job.  Ideally, this should be
+         ;; decomposed into more exec commands, such that one
+         ;; intermediate exec command launches two exec when
+         ;; encountering (cf (lte x y)).
+         (cf1 (lte Z Z))
+         (cf2 (lte Z Z))
+         (lte Z Z)
+         ;; If (lte l r) then (lte (S l) (S r))
+         (exec (1 $b $b t)
+               (, (cf1 (lte $x $y))
+                  (: (S $x) BndNat)
+                  (: (S $y) BndNat)
+                  ;; Grab local self
+                  (exec (1 (S $k) (S $l) t) $pat $tmp))
+               (O (+ (lte (S $x) (S $y)))
+                  (+ (cf1 (lte (S $x) (S $y))))
+                  (+ (cf2 (lte (S $x) (S $y))))
+                  (+ (exec (1 $k $l t) $pat $tmp))
+                  (- (cf1 (lte $x $y)))))
+         ;; If (lte l r) then (lte l (S r))
+         (exec (1 $b $b t)
+               (, (cf2 (lte $x $y))
+                  (: $x BndNat)
+                  (: (S $y) BndNat)
+                  (exec (1 $k (S $l) t) $pat $tmp))
+               (O (+ (lte $x (S $y)))
+                  (+ (cf1 (lte $x (S $y))))
+                  (+ (cf2 (lte $x (S $y))))
+                  (+ (exec (1 $k $l t) $pat $tmp))
+                  (- (cf2 (lte $x $y)))))))
+
+;; Finalize (write into lte.act)
+(exec 2 (, (lte $x $y)) (O (ACT lte (lte $x $y))))
