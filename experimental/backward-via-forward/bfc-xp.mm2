@@ -1,0 +1,69 @@
+;; Port of ofc and obfc from bfc-xp.metta to MM2.
+
+;;;;;;;;;;;;;;;
+;; Functions ;;
+;;;;;;;;;;;;;;;
+
+;;;;;;;;;;
+;; Main ;;
+;;;;;;;;;;
+
+;; ;; Load lte in the space.  Make sure that gen-lte.mm2 has been
+;; ;; previous executed.
+;; (exec (0) (I (ACT lte (lte $x $y))) (, (lte $x $y)))
+
+;; Define target query
+;; ;; id (size=5)
+;; (target (: $x (→ 𝜑 𝜑)))
+
+;; ;; pm2.43 (size=7)
+;; (target (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
+
+;; jarr (size=13)
+(target (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+
+;; ;; imim1
+;; (target (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
+
+;; ;; loowoz
+;; (target (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+
+;; Turn target into source
+;; NEXT: add hypotheses count in the solution description.
+;; NEXT: probably start with (S Z) instead of Z (like in obfc)
+(exec (1)
+      (, (target (: $x $a)))
+      (, (sol Z (: I (-> $a $a)))))
+
+;; Define current depth
+(current-depth Z)
+
+;; Expand one step forward from current depth
+(exec (2)
+      (, (current-depth $k)
+         ;; Capture self
+         (exec (2) $pat $tmp))
+      (, ;; Apply current proof to axiom-1
+         (exec (3)
+               (, (sol $k (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b))))
+               (, (sol (S $k) (: ($f ax₁) $b))))
+         ;; Apply current proof to axiom-2
+         (exec (4)
+               (, (sol $k (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b))))
+               (, (sol (S $k) (: ($f ax₂) $b))))
+         ;; Apply current proof to axiom-3
+         (exec (5)
+               (, (sol $k (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b))))
+               (, (sol (S $k) (: ($f ax₃) $b))))
+         ;; Apply mpⁱ to current proof
+         (exec (6)
+               (, (sol $k (: $f (-> $b $c))))
+               (, (sol (S $k) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
+         ;; Increment current depth
+         (exec (7)
+               (, (current-depth $k))
+               (O (+ (current-depth (S $k)))
+                  (- (current-depth $k))))
+         ;; Respawn self
+         (exec (8) (,)
+               (, (exec (2) $pat $tmp)))))
