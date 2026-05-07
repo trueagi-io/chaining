@@ -30,13 +30,20 @@
 
 ;; Turn target into source
 ;; NEXT: add hypotheses count in the solution description.
-;; NEXT: probably start with (S Z) instead of Z (like in obfc)
+;; NEXT: start with (S Z) instead of Z (like in obfc).
 (exec (1)
       (, (target (: $x $a)))
       (, (sol Z (: I (-> $a $a)))))
 
 ;; Define current depth
 (current-depth Z)
+
+;; NEXT: for now size control is done by calling mork with flag
+;; --steps $((SIZE * 8)), where SIZE is the size of the proof.  It
+;; should be fixed.
+;; NEXT: Unify solution with target when HYPOTHESES_COUNT falls to Z.
+;; NEXT: Add (lte HYPOTHESES_COUNT DEPTH) as pruning criterion.
+;; NEXT: Add (S DEPTH) as pruning criterion.
 
 ;; Expand one step forward from current depth
 (exec (2)
