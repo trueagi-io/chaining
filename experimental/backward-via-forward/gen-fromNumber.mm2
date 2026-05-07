@@ -1,0 +1,22 @@
+;; Generate fromNumber for all numbers up to a certain bound.
+
+;; Number representing a bound (here 26)
+;; NEXT: found better alternative than calling mork with --steps=25
+;; NEXT: then save it in fromNumber ACT file
+(Bound 26)
+
+;; Base case of fromNumber
+(= (fromNumber 0) Z)
+
+;; Recursive step of fromNumber
+(exec 0
+      (, (= (fromNumber $x) $k)
+         (exec 0 $pat $tmp))
+      (O (pure (= (fromNumber $y) (S $k)) $y
+               (i8_to_string (sum_i8 (i8_from_string $x) (i8_from_string 1))))
+         (+ (exec 0 $pat $tmp))))
+
+;; NEXT: fill MORK wiki with pure
+
+;; Finalize (write into fromNumber.act)
+(exec 1 (, (= (fromNumber $x) $k)) (O (ACT fromNumber (= (fromNumber $x) $k))))
