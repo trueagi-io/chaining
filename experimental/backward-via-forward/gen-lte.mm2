@@ -1,5 +1,7 @@
 ;; Generate less than equal relationships between all natural numbers
-;; up to a certain depth.
+;; up to a certain bound.
+
+;; NEXT: use fromNumber ACT file
 
 ;; Natural number representing a bound (here 26)
 (Bound (S
