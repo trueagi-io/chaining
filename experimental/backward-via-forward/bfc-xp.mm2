@@ -71,7 +71,6 @@
          (exec (8 0) (,)
                (, (exec (2 $k) $pat $tmp)))))
 
-
 ;; Unify solution with target when hypotheses count falls to Z.
 (exec (3 0 0)
       (, (target (: $x $a))
