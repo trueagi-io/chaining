@@ -112,12 +112,11 @@
 !(test (shallowAbstractTerm A) A)
 !(test (shallowAbstractTerm (A B)) (A $x))
 
-;; Return a counter mapping each shallow abstraction of $db that
-;; unifies with $pat with its count.  $db is assumed to be a MeTTa
-;; expression.
-;; (: countShallowAbstractions (-> $a $b Counter))
-(= (countShallowAbstractions $db $pat)
-   (trace! (👁 countShallowAbstractions $db $pat)
+;; Return a counter mapping each shallow abstraction of $db to its
+;; count.  $db is assumed to be a MeTTa expression.
+;; (: countShallowAbstractions (-> $a Counter))
+(= (countShallowAbstractions $db)
+   ;; (trace! (👁 countShallowAbstractions $db)
    (case $db
      (;; Base case, empty $db
       (() Counter.Nil)
@@ -125,38 +124,59 @@
       ($else (let ($head $tail) (decons-atom $db)
                   (Counter.insertWith =alpha
                                       (shallowAbstractTerm $head)
-                                      (countShallowAbstractions $tail $pat))))))))
+                                      (countShallowAbstractions $tail)))))));)
 
 ;; Test countShallowAbstractions
-!(test (countShallowAbstractions () $pat) Counter.Nil)
-!(test (countShallowAbstractions (A) $pat) (Counter.Cons A 1 Counter.Nil))
-!(test (countShallowAbstractions (A A) $pat) (Counter.Cons A 2 Counter.Nil))
-!(test (countShallowAbstractions (A B) $pat)
+!(test (countShallowAbstractions ()) Counter.Nil)
+!(test (countShallowAbstractions (A)) (Counter.Cons A 1 Counter.Nil))
+!(test (countShallowAbstractions (A A)) (Counter.Cons A 2 Counter.Nil))
+!(test (countShallowAbstractions (A B))
        (Counter.Cons B 1 (Counter.Cons A 1 Counter.Nil)))
-!(test (countShallowAbstractions (A A B) $pat)
+!(test (countShallowAbstractions (A A B))
        (Counter.Cons B 1 (Counter.Cons A 2 Counter.Nil)))
-!(test (countShallowAbstractions ((A B)) $pat) (Counter.Cons (A $x) 1 Counter.Nil))
-!(test (countShallowAbstractions ((A B) (A C)) $pat)
+!(test (countShallowAbstractions ((A B))) (Counter.Cons (A $x) 1 Counter.Nil))
+!(test (countShallowAbstractions ((A B) (A C)))
        (Counter.Cons (A $x) 2 Counter.Nil))
-!(test (countShallowAbstractions ((A B) (A C) D E) $pat)
+!(test (countShallowAbstractions ((A B) (A C) D E))
        (Counter.Cons E 1 (Counter.Cons D 1 (Counter.Cons (A $x) 2 Counter.Nil))))
+
+;; Given a counter mapping shallow abstractions to counts and a
+;; pattern, return a superposition of shallow abstractions greater
+;; than or equal to the minimum support unifying with the pattern.
+(= (shallowAbstractWithCounter $ms Counter.Nil $pat) (empty))
+(= (shallowAbstractWithCounter $ms (Counter.Cons $k $n $tail) $pat)
+   (if (<= $ms $n)
+       (let $k $pat $k)
+       (empty)))
+(= (shallowAbstractWithCounter $ms (Counter.Cons $k $n $tail) $pat)
+   (shallowAbstractWithCounter $ms $tail $pat))
 
 ;; Get shallow abstractions of $pat with counts greater than or equal
 ;; to $ms according to $db.  The multiplicity of results is handled by
 ;; superposition.
 (= (shallowAbstract $ms $db $pat)
-   ;; NEXT
-   )
+   (shallowAbstractWithCounter $ms (countShallowAbstractions $db) $pat))
 
-;; Given a pattern of the form (f x) return its database according x.
-;; This function does not create bindings on x (NEXT: verify).
-;; NEXT: find a better name that can be adjusted for different patterns.
+;; Test shallowAbstract
+!(test (collapse (shallowAbstract 2 (A A (B A) (B C) (C D)) $pat))
+       ((B $x) A))
+!(test (shallowAbstract 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $subpat)))
+       (B (C $x)))
+
+;; Given a pattern of the form (f $x) return its database according
+;; $x.  This function does not create bindings on $x.  NEXT: find a
+;; better name that can be adjusted for different patterns.
 (= (subdb $db ($f $x)) (collapse (let ($f $x) (superpose $db) $x)))
+
+;; Test subdb
+!(test (subdb (A A (B A) (B C) (C D)) (B $x)) (A C))
 
 ;; Pattern mine database $db starting at pattern $pat so that any
 ;; specialization of $pat has a support greater than or equal to $ms.
 ;; It is assumed that ms <= (count $db $pat) at the entry point.
+(= (mine $ms $db $pat) $pat)
 (= (mine $ms $db $pat)
+   (trace! (👁 mine $ms $db $pat)
    (let $shab (shallowAbstract $ms $db $pat)
      (if (isExpression $shab)
          ;; If expression recurse
@@ -166,4 +186,17 @@
             ;; Else (TODO)
             ($else $else)))
          ;; Else return itself
-         $shab)))
+         $shab))))
+
+;; Test mine
+!(test (collapse (mine 2 (A A B C) $pat))
+       ($pat A))
+!(test (collapse (mine 2 (A A (B A) (B C) (C D)) $pat))
+       ($pat (B $x) A))
+!(test (collapse (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) $pat))
+       ($pat (B $x) (B (C $y)) A))
+;; !(test (=alpha
+;; NEXT: find out why it outputs duplicated patterns
+!(collapse (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $sp))))
+;;        ;;  ((B $x) (B (C $y))))
+;;        ;; True)
