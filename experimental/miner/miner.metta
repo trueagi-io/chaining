@@ -93,6 +93,10 @@
 ;; Miner ;;
 ;;;;;;;;;;;
 
+;; Count the number of instances of a pattern
+(= (count $db $pat)
+   (length (collapse (let $pat (superpose $db)))))
+
 ;; Get shallow abstraction of a term.  If the term is a symbol,
 ;; grounding or variable, then return itself, otherwise, if it is an
 ;; expression, return the first element (the function) and abstract
@@ -171,22 +175,30 @@
 ;; Test subdb
 !(test (subdb (A A (B A) (B C) (C D)) (B $x)) (A C))
 
-;; Pattern mine database $db starting at pattern $pat so that any
-;; specialization of $pat has a support greater than or equal to $ms.
-;; It is assumed that ms <= (count $db $pat) at the entry point.
-(= (mine $ms $db $pat) $pat)
-(= (mine $ms $db $pat)
-   (trace! (👁 mine $ms $db $pat)
+;; Recursively pattern mine database $db starting at pattern $pat so
+;; that any specialization of $pat has a support greater than or equal
+;; to $ms.  It is assumed that $ms <= (count $db $pat).
+(= (rcmine $ms $db $pat) $pat)
+(= (rcmine $ms $db $pat)
+   (trace! (👁 rcmine $ms $db $pat)
    (let $shab (shallowAbstract $ms $db $pat)
      (if (isExpression $shab)
          ;; If expression recurse
          (case $shab
            (;; Unary application
-            (($f $x) ($f (mine $ms (subdb $db ($f $x)) $x)))
+            (($f $x) ($f (alpha-unique (rcmine $ms (subdb $db ($f $x)) $x))))
             ;; Else (TODO)
             ($else $else)))
          ;; Else return itself
          $shab))))
+
+;; Pattern mine database $db starting at pattern $pat so that any
+;; specialization of $pat has a support greater than or equal to $ms.
+;; It is the user entry point and no assumption on count is needed.
+(= (mine $ms $db $pat)
+   (if (<= $ms (count $db $pat))
+       (alpha-unique (rcmine $ms $db $pat))
+       (empty)))
 
 ;; Test mine
 !(test (collapse (mine 2 (A A B C) $pat))
@@ -195,8 +207,5 @@
        ($pat (B $x) A))
 !(test (collapse (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) $pat))
        ($pat (B $x) (B (C $y)) A))
-;; !(test (=alpha
-;; NEXT: find out why it outputs duplicated patterns
-!(collapse (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $sp))))
-;;        ;;  ((B $x) (B (C $y))))
-;;        ;; True)
+!(test (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $sp)))
+       (B (C $x)))
