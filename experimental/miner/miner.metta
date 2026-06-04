@@ -108,6 +108,8 @@
        (case $x
          (;; Unary application
           (($f $y) ($f $z))
+          ;; Binary application
+          (($f $y1 $y2) ($f $z1 $z2))
           ;; Else (TODO)
           ($else $else)))
        $x))
@@ -143,6 +145,8 @@
        (Counter.Cons (A $x) 2 Counter.Nil))
 !(test (countShallowAbstractions ((A B) (A C) D E))
        (Counter.Cons E 1 (Counter.Cons D 1 (Counter.Cons (A $x) 2 Counter.Nil))))
+!(test (countShallowAbstractions ((A B C)))
+       (Counter.Cons (A $x1 $x2) 1 Counter.Nil))
 
 ;; Given a counter mapping shallow abstractions to counts and a
 ;; pattern, return a superposition of shallow abstractions greater
@@ -166,31 +170,42 @@
        ((B $x) A))
 !(test (shallowAbstract 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $subpat)))
        (B (C $x)))
-
-;; Given a pattern of the form (f $x) return its database according
-;; $x.  This function does not create bindings on $x.  NEXT: find a
-;; better name that can be adjusted for different patterns.
-(= (subdb $db ($f $x)) (collapse (let ($f $x) (superpose $db) $x)))
-
-;; Test subdb
-!(test (subdb (A A (B A) (B C) (C D)) (B $x)) (A C))
+!(test (shallowAbstract 2 ((A B C) (A D E)) $pat)
+       (A $x1 $x2))
 
 ;; Recursively pattern mine database $db starting at pattern $pat so
 ;; that any specialization of $pat has a support greater than or equal
 ;; to $ms.  It is assumed that $ms <= (count $db $pat).
 (= (rcmine $ms $db $pat) $pat)
 (= (rcmine $ms $db $pat)
-   (trace! (👁 rcmine $ms $db $pat)
    (let $shab (shallowAbstract $ms $db $pat)
      (if (isExpression $shab)
          ;; If expression recurse
          (case $shab
            (;; Unary application
-            (($f $x) ($f (alpha-unique (rcmine $ms (subdb $db ($f $x)) $x))))
+            (($f $x)
+             (let* (;; Get db at $x
+                    ($dbx (collapse (let ($f $x) (superpose $db) $x)))
+                    ;; Mine patterns at $x
+                    ($px (alpha-unique (rcmine $ms $dbx $x))))
+               ;; Output unary patterns
+               ($f $px)))
+            ;; Binary application
+            (($f $x1 $x2)
+             (let* (;; Get db at $x1
+                    ($dbx1 (collapse (let ($f $x1 $x2) (superpose $db) $x1)))
+                    ;; Mine patterns at $x1
+                    ($px1 (alpha-unique (rcmine $ms $dbx1 $x1)))
+                    ;; Get db at $x2 relative to $px1
+                    ($dbx2 (collapse (let ($f $px1 $x2) (superpose $db) $x2)))
+                    ;; Mine patterns at $x2
+                    ($px2 (alpha-unique (rcmine $ms $dbx2 $x2))))
+               ;; Output binary patterns
+               ($f $px1 $px2)))
             ;; Else (TODO)
             ($else $else)))
          ;; Else return itself
-         $shab))))
+         $shab)))
 
 ;; Pattern mine database $db starting at pattern $pat so that any
 ;; specialization of $pat has a support greater than or equal to $ms.
@@ -209,3 +224,7 @@
        ($pat (B $x) (B (C $y)) A))
 !(test (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $sp)))
        (B (C $x)))
+!(test (collapse (mine 2 ((A B C) (A D E)) $pat))
+       ($pat (A $x1 $x2)))
+!(test (collapse (mine 2 ((A B C) (A D C)) $pat))
+       ($pat (A $x1 $x2) (A $x3 C)))
