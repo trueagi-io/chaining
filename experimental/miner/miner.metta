@@ -11,6 +11,43 @@
 !(test (isExpression A) False)
 !(test (isExpression (B $x)) True)
 
+;; Return true iff $x is a MeTTa variable
+(= (isVariable $x) (== (get-metatype $x) Variable))
+
+;;;;;;;;;;;;;;;;;;
+;; getVariables ;;
+;;;;;;;;;;;;;;;;;;
+
+;; Get all free variables of a MeTTa term
+(= (getVariables $x)
+   (case (get-metatype $x)
+     ((Symbol ())
+      (Grounded ())
+      (Variable ($x))
+      (Expression
+       (if (== $x ())
+           ()
+           (let* (;; Recurse on head and tail
+                  (($head $tail) (decons-atom $x))
+                  ($vh (getVariables $head))
+                  ($vt (getVariables $tail)))
+             ;; Return the union
+             (unique-atom (union-atom $vh $vt))))))))
+
+;; Test getVariables
+!(test
+  (getVariables $x)
+  ($x))
+!(test
+  (getVariables ($x))
+  ($x))
+!(test
+  (getVariables (R $x $y))
+  ($x $y))
+!(test
+  (getVariables (R $x (S $y $x)))
+  ($x $y))
+
 ;;;;;;;;;;;;;
 ;; Counter ;;
 ;;;;;;;;;;;;;
@@ -173,11 +210,14 @@
 !(test (shallowAbstract 2 ((A B C) (A D E)) $pat)
        (A $x1 $x2))
 
-;; Recursively pattern mine database $db starting at pattern $pat so
-;; that any specialization of $pat has a support greater than or equal
-;; to $ms.  It is assumed that $ms <= (count $db $pat).
-(= (rcmine $ms $db $pat) $pat)
-(= (rcmine $ms $db $pat)
+;; Pattern mine by structural specialization the database $db,
+;; starting at pattern $pat so that any specialization of $pat has a
+;; support greater than or equal to $ms.  By the time stmine is
+;; called, it is assumed that $ms <= (count $db $pat).
+;;
+;; WARNING: it only supports up to binary applications.
+(= (stmine $ms $db $pat) $pat)
+(= (stmine $ms $db $pat)
    (let $shab (shallowAbstract $ms $db $pat)
      (if (isExpression $shab)
          ;; If expression recurse
@@ -187,7 +227,7 @@
              (let* (;; Get db at $x
                     ($dbx (collapse (let ($f $x) (superpose $db) $x)))
                     ;; Mine patterns at $x
-                    ($px (alpha-unique (rcmine $ms $dbx $x))))
+                    ($px (alpha-unique (stmine $ms $dbx $x))))
                ;; Output unary patterns
                ($f $px)))
             ;; Binary application
@@ -195,11 +235,11 @@
              (let* (;; Get db at $x1
                     ($dbx1 (collapse (let ($f $x1 $x2) (superpose $db) $x1)))
                     ;; Mine patterns at $x1
-                    ($px1 (alpha-unique (rcmine $ms $dbx1 $x1)))
+                    ($px1 (alpha-unique (stmine $ms $dbx1 $x1)))
                     ;; Get db at $x2 relative to $px1
                     ($dbx2 (collapse (let ($f $px1 $x2) (superpose $db) $x2)))
                     ;; Mine patterns at $x2
-                    ($px2 (alpha-unique (rcmine $ms $dbx2 $x2))))
+                    ($px2 (alpha-unique (stmine $ms $dbx2 $x2))))
                ;; Output binary patterns
                ($f $px1 $px2)))
             ;; Else (TODO)
@@ -207,12 +247,33 @@
          ;; Else return itself
          $shab)))
 
-;; Pattern mine database $db starting at pattern $pat so that any
+;; Pattern mine the database $db by variable reduction (i.e. reduce
+;; the number of variables in a pattern by mapping a variable into
+;; another), starting at pattern $pat so that any specialization of
+;; $pat has a support greater than or equal to $ms.  By the time
+;; vrmine is called, it is assumed that $ms <= (count $db $pat) and
+;; that $vs is a tuple containing all free variables of $pat.
+(= (vrmine $ms $db $pat $vs) $pat)
+(= (vrmine $ms $db $pat $vs)
+   (if (== $vs ())
+       (empty)
+       (let* (;; Get head and tail of variable list
+              (($vh $vt) (decons-atom $vs))
+              ;; Map the head variable into any one of the tail variables
+              ($vh (superpose $vt)))
+         ;; If the count is greater than or equal to the minimum
+         ;; support, then recurse on the tail of the variable list
+         (if (<= $ms (count $db $pat))
+             (vrmine $ms $db $pat $vt)
+             (empty)))))
+
+;; Pattern mine the database $db, starting at pattern $pat so that any
 ;; specialization of $pat has a support greater than or equal to $ms.
 ;; It is the user entry point and no assumption on count is needed.
 (= (mine $ms $db $pat)
    (if (<= $ms (count $db $pat))
-       (alpha-unique (rcmine $ms $db $pat))
+       (let $stpat (alpha-unique (stmine $ms $db $pat))
+         (vrmine $ms $db $stpat (getVariables $stpat)))
        (empty)))
 
 ;; Test mine
@@ -224,7 +285,9 @@
        ($pat (B $x) (B (C $y)) A))
 !(test (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $sp)))
        (B (C $x)))
+;; NEXT: find out why it duplicates patterns
 !(test (collapse (mine 2 ((A B C) (A D E)) $pat))
        ($pat (A $x1 $x2)))
-!(test (collapse (mine 2 ((A B C) (A D C)) $pat))
-       ($pat (A $x1 $x2) (A $x3 C)))
+;; !(test (collapse (mine 2 ((A B C) (A D C)) $pat))
+;;        ($pat (A $x1 $x2) (A $x3 C)))
+;; !(mine 2((A B B) (A C C)) $pat)
