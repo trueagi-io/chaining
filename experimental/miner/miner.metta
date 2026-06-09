@@ -1,4 +1,27 @@
-;; TODO: patternize function as well ($f A B C)
+;; Prototype of a more elegant pattern miner algorithm.  The elegance
+;; mostly concerns the structural specialization and is realized by
+;; recursively passing around not only specialized patterns but also
+;; specialized databases.
+;;
+;; The idea of recursively passing around altered versions of the
+;; database was never considered in OpenCog Classic because of it
+;; prohibitive expected cost.  But in MORK, such operation should be
+;; relatively cheap.  The resulting algorithm is increadibly compact,
+;; elegant and potentially even more efficient on a MORK back-end.
+;; Note that the current prototype only supports up to binary links
+;; with no anti-unification on links.  The algorithm should be
+;; generalized to n-ary links with anti-unification on links, which
+;; should normally result in an more elegant, not less, algorithm.
+;;
+;; Another difference is that the variable reduction specialization
+;; (mapping a variable of a pattern onto another one to reduce the
+;; number of variables in that pattern) is not interleaved with the
+;; structural specialization (unlike in OpenCog Classic).  It is
+;; reasonable to infer that this clearer separation leads to a more
+;; efficient algorithm, although this should probably be empirically
+;; confirmed.
+;;
+;; Conjunction expension is missing from this prototype.
 
 ;;;;;;;;;;;;;;;;
 ;; Properties ;;
@@ -130,9 +153,8 @@
 ;; Miner ;;
 ;;;;;;;;;;;
 
-;; Count the number of instances of a pattern
-(= (count $db $pat)
-   (length (collapse (let $pat (superpose $db)))))
+;; Count the number of matches of a pattern
+(= (count $db $pat) (length (collapse (let $pat (superpose $db) $pat))))
 
 ;; Get shallow abstraction of a term.  If the term is a symbol,
 ;; grounding or variable, then return itself, otherwise, if it is an
@@ -215,14 +237,17 @@
 ;; support greater than or equal to $ms.  By the time stmine is
 ;; called, it is assumed that $ms <= (count $db $pat).
 ;;
-;; WARNING: it only supports up to binary applications.
+;; WARNING: it only supports up to binary links and should be
+;; generalized to n-ary links.  Also the links themselves could be
+;; anti-unified (MeTTa would allow this, unlike Atomese), meaning that
+;; the db (A C), (B C) could be anti-unified into ($f C).
 (= (stmine $ms $db $pat) $pat)
 (= (stmine $ms $db $pat)
    (let $shab (shallowAbstract $ms $db $pat)
      (if (isExpression $shab)
          ;; If expression recurse
          (case $shab
-           (;; Unary application
+           (;; Unary link
             (($f $x)
              (let* (;; Get db at $x
                     ($dbx (collapse (let ($f $x) (superpose $db) $x)))
@@ -230,7 +255,7 @@
                     ($px (alpha-unique (stmine $ms $dbx $x))))
                ;; Output unary patterns
                ($f $px)))
-            ;; Binary application
+            ;; Binary link
             (($f $x1 $x2)
              (let* (;; Get db at $x1
                     ($dbx1 (collapse (let ($f $x1 $x2) (superpose $db) $x1)))
@@ -260,10 +285,12 @@
        (let* (;; Get head and tail of variable list
               (($vh $vt) (decons-atom $vs))
               ;; Map the head variable into any one of the tail variables
-              ($vh (superpose $vt)))
+              ($vh (superpose $vt))
+              ;; Count the support of $pat
+              ($patcnt (count $db $pat)))
          ;; If the count is greater than or equal to the minimum
          ;; support, then recurse on the tail of the variable list
-         (if (<= $ms (count $db $pat))
+         (if (<= $ms $patcnt)
              (vrmine $ms $db $pat $vt)
              (empty)))))
 
@@ -285,9 +312,9 @@
        ($pat (B $x) (B (C $y)) A))
 !(test (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $sp)))
        (B (C $x)))
-;; NEXT: find out why it duplicates patterns
 !(test (collapse (mine 2 ((A B C) (A D E)) $pat))
        ($pat (A $x1 $x2)))
-;; !(test (collapse (mine 2 ((A B C) (A D C)) $pat))
-;;        ($pat (A $x1 $x2) (A $x3 C)))
-;; !(mine 2((A B B) (A C C)) $pat)
+!(test (collapse (mine 2 ((A B C) (A D C)) $pat))
+       ($pat (A $x1 $x2) (A $x3 C)))
+!(test (collapse (mine 2 ((A B B) (A C C)) $pat))
+       ($pat (A $x1 $x2) (A $x3 $x3)))
