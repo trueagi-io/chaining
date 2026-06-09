@@ -1,0 +1,320 @@
+;; Prototype of a more elegant pattern miner algorithm.  The elegance
+;; mostly concerns the structural specialization and is realized by
+;; recursively passing around not only specialized patterns but also
+;; specialized databases.
+;;
+;; The idea of recursively passing around altered versions of the
+;; database was never considered in OpenCog Classic because of it
+;; prohibitive expected cost.  But in MORK, such operation should be
+;; relatively cheap.  The resulting algorithm is increadibly compact,
+;; elegant and potentially even more efficient on a MORK back-end.
+;; Note that the current prototype only supports up to binary links
+;; with no anti-unification on links.  The algorithm should be
+;; generalized to n-ary links with anti-unification on links, which
+;; should normally result in an more elegant, not less, algorithm.
+;;
+;; Another difference is that the variable reduction specialization
+;; (mapping a variable of a pattern onto another one to reduce the
+;; number of variables in that pattern) is not interleaved with the
+;; structural specialization (unlike in OpenCog Classic).  It is
+;; reasonable to infer that this clearer separation leads to a more
+;; efficient algorithm, although this should probably be empirically
+;; confirmed.
+;;
+;; Conjunction expension is missing from this prototype.
+
+;;;;;;;;;;;;;;;;
+;; Properties ;;
+;;;;;;;;;;;;;;;;
+
+;; Return true iff $x is a MeTTa expression
+(= (isExpression $x) (== (get-metatype $x) Expression))
+
+;; Test isExpression
+!(test (isExpression A) False)
+!(test (isExpression (B $x)) True)
+
+;; Return true iff $x is a MeTTa variable
+(= (isVariable $x) (== (get-metatype $x) Variable))
+
+;;;;;;;;;;;;;;;;;;
+;; getVariables ;;
+;;;;;;;;;;;;;;;;;;
+
+;; Get all free variables of a MeTTa term
+(= (getVariables $x)
+   (case (get-metatype $x)
+     ((Symbol ())
+      (Grounded ())
+      (Variable ($x))
+      (Expression
+       (if (== $x ())
+           ()
+           (let* (;; Recurse on head and tail
+                  (($head $tail) (decons-atom $x))
+                  ($vh (getVariables $head))
+                  ($vt (getVariables $tail)))
+             ;; Return the union
+             (unique-atom (union-atom $vh $vt))))))))
+
+;; Test getVariables
+!(test
+  (getVariables $x)
+  ($x))
+!(test
+  (getVariables ($x))
+  ($x))
+!(test
+  (getVariables (R $x $y))
+  ($x $y))
+!(test
+  (getVariables (R $x (S $y $x)))
+  ($x $y))
+
+;;;;;;;;;;;;;
+;; Counter ;;
+;;;;;;;;;;;;;
+
+;; Define Counter type, constructors and methods
+(: Counter (-> $a Type))
+(: Counter.Nil (Counter $a))
+(: Counter.Cons (-> $a                  ; Key
+                    Number              ; Count
+                    (Counter $a)        ; Tail
+                    (Counter $a)))
+
+;; Insert a key in the counter
+;; (: Counter.insert (-> $a                ; Key
+;;                       (Counter $a)      ; Old counter
+;;                       (counter $a)))    ; New counter
+(= (Counter.insert $x Counter.Nil) (Counter.Cons $x 1 Counter.Nil))
+(= (Counter.insert $x (Counter.Cons $k $n $tail))
+   (if (== $x $k)
+       (Counter.Cons $k (+ $n 1) $tail)
+       (Counter.Cons $k $n (Counter.insert $x $tail))))
+
+;; Test Counter.insert
+!(test
+  (Counter.insert A Counter.Nil)
+  (Counter.Cons A 1 Counter.Nil))
+!(test
+  (Counter.insert A (Counter.Cons A 1 Counter.Nil))
+  (Counter.Cons A 2 Counter.Nil))
+!(test
+  (Counter.insert B (Counter.Cons A 2 Counter.Nil))
+  (Counter.Cons A 2 (Counter.Cons B 1 Counter.Nil)))
+!(test
+  (Counter.insert (C $x) (Counter.Cons A 2 (Counter.Cons B 1 Counter.Nil)))
+  (Counter.Cons A 2 (Counter.Cons B 1 (Counter.Cons (C $x) 1 Counter.Nil))))
+!(test
+  (Counter.insert (C $x)
+                  (Counter.Cons A 2
+                                (Counter.Cons B 1
+                                              (Counter.Cons (C $x) 1
+                                                            Counter.Nil))))
+  (Counter.Cons A 2 (Counter.Cons B 1 (Counter.Cons (C $x) 2 Counter.Nil))))
+
+
+;; Like Counter.insert but use a provided equality
+;; (: Counter.insertWith (-> (-> $a $a Bool) ; Equality
+;;                           $a              ; Key
+;;                           (Counter $a)    ; Old counter
+;;                           (Counter $a)))  ; New counter
+(= (Counter.insertWith $eq $x Counter.Nil) (Counter.Cons $x 1 Counter.Nil))
+(= (Counter.insertWith $eq $x (Counter.Cons $k $n $tail))
+   (if ($eq $x $k)
+       (Counter.Cons $k (+ $n 1) $tail)
+       (Counter.Cons $k $n (Counter.insertWith $eq $x $tail))))
+
+;; Test Counter.insertWith
+!(test
+  (Counter.insertWith =alpha A Counter.Nil)
+  (Counter.Cons A 1 Counter.Nil))
+!(test
+  (Counter.insertWith =alpha A (Counter.Cons A 1 Counter.Nil))
+  (Counter.Cons A 2 Counter.Nil))
+!(test
+  (Counter.insertWith =alpha B (Counter.Cons A 2 Counter.Nil))
+  (Counter.Cons A 2 (Counter.Cons B 1 Counter.Nil)))
+!(test
+  (Counter.insertWith =alpha (C $x)
+                      (Counter.Cons A 2 (Counter.Cons B 1 Counter.Nil)))
+  (Counter.Cons A 2 (Counter.Cons B 1 (Counter.Cons (C $x) 1 Counter.Nil))))
+!(test
+  (Counter.insertWith =alpha
+                      (C $y)
+                      (Counter.Cons A 2
+                                    (Counter.Cons B 1
+                                                  (Counter.Cons (C $x) 2
+                                                                Counter.Nil))))
+  (Counter.Cons A 2 (Counter.Cons B 1 (Counter.Cons (C $x) 3 Counter.Nil))))
+
+;;;;;;;;;;;
+;; Miner ;;
+;;;;;;;;;;;
+
+;; Count the number of matches of a pattern
+(= (count $db $pat) (length (collapse (let $pat (superpose $db) $pat))))
+
+;; Get shallow abstraction of a term.  If the term is a symbol,
+;; grounding or variable, then return itself, otherwise, if it is an
+;; expression, return the first element (the function) and abstract
+;; the arguments.
+;;
+;; For instance `(inc 42)` shallow abstracs to `(inc $x)`.
+(= (shallowAbstractTerm $x)
+   (if (isExpression $x)
+       (case $x
+         (;; Unary application
+          (($f $y) ($f $z))
+          ;; Binary application
+          (($f $y1 $y2) ($f $z1 $z2))
+          ;; Else (TODO)
+          ($else $else)))
+       $x))
+
+;; Test shallowAbstractTerm
+!(test (shallowAbstractTerm A) A)
+!(test (shallowAbstractTerm (A B)) (A $x))
+
+;; Return a counter mapping each shallow abstraction of $db to its
+;; count.  $db is assumed to be a MeTTa expression.
+;; (: countShallowAbstractions (-> $a Counter))
+(= (countShallowAbstractions $db)
+   ;; (trace! (👁 countShallowAbstractions $db)
+   (case $db
+     (;; Base case, empty $db
+      (() Counter.Nil)
+      ;; Recursive step, non-empty $db
+      ($else (let ($head $tail) (decons-atom $db)
+                  (Counter.insertWith =alpha
+                                      (shallowAbstractTerm $head)
+                                      (countShallowAbstractions $tail)))))));)
+
+;; Test countShallowAbstractions
+!(test (countShallowAbstractions ()) Counter.Nil)
+!(test (countShallowAbstractions (A)) (Counter.Cons A 1 Counter.Nil))
+!(test (countShallowAbstractions (A A)) (Counter.Cons A 2 Counter.Nil))
+!(test (countShallowAbstractions (A B))
+       (Counter.Cons B 1 (Counter.Cons A 1 Counter.Nil)))
+!(test (countShallowAbstractions (A A B))
+       (Counter.Cons B 1 (Counter.Cons A 2 Counter.Nil)))
+!(test (countShallowAbstractions ((A B))) (Counter.Cons (A $x) 1 Counter.Nil))
+!(test (countShallowAbstractions ((A B) (A C)))
+       (Counter.Cons (A $x) 2 Counter.Nil))
+!(test (countShallowAbstractions ((A B) (A C) D E))
+       (Counter.Cons E 1 (Counter.Cons D 1 (Counter.Cons (A $x) 2 Counter.Nil))))
+!(test (countShallowAbstractions ((A B C)))
+       (Counter.Cons (A $x1 $x2) 1 Counter.Nil))
+
+;; Given a counter mapping shallow abstractions to counts and a
+;; pattern, return a superposition of shallow abstractions greater
+;; than or equal to the minimum support unifying with the pattern.
+(= (shallowAbstractWithCounter $ms Counter.Nil $pat) (empty))
+(= (shallowAbstractWithCounter $ms (Counter.Cons $k $n $tail) $pat)
+   (if (<= $ms $n)
+       (let $k $pat $k)
+       (empty)))
+(= (shallowAbstractWithCounter $ms (Counter.Cons $k $n $tail) $pat)
+   (shallowAbstractWithCounter $ms $tail $pat))
+
+;; Get shallow abstractions of $pat with counts greater than or equal
+;; to $ms according to $db.  The multiplicity of results is handled by
+;; superposition.
+(= (shallowAbstract $ms $db $pat)
+   (shallowAbstractWithCounter $ms (countShallowAbstractions $db) $pat))
+
+;; Test shallowAbstract
+!(test (collapse (shallowAbstract 2 (A A (B A) (B C) (C D)) $pat))
+       ((B $x) A))
+!(test (shallowAbstract 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $subpat)))
+       (B (C $x)))
+!(test (shallowAbstract 2 ((A B C) (A D E)) $pat)
+       (A $x1 $x2))
+
+;; Pattern mine by structural specialization the database $db,
+;; starting at pattern $pat so that any specialization of $pat has a
+;; support greater than or equal to $ms.  By the time stmine is
+;; called, it is assumed that $ms <= (count $db $pat).
+;;
+;; WARNING: it only supports up to binary links and should be
+;; generalized to n-ary links.  Also the links themselves could be
+;; anti-unified (MeTTa would allow this, unlike Atomese), meaning that
+;; the db (A C), (B C) could be anti-unified into ($f C).
+(= (stmine $ms $db $pat) $pat)
+(= (stmine $ms $db $pat)
+   (let $shab (shallowAbstract $ms $db $pat)
+     (if (isExpression $shab)
+         ;; If expression recurse
+         (case $shab
+           (;; Unary link
+            (($f $x)
+             (let* (;; Get db at $x
+                    ($dbx (collapse (let ($f $x) (superpose $db) $x)))
+                    ;; Mine patterns at $x
+                    ($px (alpha-unique (stmine $ms $dbx $x))))
+               ;; Output unary patterns
+               ($f $px)))
+            ;; Binary link
+            (($f $x1 $x2)
+             (let* (;; Get db at $x1
+                    ($dbx1 (collapse (let ($f $x1 $x2) (superpose $db) $x1)))
+                    ;; Mine patterns at $x1
+                    ($px1 (alpha-unique (stmine $ms $dbx1 $x1)))
+                    ;; Get db at $x2 relative to $px1
+                    ($dbx2 (collapse (let ($f $px1 $x2) (superpose $db) $x2)))
+                    ;; Mine patterns at $x2
+                    ($px2 (alpha-unique (stmine $ms $dbx2 $x2))))
+               ;; Output binary patterns
+               ($f $px1 $px2)))
+            ;; Else (TODO)
+            ($else $else)))
+         ;; Else return itself
+         $shab)))
+
+;; Pattern mine the database $db by variable reduction (i.e. reduce
+;; the number of variables in a pattern by mapping a variable into
+;; another), starting at pattern $pat so that any specialization of
+;; $pat has a support greater than or equal to $ms.  By the time
+;; vrmine is called, it is assumed that $ms <= (count $db $pat) and
+;; that $vs is a tuple containing all free variables of $pat.
+(= (vrmine $ms $db $pat $vs) $pat)
+(= (vrmine $ms $db $pat $vs)
+   (if (== $vs ())
+       (empty)
+       (let* (;; Get head and tail of variable list
+              (($vh $vt) (decons-atom $vs))
+              ;; Map the head variable into any one of the tail variables
+              ($vh (superpose $vt))
+              ;; Count the support of $pat
+              ($patcnt (count $db $pat)))
+         ;; If the count is greater than or equal to the minimum
+         ;; support, then recurse on the tail of the variable list
+         (if (<= $ms $patcnt)
+             (vrmine $ms $db $pat $vt)
+             (empty)))))
+
+;; Pattern mine the database $db, starting at pattern $pat so that any
+;; specialization of $pat has a support greater than or equal to $ms.
+;; It is the user entry point and no assumption on count is needed.
+(= (mine $ms $db $pat)
+   (if (<= $ms (count $db $pat))
+       (let $stpat (alpha-unique (stmine $ms $db $pat))
+         (vrmine $ms $db $stpat (getVariables $stpat)))
+       (empty)))
+
+;; Test mine
+!(test (collapse (mine 2 (A A B C) $pat))
+       ($pat A))
+!(test (collapse (mine 2 (A A (B A) (B C) (C D)) $pat))
+       ($pat (B $x) A))
+!(test (collapse (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) $pat))
+       ($pat (B $x) (B (C $y)) A))
+!(test (mine 2 (A A (B A) (B (C D)) (B (C E)) (C D)) (B (C $sp)))
+       (B (C $x)))
+!(test (collapse (mine 2 ((A B C) (A D E)) $pat))
+       ($pat (A $x1 $x2)))
+!(test (collapse (mine 2 ((A B C) (A D C)) $pat))
+       ($pat (A $x1 $x2) (A $x3 C)))
+!(test (collapse (mine 2 ((A B B) (A C C)) $pat))
+       ($pat (A $x1 $x2) (A $x3 $x3)))
