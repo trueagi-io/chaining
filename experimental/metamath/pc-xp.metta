@@ -352,6 +352,35 @@
   (term-depth (R A (S B C)))
   2)
 
+;;;;;;;;;;;;;;;
+;; Term size ;;
+;;;;;;;;;;;;;;;
+
+;; Return the size of a term, which correspond to the number symbols,
+;; variables and grounded subterms in the given term.
+(= (term-size $x)
+   (if (is-expression $x)
+       (if (== $x ())
+           0
+           (let ($head $tail) (decons-atom $x)
+                (+ (term-size $head) (term-size $tail))))
+       1))
+
+;; Test term-size
+!(test
+  (term-size A)
+  1)
+!(test
+  (term-size ((R A) $x))
+  3)
+!(test
+  (term-size (R A (S B C)))
+  5)
+
+;;;;;;;;;;;;;;;;;
+;; Remove body ;;
+;;;;;;;;;;;;;;;;;
+
 ;; Take a term representing a proof and replace its body by a variable
 ;; (as to be able to rediscover it).  If it is a lambda abstraction,
 ;; then replace the lambda term body by a variable, other replace the
