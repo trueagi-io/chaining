@@ -100,26 +100,6 @@
 (: when (-> Bool Atom $a))
 (= (when $c $x) (if $c $x (empty)))
 
-;;;;;;;;;;;;;;;;;;;;;;;
-;; Detect Arrow Type ;;
-;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Return True iff the given term is an arrow type, meaning has the
-;; following format (-> A), (-> A B), (-> A B C), etc.
-(: is-arrow-type (-> Atom Bool))
-(= (is-arrow-type $x)
-   (and (== (get-metatype $x) Expression)
-        (and (not (== () $x))
-             (== (car-atom $x) ->))))
-
-;; Test is-arrow-type
-!(test
-  (is-arrow-type (F A B))
-  False)
-!(test
-  (is-arrow-type (-> $a $b))
-  True)
-
 ;;;;;;;;;;;;;;;
 ;; Assertion ;;
 ;;;;;;;;;;;;;;;
@@ -208,6 +188,56 @@
 !(test
   (is-expression id)
   False)
+
+;; Return True iff the given term is a lambda abstraction, meaning an
+;; expression of the form (λ VARIABLES BODY)
+;;
+;; NEXT: simplify once issue
+;; https://github.com/trueagi-io/PeTTa/issues/182 has been
+;; solved.
+(: is-lambda (-> $a Bool))
+(= (is-lambda $x)
+   (if (is-expression $x)
+       (if (== () $x)
+           False
+           (== λ (car-atom $x)))
+       False))
+
+;; Test is-lambda
+!(test
+  (is-lambda A)
+  False)
+!(test
+  (is-lambda (A B))
+  False)
+!(test
+  (is-lambda (λ $x $y))
+  True)
+
+;; Return True iff the given term is an arrow type, meaning has the
+;; following format (-> A), (-> A B), (-> A B C), etc.
+;;
+;; NEXT: simplify once issue
+;; https://github.com/trueagi-io/PeTTa/issues/182 has been
+;; solved.
+(: is-arrow (-> Atom Bool))
+(= (is-arrow $x)
+   (if (is-expression $x)
+       (if (== () $x)
+           False
+           (== -> (car-atom $x)))
+       False))
+
+;; Test is-arrow
+!(test
+  (is-arrow A)
+  False)
+!(test
+  (is-arrow (F A B))
+  False)
+!(test
+  (is-arrow (-> $a $b))
+  True)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
@@ -1097,7 +1127,7 @@
 (= (add-to-kbs $label $stmt)
    (let $stmt-with-vars (replace-greeks-by-variables $stmt)
      ;; Add to rule base or axiom base
-     (if (is-arrow-type $stmt)
+     (if (is-arrow $stmt)
          (add-atom &pc-rb (: $label $stmt-with-vars))
          (add-atom &pc-ab (: $label $stmt-with-vars)))))
 
