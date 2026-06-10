@@ -679,6 +679,8 @@
 ;; partially.  If multiple results are possible, they are returned as
 ;; a superposition.
 
+;; NEXT: simplify the code below
+
 ;; Entry point
 (: bc (-> $a                            ; Rule base space
           $b                            ; Axiom base space
@@ -702,6 +704,8 @@
            (Expression
             (if (== () $prf)
                 (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm))
+                ;; NEXT
+                ;; (if (is-lambda 
                 (case (: $prf $thrm)
                   (;; Unary lambda abstraction
                    ((: (λ $x $y) (-> $a $b))
