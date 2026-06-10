@@ -68,6 +68,7 @@
 ;;;;;;;;;;;;;;;;;;;
 
 ;; Import logger library
+!(import! &self (library lib_import))
 !(git-import! "https://github.com/ngeiswei/petta_lib_logger")
 !(import! &self (library lib_logger))
 
