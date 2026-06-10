@@ -3,6 +3,8 @@
 
 ;; NEXT: discover more reduction rules (maybe automate the discovery process)
 
+;; NEXT: see if disabling type definitions speed things up.
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;; ;;
 ;; ;; Parameters ;; ;;
