@@ -679,8 +679,6 @@
 ;; partially.  If multiple results are possible, they are returned as
 ;; a superposition.
 
-;; NEXT: simplify the code below
-
 ;; Entry point
 (: bc (-> $a                            ; Rule base space
           $b                            ; Axiom base space
@@ -704,9 +702,8 @@
            (Expression
             (if (== () $prf)
                 (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm))
-                ;; NEXT
-                ;; (if (is-lambda 
                 (case (: $prf $thrm)
+                  ;; NEXT: maybe attempt to simplify here as well
                   (;; Unary lambda abstraction
                    ((: (λ $x $y) (-> $a $b))
                     (let (: $y $b)
@@ -877,6 +874,23 @@
     ;;                ($rb $ab $cb $env $k $x $a))
     ($cb (match' $env (: $x $a) (: $x $a)))))
 
+;; Product.  It is used internally by proof application to iterate
+;; over premises.  Due to being only used internally, we do not
+;; account for its depth.  The product is associative but is assumed
+;; here to only take right associative forms like (, x (, y z)).
+(= (_bc_prod $rb $ab $cb $env $k (: (, $x $y) (, $a $b)))
+   (progn
+    (logger-tracef "Call (prod): (_bc %w %w %w %w %w %w)"
+                   ($rb $ab $cb $env (S $k) (: (, $x $y) (, $a $b))))
+    (let* (;; Recurse on first component
+           ((: $x $a) (_bc $rb $ab $cb $env $k (: $x $a)))
+           ;; Recurse on second component
+           ;; NEXT: call _bc_prod if $y is itself a product
+           ((: $y $b) (_bc $rb $ab $cb $env $k (: $y $b))))
+      (: (, $x $y) (, $a $b)))))
+
+;; NEXT: decompose n-ary proof application into product.
+
 ;; Recursive steps
 ;; Unary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x) $b))
@@ -898,10 +912,9 @@
            ((: $f (-> $a1 $a2 $b))
             (match $rb (: $f (-> $a1 $a2 $b))
                    (: $f (-> $a1 $a2 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2))))
+           ;; Recurse on premises
+           ((: (, $x1 $x2) (, $a1 $a2))
+            (_bc_prod $rb $ab $cb $env $k (: (, $x1 $x2) (, $a1 $a2))))
       ($cb (: ($f $x1 $x2) $b)))))
 ;; Ternary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3) $b))
