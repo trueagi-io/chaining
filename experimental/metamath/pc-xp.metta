@@ -102,6 +102,14 @@
 (: when (-> Bool Atom $a))
 (= (when $c $x) (if $c $x (empty)))
 
+;;;;;;;;;;;
+;; Sized ;;
+;;;;;;;;;;;
+
+;; Associate a size to a term
+(: Sized (-> $a Type))
+(: MkSized (-> $n $a (Sized $a)))
+
 ;;;;;;;;;;;;;;;
 ;; Assertion ;;
 ;;;;;;;;;;;;;;;
@@ -1100,6 +1108,568 @@
            ;; Recurse on premise 10
            ((: $x10 $a10) (_bc $rb $ab $cb $env $k (: $x10 $a10))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;; Optimized Backward chainer ;;
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; Like bc but uses proof size instead of depth.
+
+;; ;; Entry point
+;; (: obc (-> $a                            ; Rule base space
+;;            $b                            ; Axiom base space
+;;            (-> $c $c)                    ; Callback
+;;            Number                        ; Maximum size
+;;            $c                            ; Query
+;;            $c))                          ; Result
+;; (= (obc $rb $ab $cb $ms (: $prf $thrm))
+;;    (progn
+;;     (logger-tracef "Call (lambda): (obc %w %w %w %w (: %w %w))"
+;;                    ($rb $ab $cb $ms $prf $thrm))
+;;     (if (< 0 $ms)
+;;         (case (get-metatype $prf)
+;;           ((Symbol (_obc $rb $ab $cb Nil $ms (: $prf $thrm)))
+;;            (Grounded (_obc $rb $ab $cb Nil $ms (: $prf $thrm)))
+;;            (Variable (_obc $rb $ab $cb Nil $ms (: $prf $thrm)))
+;;            (Expression
+;;             (if (== () $prf)
+;;                 (_obc $rb $ab $cb Nil $ms (: $prf $thrm))
+;;                 (case (: $prf $thrm)
+;;                   (;; Unary lambda abstraction
+;;                    ((: (λ $x $y) (-> $a $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x $a) Nil)
+;;                             (- $ms 2)
+;;                             (: $y $b))
+;;                       (: (λ $x $y) (-> $a $b))))
+;;                    ;; Binary lambda abstraction
+;;                    ((: (λ $x1 $x2 $y) (-> $a1 $a2 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1) (Cons (: $x2 $a2) Nil))
+;;                             (- $ms 3)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $y) (-> $a1 $a2 $b))))
+;;                    ;; Ternary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               Nil)))
+;;                             (- $ms 4)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))))
+;;                    ;; Quaternary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               (Cons (: $x4 $a4)
+;;                                                     Nil))))
+;;                             (- $ms 5)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))))
+;;                    ;; Quintenary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               (Cons (: $x4 $a4)
+;;                                                     (Cons (: $x5 $a5)
+;;                                                           Nil)))))
+;;                             (- $ms 6)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))))
+;;                    ;; Senary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               (Cons (: $x4 $a4)
+;;                                                     (Cons (: $x5 $a5)
+;;                                                           (Cons (: $x6 $a6)
+;;                                                                 Nil))))))
+;;                             (- $ms 7)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
+;;                    ;; Septenary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               (Cons (: $x4 $a4)
+;;                                                     (Cons (: $x5 $a5)
+;;                                                           (Cons (: $x6 $a6)
+;;                                                                 (Cons (: $x7 $a7)
+;;                                                                       Nil)))))))
+;;                             (- $ms 8)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
+;;                    ;; Octonary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
+;;                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               (Cons (: $x4 $a4)
+;;                                                     (Cons (: $x5 $a5)
+;;                                                           (Cons (: $x6 $a6)
+;;                                                                 (Cons (: $x7 $a7)
+;;                                                                       (Cons (: $x8 $a8)
+;;                                                                             Nil))))))))
+;;                            (- $ms 9)
+;;                            (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
+;;                          (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
+;;                    ;; Nonary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
+;;                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               (Cons (: $x4 $a4)
+;;                                                     (Cons (: $x5 $a5)
+;;                                                           (Cons (: $x6 $a6)
+;;                                                                 (Cons (: $x7 $a7)
+;;                                                                       (Cons (: $x8 $a8)
+;;                                                                             (Cons (: $x9 $a9)
+;;                                                                                   Nil)))))))))
+;;                             (- $ms 10)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
+;;                          (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
+;;                    ;; Denary lambda abstraction
+;;                    ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
+;;                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
+;;                     (let (MkSized $s (: $y $b))
+;;                       (_obc $rb $ab $cb
+;;                             (Cons (: $x1 $a1)
+;;                                   (Cons (: $x2 $a2)
+;;                                         (Cons (: $x3 $a3)
+;;                                               (Cons (: $x4 $a4)
+;;                                                     (Cons (: $x5 $a5)
+;;                                                           (Cons (: $x6 $a6)
+;;                                                                 (Cons (: $x7 $a7)
+;;                                                                       (Cons (: $x8 $a8)
+;;                                                                             (Cons (: $x9 $a9)
+;;                                                                                   (Cons (: $x10 $a10)
+;;                                                                                         Nil))))))))))
+;;                             (- $ms 10)
+;;                             (: $y $b))
+;;                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
+;;                          (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
+;;                    ;; Otherwise
+;;                    ($else
+;;                     (let (MkSized $s (: $prf $thrm))
+;;                       (_obc $rb $ab $cb $cb Nil $ms (: $prf $thrm))
+;;                       (: $prf $thrm))))))))))))
+
+;; ;; Like _bc but uses proof size instead of depth, and outputs a sized
+;; ;; (: PROOF THEOREM) result.
+;; ;;
+;; ;; NEXT: re-enable when fixed
+;; ;; (: _obc (-> $a                            ; Rule base space
+;; ;;             $b                            ; Axiom base space
+;; ;;             (-> $c $c)                    ; Callback
+;; ;;             (List $b)                     ; Environment
+;; ;;             Number                        ; Maximum size
+;; ;;             $c                            ; Query
+;; ;;             (Sized $c)))                  ; Result
+
+;; ;; NEXT: try to optimize with upfront < 0 $ms filtering
+
+;; ;; Base cases
+;; ;; Match the axiom base
+;; (= (_obc $rb $ab $cb $env $ms (: $x $a))
+;;    (if (< 0 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (ab): (_obc %w %w %w %w (: %w %w))"
+;;         ;;                ($rb $ab $cb $env $ms $x $a))
+;;         (MkSized 1 ($cb (match $ab (: $x $a) (: $x $a)))))
+;;        (empty)))
+;; ;; Match the environment
+;; (= (_obc $rb $ab $cb $env $ms (: $x $a))
+;;    (if (< 0 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (env): (_obc %w %w %w %w (: %w %w))"
+;;         ;;                ($rb $ab $cb $env $ms $x $a))
+;;         (MkSize 1 ($cb (match' $env (: $x $a) (: $x $a)))))
+;;        (empty)))
+
+;; ;; Recursive steps
+
+;; ;; Unary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x) $b))
+;;    (if (< 1 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-1): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x) $b)))
+;;         (let* (;; Query unary rule
+;;                ((: $f (-> $a $b))
+;;                 (match $rb (: $f (-> $a $b)) (: $f (-> $a $b))))
+;;                ;; Recurse on premise
+;;                ((MkSized $s (: $x $a))
+;;                 (_obc $rb $ab $cb $env (- $ms 1) (: $x $a))))
+;;           (MkSized (+ $s 1) ($cb (: ($f $x) $b)))))
+;;        (empty)))
+
+;; ;; Binary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2) $b))
+;;    (if (< 2 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-2): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2) $b)))
+;;         (let* (;; Query binary rule
+;;                ((: $f (-> $a1 $a2 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $b))
+;;                        (: $f (-> $a1 $a2 $b))))
+;;                ;; Decrement $ms by one
+;;                ($msmo (- $ms 1))
+;;                ;; Recurse on premise 1
+;;                ((MkSized $s1 (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Decrement maximum size by $s1
+;;                ($msms1 (- $msmo $s1))
+;;                ;; Recurse on premise 2
+;;                ((MkSized $s2 (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msms1 (: $x2 $a2))))
+;;           (MkSized (+ $s1 (+ $s2 1)) ($cb (: ($f $x1 $x2) $b)))))
+;;        (empty)))
+
+;; ;; Ternary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3) $b))
+;;    (if (< 3 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-3): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2 $x3) $b)))
+;;         (let* (;; Query ternary rule
+;;                ((: $f (-> $a1 $a2 $a3 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $b))))
+;;                ;; Decrement $ms by one
+;;                ($msmo (- $ms 1))
+;;                ;; Recurse on premise 1
+;;                ((MkSized $s1 (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Decrement maximum size by $s1
+;;                ($msms1 (- $msmo $s1))
+;;                ;; Recurse on premise 2
+;;                ((MkSized $s2 (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msms1 (: $x2 $a2)))
+;;                ;; Decrement maximum size by $s1
+;;                ($msms2 (- $msms1 $s2))
+;;                ;; Recurse on premise 3
+;;                ((MkSized $s3 (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msms2 (: $x3 $a3))))
+;;           (MkSized (+ $s1 (+ $s2 (+ $s3 1))) ($cb (: ($f $x1 $x2 $x3) $b)))))
+;;        (empty)))
+
+;; ;; Quaternary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4) $b))
+;;    (if (< 4 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-4): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4) $b)))
+;;         (let* (;; Query quaternary rule
+;;                ((: $f (-> $a1 $a2 $a3 $a4 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $a4 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $a4 $b))))
+;;                ;; Decrement $ms by one
+;;                ($msmo (- $ms 1))
+;;                ;; Recurse on premise 1
+;;                ((MkSized $s1 (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Decrement maximum size by $s1
+;;                ($msms1 (- $msmo $s1))
+;;                ;; Recurse on premise 2
+;;                ((MkSized $s2 (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msms1 (: $x2 $a2)))
+;;                ;; Decrement maximum size by $s2
+;;                ($msms2 (- $msms1 $s2))
+;;                ;; Recurse on premise 3
+;;                ((MkSized $s3 (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msms2 (: $x3 $a3)))
+;;                ;; Decrement maximum size by $s3
+;;                ($msms3 (- $msms2 $s3))
+;;                ;; Recurse on premise 4
+;;                ((MkSized $s4 (: $x4 $a4))
+;;                 (_obc $rb $ab $cb $env $msms3 (: $x4 $a4))))
+;;           (MkSized (+ ($s1 (+ $s2 (+ $s3 (+ $s4 1)))))
+;;                    ($cb (: ($f $x1 $x2 $x3 $x4) $b)))))
+;;        (empty)))
+
+;; ;; Quintenary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5) $b))
+;;    (if (< 5 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-5): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5) $b)))
+;;         (let* (;; Query quintenary rule
+;;                ((: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))))
+;;                ;; Decrement maximum size by one
+;;                ($msmo (- $ms 1))
+;;                ;; Recurse on premise 1
+;;                ((MkSized $s1 (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Decrement maximum size by $s1
+;;                ($msms1 (- $msmo $s1))
+;;                ;; Recurse on premise 2
+;;                ((MkSized $s2 (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msms1 (: $x2 $a2)))
+;;                ;; Decrement maximum size by $s2
+;;                ($msms2 (- $msms1 $s2))
+;;                ;; Recurse on premise 3
+;;                ((MkSized $s3 (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msms2 (: $x3 $a3)))
+;;                ;; Decrement maximum size by $s3
+;;                ($msms3 (- $msms2 $s3))
+;;                ;; Recurse on premise 4
+;;                ((MkSized $s4 (: $x4 $a4))
+;;                 (_obc $rb $ab $cb $env $msms3 (: $x4 $a4)))
+;;                ;; Decrement maximum size by $s4
+;;                ($msms4 (- $msms3 $s4))
+;;                ;; Recurse on premise 5
+;;                ((MkSized $s5 (: $x5 $a5))
+;;                 (_obc $rb $ab $cb $env $msms4 (: $x5 $a5))))
+;;           (MkSized (+ $s1 (+ $s2 (+ $s3 (+ $s4 (+ $s5 1)))))
+;;                    ($cb (: ($f $x1 $x2 $x3 $x4 $x5) $b)))))
+;;        (empty)))
+
+;; ;; Senary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))
+;;    (if (< 6 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-6): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))
+;;         (let* (;; Query senary rule
+;;                ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
+;;                ;; Decrement $ms by one
+;;                ($msmo (- $ms 1))
+;;                ;; NEXT
+;;                ;; Recurse on premise 1
+;;                ((MkSized $s1 (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Recurse on premise 2
+;;                ((MkSized $s2 (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msms1 (: $x2 $a2)))
+;;                ;; Recurse on premise 3
+;;                ((MkSized $s3 (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msms2 (: $x3 $a3)))
+;;                ;; Recurse on premise 4
+;;                ((MkSized $s4 (: $x4 $a4))
+;;                 (_obc $rb $ab $cb $env $msms3 (: $x4 $a4)))
+;;                ;; Recurse on premise 5
+;;                ((MkSized $s5 (: $x5 $a5))
+;;                 (_obc $rb $ab $cb $env $msms4 (: $x5 $a5)))
+;;                ;; Recurse on premise 6
+;;                ((MkSized $s6 (: $x6 $a6))
+;;                 (_obc $rb $ab $cb $env $msms5 (: $x6 $a6))))
+;;           (MkSized (+ $s1 (+ $s2 (+ $s3 (+ $s4 (+ $s5 (+ $s6 1))))))
+;;                    ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))))
+;;        (empty)))
+
+;; ;; Septenary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))
+;;    (if (< ? $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-7): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))
+;;         (let* (;; Query septenary rule
+;;                ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
+;;                ;; Decrement $ms by one
+;;                ($msmo (- $ms 1))
+;;                ;; NEXT
+;;                ;; Recurse on premise 1
+;;                ((MkSized ? (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Recurse on premise 2
+;;                ((MkSized ? (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x2 $a2)))
+;;                ;; Recurse on premise 3
+;;                ((MkSized ? (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x3 $a3)))
+;;                ;; Recurse on premise 4
+;;                ((MkSized ? (: $x4 $a4))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x4 $a4)))
+;;                ;; Recurse on premise 5
+;;                ((MkSized ? (: $x5 $a5))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x5 $a5)))
+;;                ;; Recurse on premise 6
+;;                ((MkSized ? (: $x6 $a6))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x6 $a6)))
+;;                ;; Recurse on premise 7
+;;                ((MkSized ? (: $x7 $a7))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x7 $a7))))
+;;           (MkSized ? ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))))
+;;        (empty)))
+
+;; ;; Octonary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))
+;;    (if (< ? $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-8): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))
+;;         (let* (;; Query octonary rule
+;;                ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
+;;                ;; Decrement $ms by one
+;;                ($msmo (- $ms 1))
+;;                ;; NEXT
+;;                ;; Recurse on premise 1
+;;                ((MkSized ? (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Recurse on premise 2
+;;                ((MkSized ? (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x2 $a2)))
+;;                ;; Recurse on premise 3
+;;                ((MkSized ? (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x3 $a3)))
+;;                ;; Recurse on premise 4
+;;                ((MkSized ? (: $x4 $a4))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x4 $a4)))
+;;                ;; Recurse on premise 5
+;;                ((MkSized ? (: $x5 $a5))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x5 $a5)))
+;;                ;; Recurse on premise 6
+;;                ((MkSized ? (: $x6 $a6))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x6 $a6)))
+;;                ;; Recurse on premise 7
+;;                ((MkSized ? (: $x7 $a7))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x7 $a7)))
+;;                ;; Recurse on premise 8
+;;                ((MkSized ? (: $x8 $a8))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x8 $a8))))
+;;           (MkSized ? ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))))
+;;        (empty)))
+
+;; ;; Nonary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))
+;;    (if (< ? $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-9): (_obc %w %w %w %w %w %w)"
+;;         ;;                ($rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))
+;;         (let* (;; Query nonary rule
+;;                ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
+;;                ;; Decrement $ms by one
+;;                ($msmo (- $ms 1))
+;;                ;; NEXT
+;;                ;; Recurse on premise 1
+;;                ((MkSized ? (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Recurse on premise 2
+;;                ((MkSized ? (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x2 $a2)))
+;;                ;; Recurse on premise 3
+;;                ((MkSized ? (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x3 $a3)))
+;;                ;; Recurse on premise 4
+;;                ((MkSized ? (: $x4 $a4))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x4 $a4)))
+;;                ;; Recurse on premise 5
+;;                ((MkSized ? (: $x5 $a5))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x5 $a5)))
+;;                ;; Recurse on premise 6
+;;                ((MkSized ? (: $x6 $a6))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x6 $a6)))
+;;                ;; Recurse on premise 7
+;;                ((MkSized ? (: $x7 $a7))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x7 $a7)))
+;;                ;; Recurse on premise 8
+;;                ((MkSized ? (: $x8 $a8))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x8 $a8)))
+;;                ;; Recurse on premise 9
+;;                ((MkSized ? (: $x9 $a9))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x9 $a9))))
+;;           (MkSized ? ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))))
+;;        (empty)))
+
+;; ;; Denary proof application
+;; (= (_obc $rb $ab $cb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))
+;;    (if (< 10 $ms)
+;;        (progn
+;;         ;; (logger-tracef "Call (app-10): (_obc %w %w %w %w %w %w)"
+;;         ;;                ( $kb $env $ms (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))
+;;         (let* (;; Query denary rule
+;;                ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
+;;                 (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
+;;                        (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
+;;                ;; Decrease maximum size by 1 (for the rule)
+;;                ($msmo (- $ms 1))
+;;                ;; Recurse on premise 1
+;;                ((MkSized $s1 (: $x1 $a1))
+;;                 (_obc $rb $ab $cb $env $msmo (: $x1 $a1)))
+;;                ;; Decrease maximum size by $s1
+;;                ($msms1 (- $msmo $s1))
+;;                ;; Recurse on premise 2
+;;                ((MkSized $s2 (: $x2 $a2))
+;;                 (_obc $rb $ab $cb $env $msms1 (: $x2 $a2)))
+;;                ;; Decrease maximum size by $s2
+;;                ($msms2 (- $msms1 $s2))
+;;                ;; Recurse on premise 3
+;;                ((MkSized $s3 (: $x3 $a3))
+;;                 (_obc $rb $ab $cb $env $msms2 (: $x3 $a3)))
+;;                ;; Decrease maximum size by $s2
+;;                ($msms3 (- $msms2 $s3))
+;;                ;; Recurse on premise 4
+;;                ((MkSized $s4 (: $x4 $a4))
+;;                 (_obc $rb $ab $cb $env $msms3 (: $x4 $a4)))
+;;                ;; Decrease maximum size by $s2
+;;                ($msms4 (- $msms3 $s4))
+;;                ;; Recurse on premise 5
+;;                ((MkSized $s5 (: $x5 $a5))
+;;                 (_obc $rb $ab $cb $env $msms4 (: $x5 $a5)))
+;;                ;; Decrease maximum size by $s2
+;;                ($msms5 (- $msms4 $s5))
+;;                ;; Recurse on premise 6
+;;                ((MkSized $s6 (: $x6 $a6))
+;;                 (_obc $rb $ab $cb $env $msms5 (: $x6 $a6)))
+;;                ;; Decrease maximum size by $s2
+;;                ($msms6 (- $msms5 $s6))
+;;                ;; Recurse on premise 7
+;;                ((MkSized $s7 (: $x7 $a7))
+;;                 (_obc $rb $ab $cb $env $msms6 (: $x7 $a7)))
+;;                ;; Decrease maximum size by $s2
+;;                ($msms7 (- $msms6 $s7))
+;;                ;; Recurse on premise 8
+;;                ((MkSized $s8 (: $x8 $a8))
+;;                 (_obc $rb $ab $cb $env $msms7 (: $x8 $a8)))
+;;                ;; Decrease maximum size by $s2
+;;                ($msms8 (- $msms7 $s8))
+;;                ;; Recurse on premise 9
+;;                ((MkSized $s9 (: $x9 $a9))
+;;                 (_obc $rb $ab $cb $env $msms8 (: $x9 $a9)))
+;;                ;; Decrease maximum size by $s9
+;;                ($msms9 (- $msms8 $s9))
+;;                ;; Recurse on premise 10
+;;                ((MkSized $s10 (: $x10 $a10))
+;;                 (_obc $rb $ab $cb $env $msms9 (: $x10 $a10))))
+;;           (MkSized (+ $s1 (+ $s2 (+ $s3 (+ $s4 (+ $s5 (+ $s6 (+ $s7 (+ $s8 (+ $s9 (+ $s10 1))))))))))
+;;                    ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))))
+;;        (empty)))
 
 ;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;; ;;
