@@ -947,7 +947,7 @@
                    (: $f (-> $a1 $a2 $b))))
            ;; Recurse on premises
            ((: (, $x1 $x2) (, $a1 $a2))
-            (_bc_prod $rb $ab $cb $env $k (: (, $x1 $x2) (, $a1 $a2))))
+            (_bc_prod $rb $ab $cb $env $k (: (, $x1 $x2) (, $a1 $a2)))))
       ($cb (: ($f $x1 $x2) $b)))))
 ;; Ternary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3) $b))
@@ -958,12 +958,10 @@
            ((: $f (-> $a1 $a2 $a3 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $b))
                    (: $f (-> $a1 $a2 $a3 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 $x3)) (, $a1 (, $a2 $a3)))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 $x3)) (, $a1 (, $a2 $a3))))))
       ($cb (: ($f $x1 $x2 $x3) $b)))))
 ;; Quaternary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4) $b))
@@ -974,14 +972,12 @@
            ((: $f (-> $a1 $a2 $a3 $a4 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $a4 $b))
                    (: $f (-> $a1 $a2 $a3 $a4 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 $x4)))
+               (, $a1 (, $a2 (, $a3 $a4))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 $x4)))
+                         (, $a1 (, $a2 (, $a3 $a4)))))))
       ($cb (: ($f $x1 $x2 $x3 $x4) $b)))))
 ;; Quintenary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5) $b))
@@ -992,16 +988,12 @@
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
                    (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 $x5))))
+               (, $a1 (, $a2 (, $a3 (, $a4 $a5)))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 $x5))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 $a5))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5) $b)))))
 ;; Senary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))
@@ -1012,18 +1004,12 @@
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
                    (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 $x6)))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 $a6))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 $x6)))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 $a6)))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))))
 ;; Septenary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))
@@ -1034,20 +1020,12 @@
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
                    (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 $x7))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 $a7)))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 $x7))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 $a7))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))))
 ;; Octonary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))
@@ -1058,22 +1036,12 @@
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
                    (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7)))
-           ;; Recurse on premise 8
-           ((: $x8 $a8) (_bc $rb $ab $cb $env $k (: $x8 $a8))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 $x8)))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 $a8))))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 $x8)))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 $a8)))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))))
 ;; Nonary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))
@@ -1084,24 +1052,12 @@
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
                    (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7)))
-           ;; Recurse on premise 8
-           ((: $x8 $a8) (_bc $rb $ab $cb $env $k (: $x8 $a8)))
-           ;; Recurse on premise 9
-           ((: $x9 $a9) (_bc $rb $ab $cb $env $k (: $x9 $a9))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9)))))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9))))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))))
 ;; Denary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))
@@ -1112,26 +1068,12 @@
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
             (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
                    (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7)))
-           ;; Recurse on premise 8
-           ((: $x8 $a8) (_bc $rb $ab $cb $env $k (: $x8 $a8)))
-           ;; Recurse on premise 9
-           ((: $x9 $a9) (_bc $rb $ab $cb $env $k (: $x9 $a9)))
-           ;; Recurse on premise 10
-           ((: $x10 $a10) (_bc $rb $ab $cb $env $k (: $x10 $a10))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9)))))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 (, $x9 $x10)))))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 (, $a9 $a10)))))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
