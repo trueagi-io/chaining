@@ -573,7 +573,6 @@
            (Empty (: $x $a))))
         (: $x $a))))
 
-
 ;; The code below is only kept for documentation or potential future
 ;; use as the reduction based prunning is handled by the callback
 ;; instead.
@@ -918,8 +917,9 @@
     (let* (;; Recurse on first component
            ((: $x $a) (_bc $rb $ab $cb $env $k (: $x $a)))
            ;; Recurse on second component
-           ;; NEXT: call _bc_prod if $y is itself a product
-           ((: $y $b) (_bc $rb $ab $cb $env $k (: $y $b))))
+           ((: $y $b) (if (is-product $y)
+                          (_bc_prod $rb $ab $cb $env $k (: $y $b))
+                          (_bc $rb $ab $cb $env $k (: $y $b)))))
       (: (, $x $y) (, $a $b)))))
 
 ;; NEXT: decompose n-ary proof application into product.
