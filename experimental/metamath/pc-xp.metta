@@ -177,15 +177,6 @@
   (Maybe.bind (Just 42) Maybe.test.foo)
   (Just "42"))
 
-;;;;;;;;;;
-;; List ;;
-;;;;;;;;;;
-
-;; Declaration of List data type and constructors
-(: List (-> $a Type))
-(: Nil (List $a))
-(: Cons (-> $a (List $a) (List $a)))
-
 ;;;;;;;;;;;;
 ;; Syntax ;;
 ;;;;;;;;;;;;
@@ -274,29 +265,26 @@
   (is-product (, A B))
   True)
 
-;;;;;;;;;;;;;;;;;;;;;
-;; Match over list ;;
-;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;
+;; Match over tuple ;;
+;;;;;;;;;;;;;;;;;;;;;;
 
-;; Similar to match but takes a list of terms instead of a space.
-;; (: match' (-> (List $a) $a $a $a)) ; NEXT: re-enable when fixed
-(= (match' Nil $ptrn $tmpl) (empty))
-(= (match' (Cons $hd $tl) $ptrn $tmpl) (let $ptrn $hd $tmpl))
-(= (match' (Cons $hd $tl) $ptrn $tmpl) (match' $tl $ptrn $tmpl))
+;; Match pattern over a tuple of elements
+(= (match' $tuple $ptrn $tmpl) (let $ptrn (superpose $tuple) $tmpl))
 
-;; Test match' on empty list
+;; Test match' on empty tuple
 !(test
-  (collapse (match' Nil ($x $y) ($y $x)))
+  (collapse (match' () ($x $y) ($y $x)))
   ())
 
 ;; Test match' on singleton
 !(test
-  (collapse (match' (Cons (A B) Nil) ($x $y) ($y $x)))
+  (collapse (match' ((A B)) ($x $y) ($y $x)))
   ((B A)))
 
 ;; Test match' on pair
 !(test
-  (collapse (match' (Cons (A B) (Cons (C D) Nil)) ($x $y) ($y $x)))
+  (collapse (match' ((A B) (C D)) ($x $y) ($y $x)))
   ((B A)
    (D C)))
 
@@ -309,8 +297,7 @@
 (= (foldr $f $i $xs)
    (if (== $xs ())
        $i
-       (let* (($h (car-atom $xs))
-              ($t (cdr-atom $xs))
+       (let* ((($h $t) (decons-atom $xs))
               ($ft (foldr $f $i $t)))
          ($f $h $ft))))
 
@@ -336,8 +323,7 @@
                   (;; Empty expression
                    (() ())
                    ;; Non-empty expression
-                   ($xs (let* (($h (car-atom $xs))
-                               ($t (cdr-atom $xs))
+                   ($xs (let* ((($h $t) (decons-atom $xs))
                                ($fh ($f $h))
                                ($ft (map $f $t)))
                           (cons-atom $fh $ft))))))
@@ -516,10 +502,8 @@
       (Variable $term)
       (Expression (if (== $term ())
                       $term
-                      (let* (;; Get head of term
-                             ($head (car-atom $term))
-                             ;; Get tail of term
-                             ($tail (cdr-atom $term))
+                      (let* (;; Get head and tail of term
+                             (($head $tail) (decons-atom $term))
                              ;; Recurs on head
                              ($nhd (_replace-symbol-by-variable $sym $var $head))
                              ;; Recurs on tail
@@ -734,13 +718,16 @@
            (Expression
             (if (== () $prf)
                 (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm))
+                ;; (if (is-lambda $prf)
+                ;;     ...
+                ;;     (_bc $rb $ab $cb $cb Nil (S $k) (: $prf $thrm))))))))))))
                 (case (: $prf $thrm)
                   ;; NEXT: maybe attempt to simplify here as well
                   (;; Unary lambda abstraction
                    ((: (λ $x $y) (-> $a $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x $a) Nil)
+                           ((: $x $a))
                            $k
                            (: $y $b))
                       (: (λ $x $y) (-> $a $b))))
@@ -748,7 +735,7 @@
                    ((: (λ $x1 $x2 $y) (-> $a1 $a2 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1) (Cons (: $x2 $a2) Nil))
+                           ((: $x1 $a1) (: $x2 $a2))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $y) (-> $a1 $a2 $b))))
@@ -756,10 +743,7 @@
                    ((: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             Nil)))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))))
@@ -767,11 +751,7 @@
                    ((: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   Nil))))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))))
@@ -779,12 +759,7 @@
                    ((: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         Nil)))))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))))
@@ -792,13 +767,7 @@
                    ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               Nil))))))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
@@ -806,14 +775,7 @@
                    ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     Nil)))))))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
@@ -822,15 +784,7 @@
                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     (Cons (: $x8 $a8)
-                                                                           Nil))))))))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7) (: $x8 $a8))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
@@ -840,16 +794,7 @@
                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     (Cons (: $x8 $a8)
-                                                                           (Cons (: $x9 $a9)
-                                                                                 Nil)))))))))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7) (: $x8 $a8) (: $x9 $a9))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
@@ -859,17 +804,7 @@
                        (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
                     (let (: $y $b)
                       (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     (Cons (: $x8 $a8)
-                                                                           (Cons (: $x9 $a9)
-                                                                                 (Cons (: $x10 $a10)
-                                                                                       Nil))))))))))
+                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7) (: $x8 $a8) (: $x9 $a9) (: $x10 $a10))
                            $k
                            (: $y $b))
                       (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
@@ -878,20 +813,20 @@
                    ($else (_bc $rb $ab $cb $cb Nil (S $k) (: $prf $thrm))))))))))))))
 
 ;; Recursive search.  No support for lambda abstraction, but support
-;; for environment, which is a list of typing relationships such as
+;; for environment, which is a tuple of typing relationships such as
 ;;
-;;   (Cons (: x 𝐁𝐨𝐨𝐥) (Cons (: y 𝐁𝐨𝐨𝐥) Nil))
+;;   ((: x 𝐁𝐨𝐨𝐥) (: y 𝐁𝐨𝐨𝐥))
 ;;
 ;; Also, the proof abstraction is only searched shallowly, at depth 0,
 ;; because they are no higher order inference rules anyway.
 ;; NEXT: re-enable when fixed
 ;; (: _bc (-> $a                            ; Rule base space
 ;;            $b                            ; Axiom base space
-;;            (-> $c $c)                    ; Callback
-;;            (List $b)                     ; Environment
+;;            (-> $d $d)                    ; Callback
+;;            $c                            ; Environment
 ;;            Nat                           ; Maximum depth
-;;            $c                            ; Query
-;;            $c))                          ; Result
+;;            $d                            ; Query
+;;            $d))                          ; Result
 ;; Base cases
 ;; Match the axiom base
 (= (_bc $rb $ab $cb $env $k (: $x $a))
