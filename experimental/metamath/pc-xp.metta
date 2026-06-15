@@ -249,6 +249,31 @@
   (is-arrow (-> $a $b))
   True)
 
+;; Return True iff the given term is a product, meaning an expression
+;; of the form (, FIRST SECOND)
+;;
+;; NEXT: simplify once issue
+;; https://github.com/trueagi-io/PeTTa/issues/182 has been
+;; solved.
+(: is-product (-> $a Bool))
+(= (is-product $x)
+   (if (is-expression $x)
+       (if (== () $x)
+           False
+           (== , (car-atom $x)))
+       False))
+
+;; Test is-lambda
+!(test
+  (is-product A)
+  False)
+!(test
+  (is-product (A B))
+  False)
+!(test
+  (is-product (, A B))
+  True)
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Match over list ;;
 ;;;;;;;;;;;;;;;;;;;;;
