@@ -852,106 +852,33 @@
        (Z (_bc $rb $ab $cb Nil Z (: $prf $thrm)))
        ;; Depth greater than 0 (consider lambda abstraction)
        ((S $k)
-        (case (get-metatype $prf)
-          ((Symbol (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm)))
-           (Grounded (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm)))
-           (Variable (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm)))
-           (Expression
+        (if (is-expression $prf)
+            ;; Proof is an expression, check whether it is a lambda term
             (if (== () $prf)
-                (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm))
-                ;; (if (is-lambda $prf)
-                ;;     ...
-                ;;     (_bc $rb $ab $cb $cb Nil (S $k) (: $prf $thrm))))))))))))
-                (case (: $prf $thrm)
-                  ;; NEXT: maybe attempt to simplify here as well
-                  (;; Unary lambda abstraction
-                   ((: (λ $x $y) (-> $a $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x $a))
-                           $k
-                           (: $y $b))
-                      (: (λ $x $y) (-> $a $b))))
-                   ;; Binary lambda abstraction
-                   ((: (λ $x1 $x2 $y) (-> $a1 $a2 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $y) (-> $a1 $a2 $b))))
-                   ;; Ternary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))))
-                   ;; Quaternary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))))
-                   ;; Quintenary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))))
-                   ;; Senary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
-                   ;; Septenary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
-                   ;; Octonary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
-                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7) (: $x8 $a8))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
-                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
-                   ;; Nonary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
-                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7) (: $x8 $a8) (: $x9 $a9))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
-                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
-                   ;; Denary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
-                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           ((: $x1 $a1) (: $x2 $a2) (: $x3 $a3) (: $x4 $a4) (: $x5 $a5) (: $x6 $a6) (: $x7 $a7) (: $x8 $a8) (: $x9 $a9) (: $x10 $a10))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
-                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
-                   ;; Otherwise
-                   ($else (_bc $rb $ab $cb $cb Nil (S $k) (: $prf $thrm))))))))))))))
+                ;; Proof is empty and already fully defined
+                (: $prf $thrm)
+                ;; Proof is not empty
+                (if (is-lambda $prf)
+                    ;; Proof is a lambda term
+                    (let* (;; Get variables, body, premises and conclusion
+                           ($xs (get-lambda-variables $prf))
+                           ($as (get-arrow-premises $thrm))
+                           ($y (get-lambda-body $prf))
+                           ($b (get-arrow-conclusion $thrm))
+                           ;; Build environment
+                           ($env (zip-with : $xs $as))
+                           ;; Call _bc to proof conclusion given environment
+                           ((: $y $b) (_bc $rb $ab $cb $env $k (: $y $b)))
+                           ;; Reconstruct lambda term
+                           ($prf (cons-atom λ (concat-atom $xs $y)))
+                           ;; Reconstruct arrow
+                           ($thrm (cons-atom -> (concat-atom $as $b))))
+                      ;; Output
+                      (: $prf $thrm))
+                    ;; Not a lambda term, merely call _bc
+                    (_bc $rb $ab $cb $cb Nil (S $k) (: $prf $thrm))))
+            ;; Proof is not an expression, merely call _bc
+            (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm))))))))
 
 ;; Recursive search.  No support for lambda abstraction, but support
 ;; for environment, which is a tuple of typing relationships such as
