@@ -94,6 +94,14 @@
 ;; ;;;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;
+;; Concat ;;
+;;;;;;;;;;;;
+
+;; Concat atoms.  The implementation uses union-atom and assumes that
+;; it preserves order.
+(= (concat-atom $x $y) (union-atom $x $y))
+
 ;;;;;;;;;;
 ;; When ;;
 ;;;;;;;;;;
@@ -264,6 +272,139 @@
 !(test
   (is-product (, A B))
   True)
+
+;; Drop last element of a tuple
+(= (drop-last $xs)
+   (if (is-expression $xs)
+       (if (== $xs ())
+           (empty)
+           (if (== (length $xs) 1)
+               ()
+               (let* ((($head $tail) (decons-atom $xs))
+                      ($dlt (drop-last $tail)))
+                 (cons-atom $head $dlt))))
+       (empty)))
+
+;; Test drop-last
+!(test
+  (drop-last (A))
+  ())
+!(test
+  (drop-last (A B))
+  (A))
+!(test
+  (drop-last (A B C))
+  (A B))
+
+;; Take last element of a tuple
+(= (take-last $xs)
+   (if (is-expression $xs)
+       (if (== $xs ())
+           (empty)
+           (if (== (length $xs) 1)
+               (car-atom $xs)
+               (take-last (cdr-atom $xs))))
+       (empty)))
+
+;; Test take-last
+!(test
+  (take-last (A))
+  A)
+!(test
+  (take-last (A B))
+  B)
+
+;; Get lambda variables.  Prune if not a lambda term.
+(= (get-lambda-variables $term)
+   (if (is-lambda $term)
+       (let ($h $t) (decons-atom $term)
+            (drop-last $t))
+       (empty)))
+
+;; Test get-lambda-variables
+!(test
+  (collapse (get-lambda-variables A))
+  ())
+!(test
+  (get-lambda-variables (λ $x $y))
+  ($x))
+!(test
+  (get-lambda-variables (λ $x1 $x2 $y))
+  ($x1 $x2))
+
+;; Get lambda body.  Prune if not a lambda term.
+(= (get-lambda-body $term)
+   (if (is-lambda $term)
+       (take-last $term)
+       (empty)))
+
+;; Test get-lambda-body
+!(test
+  (collapse (get-lambda-body A))
+  ())
+!(test
+  (get-lambda-body (λ $x A))
+  A)
+!(test
+  (get-lambda-body (λ $x1 $x2 A))
+  A)
+
+;; Get arrow premises.  Prune if not an arrow.
+(= (get-arrow-premises $term)
+   (if (is-arrow $term)
+       (let ($h $t) (decons-atom $term)
+            (drop-last $t))
+       (empty)))
+
+;; Test get-lambda-variables
+!(test
+  (collapse (get-arrow-premises A))
+  ())
+!(test
+  (get-arrow-premises (-> A B))
+  (A))
+!(test
+  (get-arrow-premises (-> A B C))
+  (A B))
+
+;; Get lambda body.  Prune if not a lambda term.
+(= (get-arrow-conclusion $term)
+   (if (is-arrow $term)
+       (take-last $term)
+       (empty)))
+
+;; Test get-lambda-body
+!(test
+  (collapse (get-arrow-conclusion A))
+  ())
+!(test
+  (get-arrow-conclusion (-> A B))
+  B)
+!(test
+  (get-arrow-conclusion (-> A B C))
+  C)
+
+;; Zip two tuples with a given function.  It is assumed that both $xs
+;; and $ys have the same length.
+(= (zip-with $f $xs $ys)
+   (if (== $xs ())
+       ()
+       (let* ((($xh $xt) (decons-atom $xs))
+              (($yh $yt) (decons-atom $ys))
+              ($zh ($f $xh $yh))
+              ($zt (zip-with $f $xt $yt)))
+         (cons-atom $zh $zt))))
+
+;; Test zip-with
+!(test
+  (zip-with : () ())
+  ())
+!(test
+  (zip-with : (x) (a))
+  ((: x a)))
+!(test
+  (zip-with : (x y) (a b))
+  ((: x a) (: y b)))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Match over tuple ;;
