@@ -58,7 +58,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Log level
-(= (log-level) trace)
+(= (log-level) info)
 
 ;; Log file path
 (= (log-filepath) "pc-xp.log")
