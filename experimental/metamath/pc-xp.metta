@@ -859,7 +859,7 @@
                    ($rb $ab $cb $depth $prf $thrm))
     (case $depth
       (;; Depth 0
-       (Z (_bc $rb $ab $cb Nil Z (: $prf $thrm)))
+       (Z (_bc $rb $ab $cb () Z (: $prf $thrm)))
        ;; Depth greater than 0 (consider lambda abstraction)
        ((S $k)
         (if (is-expression $prf)
@@ -880,15 +880,15 @@
                            ;; Call _bc to proof conclusion given environment
                            ((: $y $b) (_bc $rb $ab $cb $env $k (: $y $b)))
                            ;; Reconstruct lambda term
-                           ($prf (cons-atom λ (concat-atom $xs $y)))
+                           ($prf (cons-atom λ (concat-atom $xs ($y))))
                            ;; Reconstruct arrow
-                           ($thrm (cons-atom -> (concat-atom $as $b))))
+                           ($thrm (cons-atom -> (concat-atom $as ($b)))))
                       ;; Output
                       (: $prf $thrm))
                     ;; Not a lambda term, merely call _bc
-                    (_bc $rb $ab $cb $cb Nil (S $k) (: $prf $thrm))))
+                    (_bc $rb $ab $cb () (S $k) (: $prf $thrm))))
             ;; Proof is not an expression, merely call _bc
-            (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm))))))))
+            (_bc $rb $ab $cb () (S $k) (: $prf $thrm))))))))
 
 ;; Recursive search.  No support for lambda abstraction, but support
 ;; for environment, which is a tuple of typing relationships such as
