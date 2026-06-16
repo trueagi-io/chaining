@@ -406,6 +406,13 @@
   (zip-with : (x y) (a b))
   ((: x a) (: y b)))
 
+;;;;;;;;;
+;; Get ;;
+;;;;;;;;;
+
+;; Specialized match where the pattern is equal to the template
+(= (get $spc $ptrn) (match $spc $ptrn $ptrn))
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Match over tuple ;;
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -428,6 +435,9 @@
   (collapse (match' ((A B) (C D)) ($x $y) ($y $x)))
   ((B A)
    (D C)))
+
+;; Specialized match' where the pattern is equal to the template
+(= (get' $spc $ptrn) (match' $spc $ptrn $ptrn))
 
 ;;;;;;;;;;
 ;; Fold ;;
