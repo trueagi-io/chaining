@@ -697,7 +697,9 @@
 ;; finds.  For now it used as a reduction pruner, meaning that if the
 ;; result is recognized as reducible, then it is pruned.  For now only
 ;; reducing proof to its label is supported.  Meaning that only a
-;; proof not associated to an existing label is allowed.
+;; proof not associated to an existing label is allowed.  In other
+;; words, instead of rediscovering the proof of an existing label, it
+;; should re-use this label.
 (: callback (-> $a $a))
 (= (callback (: $x $a)) ; (: $x $a))
    (progn
