@@ -694,7 +694,7 @@
 
 ;; Callback to be passed to the backward chainer.  It is called over
 ;; every result, intermediary included, that the backward chainer
-;; finds.  For now it used as a reduction pruner, meaning is the
+;; finds.  For now it used as a reduction pruner, meaning that if the
 ;; result is recognized as reducible, then it is pruned.  For now only
 ;; reducing proof to its label is supported.  Meaning that only a
 ;; proof not associated to an existing label is allowed.
