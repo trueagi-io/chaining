@@ -50,6 +50,9 @@
 ;; at the first one.
 (= (search-all-proofs) False)
 
+;; Bound search by proof size instead of proof depth.
+(= (bound-search-by-proof-size) True)
+
 ;; Use proof reduction as pruning mechanism duing search
 (= (prune-reduct) True)
 
