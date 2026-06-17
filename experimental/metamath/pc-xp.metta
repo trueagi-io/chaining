@@ -384,6 +384,10 @@
   (get-arrow-conclusion (-> A B C))
   C)
 
+;;;;;;;;;
+;; Zip ;;
+;;;;;;;;;
+
 ;; Zip two tuples with a given function.  It is assumed that both $xs
 ;; and $ys have the same length.
 (= (zip-with $f $xs $ys)
@@ -405,13 +409,6 @@
 !(test
   (zip-with : (x y) (a b))
   ((: x a) (: y b)))
-
-;;;;;;;;;
-;; Get ;;
-;;;;;;;;;
-
-;; Specialized match where the pattern is equal to the template
-(= (get $spc $ptrn) (match $spc $ptrn $ptrn))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Match over tuple ;;
@@ -435,6 +432,13 @@
   (collapse (match' ((A B) (C D)) ($x $y) ($y $x)))
   ((B A)
    (D C)))
+
+;;;;;;;;;
+;; Get ;;
+;;;;;;;;;
+
+;; Specialized match where the pattern is equal to the template
+(= (get $spc $ptrn) (match $spc $ptrn $ptrn))
 
 ;; Specialized match' where the pattern is equal to the template
 (= (get' $spc $ptrn) (match' $spc $ptrn $ptrn))
@@ -579,16 +583,16 @@
   (term-size (R A (S B C)))
   5)
 
-;;;;;;;;;;;;;;;;;
-;; Remove body ;;
-;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Replace body of lambda by variable ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Take a term representing a proof and replace its body by a variable
 ;; (as to be able to rediscover it).  If it is a lambda abstraction,
 ;; then replace the lambda term body by a variable, other replace the
 ;; whole term by a variable.
-;; (: remove-body (-> $a $a))
-(= (remove-body $prf)
+;; (: replace-body-by-variable (-> $a $a))
+(= (replace-body-by-variable $prf)
    (case (get-metatype $prf)
      ((Symbol $y)
       (Grounded $y)
@@ -630,12 +634,12 @@
               ;; Otherwise
               ($else $y))))))))
 
-;; Test remove-body
+;; Test replace-body-by-variable
 !(test
-  (remove-body (λ mpi.2 mpi.1 (mpd mpi.2 (a1i mpi.1))))
+  (replace-body-by-variable (λ mpi.2 mpi.1 (mpd mpi.2 (a1i mpi.1))))
   (λ mpi.2 mpi.1 $bdy))
 !(test
-  (remove-body (mpd ax-1 ax-1))
+  (replace-body-by-variable (mpd ax-1 ax-1))
   $bdy)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1732,7 +1736,7 @@
 (= (rediscover-proofs $depth $proof $thrm)
    (let ;;Replace proof body by variable
        $proof-wo-bdy
-       (remove-body $proof)
+       (replace-body-by-variable $proof)
      ;; Call backward chainer to rediscover the proof
      (collapse
       (if (search-all-proofs)
