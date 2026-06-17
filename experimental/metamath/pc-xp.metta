@@ -1479,19 +1479,23 @@
 ;; knowledge bases and return the next idx, or Nothing if it fails.
 ;; NEXT: re-enable when fixed (: process-theorem-check (-> Number
 ;; Number Assertion (Maybe Number)))
-(= (process-theorem-check $idx $depth (MkTheorem $label $proof $thrm))
+(= (process-theorem-check $idx $bound (MkTheorem $label $proof $thrm))
    (progn
-    (logger-infof "Iteration %w: verify proof of %w up to depth %w"
-                  ($idx $label $depth))
+    (if (bound-search-by-proof-size)
+        (logger-infof "Iteration %w: verify proof of %w up to size %w"
+                      ($idx $label $bound))
+        (logger-infof "Iteration %w: verify proof of %w up to depth %w"
+                      ($idx $label $bound)))
     (let (: $proof $thrm)
-      (bc &pc-rb &pc-ab callback (fromNumber $depth) (: $proof $thrm))
+      (if (bound-search-by-proof-size)
+          (obc &pc-rb &pc-ab callback $bound (: $proof $thrm))
+          (bc &pc-rb &pc-ab callback (fromNumber $bound) (: $proof $thrm)))
       (case (: $proof $thrm)
         (;; Verified
-         ((: $proof $thrm)
-          (progn (add-to-kbs $label $thrm)
-                 (Maybe.return (+ $idx 1))))
-           ;; Not verified
-           (Empty Nothing))))))
+         ((: $proof $thrm) (progn (add-to-kbs $label $thrm)
+                                  (Maybe.return (+ $idx 1))))
+         ;; Not verified
+         (Empty Nothing))))))
 
 ;; Rediscover proof(s) of a theorem.  The results are returned as an
 ;; expression, a tuple of solutions, instead of a superposition to
@@ -1545,13 +1549,15 @@
 ;; NEXT: re-enable when fixed
 ;; (: process-theorem (-> Number Assertion (Maybe Number)))
 (= (process-theorem $idx (MkTheorem $label $proof $thrm))
-   (let $depth (term-depth $proof)     ; Calculate proof depth
+   (let $bound (if (bound-search-by-proof-size)
+                   (term-size $proof)   ; Calculate proof size
+                   (term-depth $proof)) ; Calculate proof depth
      (if (search-proof)
          (process-theorem-search $idx
-                                 $depth
+                                 $bound
                                  (MkTheorem $label $proof $thrm))
          (process-theorem-check $idx
-                                $depth
+                                $bound
                                 (MkTheorem $label $proof $thrm)))))
 
 ;; Process the assertion corresponding to the given index and return
