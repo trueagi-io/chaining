@@ -920,19 +920,24 @@
 ;;            Nat                           ; Maximum depth
 ;;            $d                            ; Query
 ;;            $d))                          ; Result
+
 ;; Base cases
+
 ;; Match the axiom base
 (= (_bc $rb $ab $cb $env $k (: $x $a))
    (progn
     ;; (logger-tracef "Call (ab): (_bc %w %w %w %w %w (: %w %w))"
     ;;                ($rb $ab $cb $env $k $x $a))
     ($cb (get $ab (: $x $a)))))
+
 ;; Match the environment
 (= (_bc $rb $ab $cb $env $k (: $x $a))
    (progn
     ;; (logger-tracef "Call (env): (_bc %w %w %w %w %w (: %w %w))"
     ;;                ($rb $ab $cb $env $k $x $a))
     ($cb (get' $env (: $x $a)))))
+
+;; Recursive steps
 
 ;; Product.  It is used internally by proof application to iterate
 ;; over premises.  Due to being only used internally, we do not
@@ -953,7 +958,12 @@
                           (_bc $rb $ab $cb $env $k (: $y $b)))))
       (: (, $x $y) (, $a $b)))))
 
-;; Recursive steps
+;; The following functions enumerates proof application patterns by
+;; arity.  The duplication up to arity is necessary to obtain search
+;; branches from the non-determinism.  Maybe it can be simplified
+;; further but this would require to implement a macro that would
+;; generate them.
+
 ;; Unary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x) $b))
    (progn
@@ -964,6 +974,7 @@
            ;; Recurse on premise
            ((: $x $a) (_bc $rb $ab $cb $env $k (: $x $a))))
       ($cb (: ($f $x) $b)))))
+
 ;; Binary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2) $b))
    (progn
@@ -976,6 +987,7 @@
            ((: (, $x1 $x2) (, $a1 $a2))
             (_bc_prod $rb $ab $cb $env $k (: (, $x1 $x2) (, $a1 $a2)))))
       ($cb (: ($f $x1 $x2) $b)))))
+
 ;; Ternary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3) $b))
    (progn
@@ -989,6 +1001,7 @@
             (_bc_prod $rb $ab $cb $env $k
                       (: (, $x1 (, $x2 $x3)) (, $a1 (, $a2 $a3))))))
       ($cb (: ($f $x1 $x2 $x3) $b)))))
+
 ;; Quaternary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4) $b))
    (progn
@@ -1004,6 +1017,7 @@
                       (: (, $x1 (, $x2 (, $x3 $x4)))
                          (, $a1 (, $a2 (, $a3 $a4)))))))
       ($cb (: ($f $x1 $x2 $x3 $x4) $b)))))
+
 ;; Quintenary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5) $b))
    (progn
@@ -1019,6 +1033,7 @@
                       (: (, $x1 (, $x2 (, $x3 (, $x4 $x5))))
                          (, $a1 (, $a2 (, $a3 (, $a4 $a5))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5) $b)))))
+
 ;; Senary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))
    (progn
@@ -1034,6 +1049,7 @@
                       (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 $x6)))))
                          (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 $a6)))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))))
+
 ;; Septenary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))
    (progn
@@ -1049,6 +1065,7 @@
                       (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 $x7))))))
                          (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 $a7))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))))
+
 ;; Octonary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))
    (progn
@@ -1064,6 +1081,7 @@
                       (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 $x8)))))))
                          (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 $a8)))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))))
+
 ;; Nonary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))
    (progn
@@ -1079,6 +1097,7 @@
                       (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
                          (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9))))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))))
+
 ;; Denary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))
    (progn
