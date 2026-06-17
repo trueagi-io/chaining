@@ -119,7 +119,13 @@
 
 ;; Associate a size to a term
 (: Sized (-> $a Type))
-(: MkSized (-> $n $a (Sized $a)))
+(: MkSized (-> $n                       ; Size
+               $a                       ; Object
+               (Sized $a)))             ; Sized object
+
+;; Access functions
+(= (Sized.size (MkSized $s $x)) $s)
+(= (Sized.object (MkSized $s $x)) $x)
 
 ;;;;;;;;;;;;;;;
 ;; Assertion ;;
