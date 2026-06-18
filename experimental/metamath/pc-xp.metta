@@ -1490,17 +1490,19 @@
 ;; Rediscover proof(s) of a theorem.  The results are returned as an
 ;; expression, a tuple of solutions, instead of a superposition to
 ;; avoid nondeterminism.
-(= (rediscover-proofs $depth $proof $thrm)
-   (let ;;Replace proof body by variable
-       $proof-wo-bdy
-       (replace-body-by-variable $proof)
+(= (rediscover-proofs $bound $proof $thrm)
+   (let ;; Replace proof body by variable
+       $proof-wo-bdy (replace-body-by-variable $proof)
      ;; Call backward chainer to rediscover the proof
      (collapse
-      (if (search-all-proofs)
-          (bc &pc-rb &pc-ab callback (fromNumber $depth)
-              (: $proof-wo-bdy $thrm))
-          (once (bc &pc-rb &pc-ab callback (fromNumber $depth)
-                    (: $proof-wo-bdy $thrm)))))))
+      (if (bound-search-by-proof-size)
+          (if (search-all-proofs)
+              (obc &pc-rb &pc-ab callback $bound (: $proof-wo-bdy $thrm))
+              (once (obc &pc-rb &pc-ab callback $bound (: $proof-wo-bdy $thrm))))
+          (let $pdepth (fromNumber $depth)
+            (if (search-all-proofs)
+                (bc &pc-rb &pc-ab callback $pdepth (: $proof-wo-bdy $thrm))
+                (once (bc &pc-rb &pc-ab callback $pdepth (: $proof-wo-bdy $thrm)))))))))
 
 ;; Process the theorem of a given index by rediscovering its proof, if
 ;; it succeeds then insert its alongside its proof(s) into the
@@ -1509,12 +1511,14 @@
 ;;
 ;; NEXT: re-enable when fixed
 ;; (: process-theorem-search (-> Number Number Assertion (Maybe Number)))
-(= (process-theorem-search $idx $depth (MkTheorem $label $proof $thrm))
+(= (process-theorem-search $idx $bound (MkTheorem $label $proof $thrm))
    (progn
-    (logger-infof "Iteration %w: search proof of %w up to depth %w"
-                  ($idx $label $depth))
-    (let $prfs-thrms
-        (rediscover-proofs $depth $proof $thrm)
+    (if (bound-search-by-proof-size)
+        (logger-infof "Iteration %w: search proof of %w up to size %w"
+                      ($idx $label $bound))
+        (logger-infof "Iteration %w: search proof of %w up to depth %w"
+                      ($idx $label $bound)))
+    (let $prfs-thrms (rediscover-proofs $bound $proof $thrm)
       (if (== $prfs-thrms ())
           ;; No proof
           (progn (logger-info "No proof found")
