@@ -16,10 +16,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Process assertions up to the provided index (excluded).  The
-;; default is 1526 because the full corpus contains 1525 assertions.
+;; maximum value is 1526 because the full corpus contains 1525
+;; assertions.
 ;;
-;; It is set to 95 because the 95 theorem is too slow proof.
-(= (up-to-idx) 95)
+;; When using proof depth as search boundary, it is set to 95 because
+;; the 95 theorem is very slow to proof.
+;;
+;; When using proof size as search boundary, it is set to 182 because
+;; the 182 theorem is very slow to proof.
+(= (up-to-idx) 182)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search Parameters ;;
@@ -54,14 +59,18 @@
 (= (bound-search-by-proof-size) True)
 
 ;; Use proof reduction as pruning mechanism duing search
-(= (prune-reduct) True)
+;;
+;; NEXT: disabled because it leads to problem at idx 170 because the
+;; corresponding lemma is a slight specialization of the theorem and
+;; does not match it perfectly.
+(= (prune-reduct) False)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logger Parameters ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Log level
-(= (log-level) info)
+(= (log-level) debug)
 
 ;; Log file path
 (= (log-filepath) "pc-xp.log")
@@ -713,6 +722,8 @@
 ;; proof not associated to an existing label is allowed.  In other
 ;; words, instead of rediscovering the proof of an existing label, it
 ;; should re-use this label.
+;;
+;; NEXT: only reduce if the theorem is identical (see idx 170)
 (: callback (-> $a $a))
 (= (callback (: $x $a)) ; (: $x $a))
    (progn
