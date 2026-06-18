@@ -1143,24 +1143,17 @@
                     ;; Proof is a lambda term
                     (let* (;; Get variables, body, premises and conclusion
                            ($xs (get-lambda-variables $prf))
-                           (True (logger-tracef "xs = %w" ($xs)))
                            ($as (get-arrow-premises $thrm))
-                           (True (logger-tracef "as = %w" ($as)))
                            ($y (get-lambda-body $prf))
-                           (True (logger-tracef "y = %w" ($y)))
                            ($b (get-arrow-conclusion $thrm))
-                           (True (logger-tracef "b = %w" ($b)))
                            ;; Build environment
                            ($env (zip-with : $xs $as))
-                           (True (logger-tracef "env = %w" ($env)))
                            ;; Calculate maximum body size (decount λ
                            ;; and variables)
                            ($mbs (- $mps (+ (length $xs) 1)))
-                           (True (logger-tracef "mbs = %w" ($mbs)))
                            ;; Call _obc to proof conclusion given environment
                            ((MkSized $bdysize (: $y $b))
                             (_obc $rb $ab $cb $env $mbs (: $y $b)))
-                           (True (logger-tracef "bdysize = %w, y = %w, b = %w" ($mbs $y $b)))
                            ;; Reconstruct lambda term
                            ($prf (cons-atom λ (concat-atom $xs ($y))))
                            ;; Reconstruct arrow
@@ -1186,16 +1179,14 @@
 ;;             $c                            ; Query
 ;;             (Sized $c)))                  ; Result
 
-;; NEXT: try to optimize with upfront < 0 $ms filtering
-
 ;; Base cases
 
 ;; Match the axiom base
 (= (_obc $rb $ab $cb $env $mps (: $x $a))
    (if (< 0 $mps)
        (progn
-        (logger-tracef "Call (ab): (_obc %w %w %w %w %w (: %w %w))"
-                       ($rb $ab $cb $env $mps $x $a))
+        ;; (logger-tracef "Call (ab): (_obc %w %w %w %w %w (: %w %w))"
+        ;;                ($rb $ab $cb $env $mps $x $a))
         (MkSized 1 ($cb (get $ab (: $x $a)))))
        (empty)))
 
@@ -1203,9 +1194,9 @@
 (= (_obc $rb $ab $cb $env $mps (: $x $a))
    (if (< 0 $mps)
        (progn
-        (logger-tracef "Call (env): (_obc %w %w %w %w %w (: %w %w))"
-                       ($rb $ab $cb $env $mps $x $a))
-        (MkSize 1 ($cb (get' $env (: $x $a)))))
+        ;; (logger-tracef "Call (env): (_obc %w %w %w %w %w (: %w %w))"
+        ;;                ($rb $ab $cb $env $mps $x $a))
+        (MkSized 1 ($cb (get' $env (: $x $a)))))
        (empty)))
 
 ;; Recursive steps
@@ -1217,8 +1208,8 @@
 ;; forms like (, x (, y z)).
 (= (_obc_prod $rb $ab $cb $env $mps (: (, $x $y) (, $a $b)))
    (progn
-    (logger-tracef "Call (prod): (_obc_prod %w %w %w %w %w %w)"
-                   ($rb $ab $cb $env $mps (: (, $x $y) (, $a $b))))
+    ;; (logger-tracef "Call (prod): (_obc_prod %w %w %w %w %w %w)"
+    ;;                ($rb $ab $cb $env $mps (: (, $x $y) (, $a $b))))
     (let* (;; Recurse on first component
            ((MkSized $xps (: $x $a)) (_obc $rb $ab $cb $env $mps (: $x $a)))
            ;; Calculate remaining maximum size
@@ -1235,8 +1226,8 @@
 (= (_obc $rb $ab $cb $env $mps (: ($f $x) $b))
    (if (< 1 $mps)
        (progn
-        (logger-tracef "Call (app-1): (_obc %w %w %w %w %w %w)"
-                       ($rb $ab $cb $env $mps (: ($f $x) $b)))
+        ;; (logger-tracef "Call (app-1): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x) $b)))
         (let* (;; Query unary rule
                ((: $f (-> $a $b)) (get $rb (: $f (-> $a $b))))
                ;; Recurse on premise
@@ -1250,11 +1241,10 @@
 (= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2) $b))
    (if (< 2 $mps)
        (progn
-        (logger-tracef "Call (app-2): (_obc %w %w %w %w %w %w)"
-                       ($rb $ab $cb $env $mps (: ($f $x1 $x2) $b)))
+        ;; (logger-tracef "Call (app-2): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2) $b)))
         (let* (;; Query binary rule
                ((: $f (-> $a1 $a2 $b)) (get $rb (: $f (-> $a1 $a2 $b))))
-               (True (logger-tracef "f = %w, a1 = %w, a2 = %w, b = %w" ($f $a1 $a2 $b)))
                ;; Recurse on premises
                ((MkSized $pps (: (, $x1 $x2) (, $a1 $a2)))
                 (_obc_prod $rb $ab $cb $env (- $mps 1) (: (, $x1 $x2) (, $a1 $a2)))))
