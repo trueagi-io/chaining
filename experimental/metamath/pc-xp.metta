@@ -3,7 +3,8 @@
 
 ;; NEXT: discover more reduction rules (maybe automate the discovery process)
 
-;; NEXT: see if disabling type definitions speed things up.
+;; Note that all type definitions over functions have been commented
+;; out because it results in a significant speed up (6.5s vs
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;; ;;
@@ -24,7 +25,7 @@
 ;;
 ;; When using proof size as search boundary, it is set to 182 because
 ;; the 182 theorem is very slow to proof.
-(= (up-to-idx) 182)
+(= (up-to-idx) 52)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search Parameters ;;
@@ -166,9 +167,9 @@
 (: S (-> Nat Nat))
 
 ;; Define cast functions between Nat and Number
-(: fromNumber (-> Number Nat))
+;; (: fromNumber (-> Number Nat))
 (= (fromNumber $n) (if (<= $n 0) Z (S (fromNumber (- $n 1)))))
-(: fromNat (-> Nat Number))
+;; (: fromNat (-> Nat Number))
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
@@ -182,11 +183,11 @@
 (: Just (-> $a (Maybe $a)))
 
 ;; Implement monad interface for return
-(: Maybe.return (-> $a (Maybe $a)))
+;; (: Maybe.return (-> $a (Maybe $a)))
 (= (Maybe.return $x) (Just $x))
 
 ;; Implement monad interface for bind
-(: Maybe.bind (-> (Maybe $a) (-> $a (Maybe $b)) (Maybe $b)))
+;; (: Maybe.bind (-> (Maybe $a) (-> $a (Maybe $b)) (Maybe $b)))
 (= (Maybe.bind Nothing $f) Nothing)
 (= (Maybe.bind (Just $x) $f) ($f $x))
 
@@ -208,7 +209,7 @@
 ;;;;;;;;;;;;
 
 ;; Return True iff the given term is an expression
-(: is-expression (-> $a Bool))
+;; (: is-expression (-> $a Bool))
 (= (is-expression $x) (== (get-metatype $x) Expression))
 
 ;; Test is-expression
@@ -222,7 +223,7 @@
 ;; NEXT: simplify once issue
 ;; https://github.com/trueagi-io/PeTTa/issues/182 has been
 ;; solved.
-(: is-lambda (-> $a Bool))
+;; (: is-lambda (-> $a Bool))
 (= (is-lambda $x)
    (if (is-expression $x)
        (if (== () $x)
@@ -247,7 +248,7 @@
 ;; NEXT: simplify once issue
 ;; https://github.com/trueagi-io/PeTTa/issues/182 has been
 ;; solved.
-(: is-arrow (-> Atom Bool))
+;; (: is-arrow (-> Atom Bool))
 (= (is-arrow $x)
    (if (is-expression $x)
        (if (== () $x)
@@ -272,7 +273,7 @@
 ;; NEXT: simplify once issue
 ;; https://github.com/trueagi-io/PeTTa/issues/182 has been
 ;; solved.
-(: is-product (-> $a Bool))
+;; (: is-product (-> $a Bool))
 (= (is-product $x)
    (if (is-expression $x)
        (if (== () $x)
@@ -484,14 +485,14 @@
 ;;;;;;;;;;;;;;;
 
 ;; Increment a number by 1
-(: succ (-> Number Number))
+;; (: succ (-> Number Number))
 (= (succ $n) (+ 1 $n))
 
 ;;;;;;;;;
 ;; Map ;;
 ;;;;;;;;;
 
-(: map (-> (-> $a $b) $c $d))
+;; (: map (-> (-> $a $b) $c $d))
 (= (map $f $xs) (case $xs
                   (;; Empty expression
                    (() ())
@@ -511,7 +512,7 @@
 ;;;;;;;;;;;;;;;;;
 
 ;; Given a tuple of numbers, return the maximum, or 0 if empty.
-(: max-element (-> $a Number))
+;; (: max-element (-> $a Number))
 (= (max-element $expr) (foldr max 0 $expr))
 
 ;; Test max-element
@@ -524,7 +525,7 @@
 ;;;;;;;;;;;;;;;
 
 ;; Extract the maximum index of a corpus in a given space
-(: max-index (-> $a Number))
+;; (: max-index (-> $a Number))
 (= (max-index $spc)
    (max-element (collapse (match $spc (MkIndexed $idx $asrt) $idx))))
 
@@ -536,10 +537,10 @@
 ;; function till some condition is reached.  You may want to make sure
 ;; that the predicate and the next function are deterministic,
 ;; otherwise the behavior of until might be a bit unpredictable.
-(: until (-> (-> $a Bool)               ; Predicate
-             (-> $a $a)                 ; Next
-             $a                         ; Initial value
-             $a))                       ; Final value
+;; (: until (-> (-> $a Bool)               ; Predicate
+;;              (-> $a $a)                 ; Next
+;;              $a                         ; Initial value
+;;              $a))                       ; Final value
 (= (until $p $f $x)
    (if ($p $x) $x (until $p $f ($f $x))))
 
@@ -556,7 +557,7 @@
 
 ;; Return the depth of a term.  If the term is a symbol then the depth
 ;; is 0.  Likewise the depth of (R A B) is 1, etc.
-(: term-depth (-> $a Number))
+;; (: term-depth (-> $a Number))
 (= (term-depth $term)
    (case (get-metatype $term)
      (;; Symbol
@@ -665,9 +666,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Replace a given symbol by a variable in a term.
-(: replace-symbol-by-variable (-> Symbol $a $a))
+;; (: replace-symbol-by-variable (-> Symbol $a $a))
 (= (replace-symbol-by-variable $sym $term) (_replace-symbol-by-variable $sym $x $term))
-(: _replace-symbol-by-variable (-> Symbol Variable $a $a))
+;; (: _replace-symbol-by-variable (-> Symbol Variable $a $a))
 (= (_replace-symbol-by-variable $sym $var $term)
    (case (get-metatype $term)
      ((Symbol (if (== $sym $term) $var $term))
@@ -693,7 +694,7 @@
   (-> (→ $𝜑 (→ 𝜓 𝜒)) 𝜓 $𝜑 𝜒))
 
 ;; Replace all greek letters by variables
-(: replace-greeks-by-variables (-> $a $a))
+;; (: replace-greeks-by-variables (-> $a $a))
 (= (replace-greeks-by-variables $term)
    (foldr replace-symbol-by-variable $term (𝜑 𝜓 𝜒 𝜃 𝜏 𝜂 𝜁 𝜎 𝜌 𝜇 𝜆 𝜅)))
 
@@ -724,7 +725,7 @@
 ;; should re-use this label.
 ;;
 ;; NEXT: only reduce if the theorem is identical (see idx 170)
-(: callback (-> $a $a))
+;; (: callback (-> $a $a))
 (= (callback (: $x $a)) ; (: $x $a))
    (progn
     ;; (logger-tracef "Call: (callback %w)" ((: $x $a)))
@@ -873,12 +874,12 @@
 ;; a superposition.
 
 ;; Entry point
-(: bc (-> $a                            ; Rule base space
-          $b                            ; Axiom base space
-          (-> $c $c)                    ; Callback
-          Nat                           ; Maximum depth
-          $c                            ; Query
-          $c))                          ; Result
+;; (: bc (-> $a                            ; Rule base space
+;;           $b                            ; Axiom base space
+;;           (-> $c $c)                    ; Callback
+;;           Nat                           ; Maximum depth
+;;           $c                            ; Query
+;;           $c))                          ; Result
 (= (bc $rb $ab $cb $depth (: $prf $thrm))
    (progn
     (logger-tracef "Call (lambda): (bc %w %w %w %w (: %w %w))"
@@ -1427,7 +1428,7 @@
 ;; corpus.  If the input number is nothing, then return True as well
 ;; because it means that a verification has failed and thus the
 ;; experiment should be aborted.
-(: equal-to-upidx-or-nothing (-> (Maybe Number) Bool))
+;; (: equal-to-upidx-or-nothing (-> (Maybe Number) Bool))
 (= (equal-to-upidx-or-nothing $idxm)
    (case $idxm
      (((Just $idx) (== (up-to-idx) $idx))
@@ -1572,7 +1573,7 @@
 ;; insert it in the knowledge base as if it were an axiom.  If it
 ;; fails to verify or proof then return Nothing instead of the next
 ;; index.
-(: process-assertion (-> Number (Maybe Number)))
+;; (: process-assertion (-> Number (Maybe Number)))
 (= (process-assertion $idx)
    (progn
     (logger-tracef "Call: (process-assertion %w)" ($idx))
@@ -1583,7 +1584,7 @@
 
 ;; Like process-assertion but wrapped in Maybe.bind to accept maybe a
 ;; number, which the until construct needs.
-(: process-assertion-m (-> (Maybe Number) (Maybe Number)))
+;; (: process-assertion-m (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-m $midx) (Maybe.bind $midx process-assertion))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
