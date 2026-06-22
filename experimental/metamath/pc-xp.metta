@@ -62,7 +62,7 @@
 (= (bound-search-by-proof-size) True)
 
 ;; Use proof reduction as pruning mechanism during search
-(= (prune-reduct) True)
+(= (prune-reduct) False)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logger Parameters ;;
