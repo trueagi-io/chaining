@@ -1,10 +1,12 @@
 ;; Experiment to verify or rediscover proofs of the propositional
 ;; calculus fragment of set theory of Metamath.
 
-;; NEXT: discover more reduction rules (maybe automate the discovery process)
+;; NEXT: automate the discovery process of reduction rules.  It is
+;; especially relevant here because new lemmas are constantly added.
+;; Thus hand written reduction rules will not suffice.
 
 ;; Note that all type definitions over functions have been commented
-;; out because it results in a significant speed up (6.5s vs
+;; out because it results in a significant speed up.
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;; ;;
@@ -25,7 +27,7 @@
 ;;
 ;; When using proof size as search boundary, it is set to 182 because
 ;; the 182 theorem is very slow to proof.
-(= (up-to-idx) 52)
+(= (up-to-idx) 182)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search Parameters ;;
@@ -59,12 +61,8 @@
 ;; Bound search by proof size instead of proof depth.
 (= (bound-search-by-proof-size) True)
 
-;; Use proof reduction as pruning mechanism duing search
-;;
-;; NEXT: disabled because it leads to problem at idx 170 because the
-;; corresponding lemma is a slight specialization of the theorem and
-;; does not match it perfectly.
-(= (prune-reduct) False)
+;; Use proof reduction as pruning mechanism during search
+(= (prune-reduct) True)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logger Parameters ;;
@@ -710,34 +708,34 @@
 ;; Reduction ;;
 ;;;;;;;;;;;;;;;
 
-;; Define space mapping proofs to label, with data of the form
+;; Define space mapping proof and theorem to label, with
+;; representation of the form:
 ;;
-;; (Label PROOF LABEL)
+;; (Label PROOF THEOREM LABEL)
 !(bind! &labels (new-space))
 
-;; Callback to be passed to the backward chainer.  It is called over
-;; every result, intermediary included, that the backward chainer
-;; finds.  For now it used as a reduction pruner, meaning that if the
-;; result is recognized as reducible, then it is pruned.  For now only
-;; reducing proof to its label is supported.  Meaning that only a
-;; proof not associated to an existing label is allowed.  In other
-;; words, instead of rediscovering the proof of an existing label, it
-;; should re-use this label.
-;;
-;; NEXT: only reduce if the theorem is identical (see idx 170)
-;; (: callback (-> $a $a))
-(= (callback (: $x $a)) ; (: $x $a))
+;; Reduce by pruning.  That is only the candidates in reduced form are
+;; kept, the others are pruned.  For now only reducing proof to its
+;; label is supported.  Meaning that only a proof of a given theorem
+;; not associated to an existing label is allowed.  In other words,
+;; instead of rediscovering the proof, it should re-use this label.
+;; Note that the theorem must match as well as the proof, to make sure
+;; that the corresponding label does not correspond to an overly
+;; specialized theorem, otherwise the final proof checking will fail
+;; to unify.
+(= (prune-reduce (: $x $a))
    (progn
-    ;; (logger-tracef "Call: (callback %w)" ((: $x $a)))
-    (if (prune-reduct)
-        (case (once (match &labels (Label $x $y) $y))
-          (($y (empty))
-           (Empty (: $x $a))))
-        (: $x $a))))
+    ;; (logger-tracef "Call: (prune-reduce %w)" ((: $x $a)))
+    (case (once (match &labels (Label $x $a $l) $l))
+      (($l (progn
+            ;; (logger-tracef "%w is not in normal form, prune" ((: $x $a)))
+            (empty)))
+       (Empty (progn
+               ;; (logger-tracef "%w is in normal form, do not prune" ((: $x $a)))
+               (: $x $a)))))))
 
-;; The code below is only kept for documentation or potential future
-;; use as the reduction based prunning is handled by the callback
-;; instead.
+;; The code below, regular not pruning-based reduction, is only kept
+;; for documentation or potential future use.
 
 ;; Reduce a proof to its label if any, or nothing otherwise.
 ;; (: reduce-to-label (-> $a (Maybe $a)))
@@ -837,6 +835,22 @@
 ;; !(test
 ;;   (reduce-proof (3bitr2i bicom (bibi2i notnotb) notbi))
 ;;   con2bi)
+
+;;;;;;;;;;;;;;
+;; Callback ;;
+;;;;;;;;;;;;;;
+
+;; Callback to be passed to the backward chainer.  It is called over
+;; every result, intermediary included, that the backward chainer
+;; finds.  For now it used as a reduction pruner, meaning that if the
+;; result is recognized as reducible, then it is pruned.
+;; (: callback (-> $a $a))
+(= (callback (: $x $a)) ; (: $x $a))
+   (progn
+    ;; (logger-tracef "Call: (callback %w)" ((: $x $a)))
+    (if (prune-reduct)
+        (prune-reduce (: $x $a))
+        (: $x $a))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
@@ -1462,9 +1476,12 @@
          (add-atom &pc-rb (: $label $stmt-with-vars))
          (add-atom &pc-ab (: $label $stmt-with-vars)))))
 
-;; Add proof to label mapping to labels space
-(= (add-to-labels $proof $label)
-   (add-atom &labels (Label $proof $label)))
+;; Add proof and theorem to label mapping to labels space
+(= (add-to-labels $proof $theorem $label)
+   (progn
+    ;; (logger-tracef "Call: (add-to-labels %w %w %w)" ($proof $theorem $label))
+    (let $theorem-with-vars (replace-greeks-by-variables $theorem)
+      (add-atom &labels (Label $proof $theorem-with-variables $label)))))
 
 ;; Process the axiom of given index, that is insert the axiom into
 ;; pc-ab and return the next index.
@@ -1542,7 +1559,7 @@
             (let (: $p $t) (superpose $prfs-thrms)
                  (progn
                   (logger-infof "Found proof%w %w" (: $p))
-                  (add-to-labels $p $label))))
+                  (add-to-labels $p $t $label))))
            ;; Add proved theorem as lemma in kbs
            (add-to-kbs $label $thrm)
            ;; Output next index
