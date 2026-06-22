@@ -1481,7 +1481,7 @@
    (progn
     ;; (logger-tracef "Call: (add-to-labels %w %w %w)" ($proof $theorem $label))
     (let $theorem-with-vars (replace-greeks-by-variables $theorem)
-      (add-atom &labels (Label $proof $theorem-with-variables $label)))))
+      (add-atom &labels (Label $proof $theorem-with-vars $label)))))
 
 ;; Process the axiom of given index, that is insert the axiom into
 ;; pc-ab and return the next index.
