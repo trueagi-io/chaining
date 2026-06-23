@@ -126,3 +126,14 @@ quite high, 26, and even if it diverges it seems to be in a
 logarithmic fashion.  In other words, the forward emulation of
 backward chaining looks like it could be a competitive approach,
 especially for rewriting systems like MORK, which we will study next.
+
+### Comparing MORK Backward Emulation vs Regular MeTTa Backward Chaining
+
+For comparing regular MeTTa backward chaining with MORK forward
+chaining emulation, see [bfc-xp.mm2](bfc-xp.mm2).  Do not forget to
+run [gen-fromNumber.mm2](gen-fromNumber.mm2) and
+[gen-lte.mm2](gen-lte.mm2) (in this order) before, to generate tables
+used by [bfc-xp.mm2](bfc-xp.mm2).  So far the results are
+disappointingly slow but much work remains to optimize the MORK
+emulation, such as using integers instead of naturals, and likely much
+more.
