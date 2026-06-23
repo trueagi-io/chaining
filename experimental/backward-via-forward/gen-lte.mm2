@@ -1,39 +1,17 @@
 ;; Generate less than equal relationships between all natural numbers
 ;; up to a certain bound.
 
-;; NEXT: use fromNumber ACT file
+;; Load fromNumber in the space.  Make sure that gen-fromNumber.mm2
+;; has been previously executed.
+(exec Pre (I (ACT fromNumber (= (fromNumber $x) $k))) (, (= (fromNumber $x) $k)))
 
-;; Natural number representing a bound (here 26)
-(Bound (S
-        (S
-         (S
-          (S
-           (S
-            (S
-             (S
-              (S
-               (S
-                (S
-                 (S
-                  (S
-                   (S
-                    (S
-                     (S
-                      (S
-                       (S
-                        (S
-                         (S
-                          (S
-                           (S
-                            (S
-                             (S
-                              (S
-                               (S
-                                (S Z)))))))))))))))))))))))))))
+;; Number representing a bound (here 26)
+(NumBound 26)
 
 ;; Initialize
-(exec 0
-      (, (Bound $b))
+(exec Init
+      (, (NumBound $n)
+         (= (fromNumber $n) $b))
       (, ;; Generate all numbers up to a certain bound
          (: Z BndNat)
          (exec (0 $b)
@@ -78,4 +56,4 @@
                   (- (cf2 (lte $x $y)))))))
 
 ;; Finalize (write into lte.act)
-(exec 2 (, (lte $x $y)) (O (ACT lte (lte $x $y))))
+(exec Final (, (lte $x $y)) (O (ACT lte (lte $x $y))))
