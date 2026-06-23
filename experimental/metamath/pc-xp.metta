@@ -1,7 +1,12 @@
 ;; Experiment to verify or rediscover proofs of the propositional
 ;; calculus fragment of set theory of Metamath.
 
-;; NEXT: discover more reduction rules (maybe automate the discovery process)
+;; NEXT: automate the discovery process of reduction rules.  It is
+;; especially relevant here because new lemmas are constantly added.
+;; Thus hand written reduction rules will not suffice.
+
+;; Note that all type definitions over functions have been commented
+;; out because it results in a significant speed up.
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;; ;;
@@ -14,10 +19,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Process assertions up to the provided index (excluded).  The
-;; default is 1526 because the full corpus contains 1525 assertions.
+;; maximum value is 1526 because the full corpus contains 1525
+;; assertions.
 ;;
-;; It is set to 95 because the 95 theorem is too slow proof.
-(= (up-to-idx) 95)
+;; When using proof depth as search boundary, it is set to 95 because
+;; the 95 theorem is very slow to proof.
+;;
+;; When using proof size as search boundary, it is set to 182 because
+;; the 182 theorem is very slow to proof.
+(= (up-to-idx) 182)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Search Parameters ;;
@@ -48,15 +58,18 @@
 ;; at the first one.
 (= (search-all-proofs) False)
 
-;; Use proof reduction as pruning mechanism duing search
-(= (prune-reduct) True)
+;; Bound search by proof size instead of proof depth.
+(= (bound-search-by-proof-size) True)
+
+;; Use proof reduction as pruning mechanism during search
+(= (prune-reduct) False)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logger Parameters ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Log level
-(= (log-level) info)
+(= (log-level) debug)
 
 ;; Log file path
 (= (log-filepath) "pc-xp.log")
@@ -68,6 +81,7 @@
 ;;;;;;;;;;;;;;;;;;;
 
 ;; Import logger library
+!(import! &self (library lib_import))
 !(git-import! "https://github.com/ngeiswei/petta_lib_logger")
 !(import! &self (library lib_logger))
 
@@ -91,6 +105,14 @@
 ;; ;;;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;
+;; Concat ;;
+;;;;;;;;;;;;
+
+;; Concat atoms.  The implementation uses union-atom and assumes that
+;; it preserves order.
+(= (concat-atom $x $y) (union-atom $x $y))
+
 ;;;;;;;;;;
 ;; When ;;
 ;;;;;;;;;;
@@ -99,25 +121,19 @@
 (: when (-> Bool Atom $a))
 (= (when $c $x) (if $c $x (empty)))
 
-;;;;;;;;;;;;;;;;;;;;;;;
-;; Detect Arrow Type ;;
-;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;
+;; Sized ;;
+;;;;;;;;;;;
 
-;; Return True iff the given term is an arrow type, meaning has the
-;; following format (-> A), (-> A B), (-> A B C), etc.
-(: is-arrow-type (-> Atom Bool))
-(= (is-arrow-type $x)
-   (and (== (get-metatype $x) Expression)
-        (and (not (== () $x))
-             (== (car-atom $x) ->))))
+;; Associate a size to a term
+(: Sized (-> $a Type))
+(: MkSized (-> $n                       ; Size
+               $a                       ; Object
+               (Sized $a)))             ; Sized object
 
-;; Test is-arrow-type
-!(test
-  (is-arrow-type (F A B))
-  False)
-!(test
-  (is-arrow-type (-> $a $b))
-  True)
+;; Access functions
+(= (Sized.size (MkSized $s $x)) $s)
+(= (Sized.object (MkSized $s $x)) $x)
 
 ;;;;;;;;;;;;;;;
 ;; Assertion ;;
@@ -149,9 +165,9 @@
 (: S (-> Nat Nat))
 
 ;; Define cast functions between Nat and Number
-(: fromNumber (-> Number Nat))
+;; (: fromNumber (-> Number Nat))
 (= (fromNumber $n) (if (<= $n 0) Z (S (fromNumber (- $n 1)))))
-(: fromNat (-> Nat Number))
+;; (: fromNat (-> Nat Number))
 (= (fromNat Z) 0)
 (= (fromNat (S $k)) (+ 1 (fromNat $k)))
 
@@ -165,11 +181,11 @@
 (: Just (-> $a (Maybe $a)))
 
 ;; Implement monad interface for return
-(: Maybe.return (-> $a (Maybe $a)))
+;; (: Maybe.return (-> $a (Maybe $a)))
 (= (Maybe.return $x) (Just $x))
 
 ;; Implement monad interface for bind
-(: Maybe.bind (-> (Maybe $a) (-> $a (Maybe $b)) (Maybe $b)))
+;; (: Maybe.bind (-> (Maybe $a) (-> $a (Maybe $b)) (Maybe $b)))
 (= (Maybe.bind Nothing $f) Nothing)
 (= (Maybe.bind (Just $x) $f) ($f $x))
 
@@ -186,21 +202,12 @@
   (Maybe.bind (Just 42) Maybe.test.foo)
   (Just "42"))
 
-;;;;;;;;;;
-;; List ;;
-;;;;;;;;;;
-
-;; Declaration of List data type and constructors
-(: List (-> $a Type))
-(: Nil (List $a))
-(: Cons (-> $a (List $a) (List $a)))
-
 ;;;;;;;;;;;;
 ;; Syntax ;;
 ;;;;;;;;;;;;
 
 ;; Return True iff the given term is an expression
-(: is-expression (-> $a Bool))
+;; (: is-expression (-> $a Bool))
 (= (is-expression $x) (== (get-metatype $x) Expression))
 
 ;; Test is-expression
@@ -208,31 +215,250 @@
   (is-expression id)
   False)
 
-;;;;;;;;;;;;;;;;;;;;;
-;; Match over list ;;
-;;;;;;;;;;;;;;;;;;;;;
+;; Return True iff the given term is a lambda abstraction, meaning an
+;; expression of the form (λ VARIABLES BODY)
+;;
+;; NEXT: simplify once issue
+;; https://github.com/trueagi-io/PeTTa/issues/182 has been
+;; solved.
+;; (: is-lambda (-> $a Bool))
+(= (is-lambda $x)
+   (if (is-expression $x)
+       (if (== () $x)
+           False
+           (== λ (car-atom $x)))
+       False))
 
-;; Similar to match but takes a list of terms instead of a space.
-;; (: match' (-> (List $a) $a $a $a)) ; NEXT: re-enable when fixed
-(= (match' Nil $ptrn $tmpl) (empty))
-(= (match' (Cons $hd $tl) $ptrn $tmpl) (let $ptrn $hd $tmpl))
-(= (match' (Cons $hd $tl) $ptrn $tmpl) (match' $tl $ptrn $tmpl))
-
-;; Test match' on empty list
+;; Test is-lambda
 !(test
-  (collapse (match' Nil ($x $y) ($y $x)))
+  (is-lambda A)
+  False)
+!(test
+  (is-lambda (A B))
+  False)
+!(test
+  (is-lambda (λ $x $y))
+  True)
+
+;; Return True iff the given term is an arrow type, meaning has the
+;; following format (-> A), (-> A B), (-> A B C), etc.
+;;
+;; NEXT: simplify once issue
+;; https://github.com/trueagi-io/PeTTa/issues/182 has been
+;; solved.
+;; (: is-arrow (-> Atom Bool))
+(= (is-arrow $x)
+   (if (is-expression $x)
+       (if (== () $x)
+           False
+           (== -> (car-atom $x)))
+       False))
+
+;; Test is-arrow
+!(test
+  (is-arrow A)
+  False)
+!(test
+  (is-arrow (F A B))
+  False)
+!(test
+  (is-arrow (-> $a $b))
+  True)
+
+;; Return True iff the given term is a product, meaning an expression
+;; of the form (, FIRST SECOND)
+;;
+;; NEXT: simplify once issue
+;; https://github.com/trueagi-io/PeTTa/issues/182 has been
+;; solved.
+;; (: is-product (-> $a Bool))
+(= (is-product $x)
+   (if (is-expression $x)
+       (if (== () $x)
+           False
+           (== , (car-atom $x)))
+       False))
+
+;; Test is-lambda
+!(test
+  (is-product A)
+  False)
+!(test
+  (is-product (A B))
+  False)
+!(test
+  (is-product (, A B))
+  True)
+
+;; Drop last element of a tuple
+(= (drop-last $xs)
+   (if (is-expression $xs)
+       (if (== $xs ())
+           (empty)
+           (if (== (length $xs) 1)
+               ()
+               (let* ((($head $tail) (decons-atom $xs))
+                      ($dlt (drop-last $tail)))
+                 (cons-atom $head $dlt))))
+       (empty)))
+
+;; Test drop-last
+!(test
+  (drop-last (A))
+  ())
+!(test
+  (drop-last (A B))
+  (A))
+!(test
+  (drop-last (A B C))
+  (A B))
+
+;; Take last element of a tuple
+(= (take-last $xs)
+   (if (is-expression $xs)
+       (if (== $xs ())
+           (empty)
+           (if (== (length $xs) 1)
+               (car-atom $xs)
+               (take-last (cdr-atom $xs))))
+       (empty)))
+
+;; Test take-last
+!(test
+  (take-last (A))
+  A)
+!(test
+  (take-last (A B))
+  B)
+
+;; Get lambda variables.  Prune if not a lambda term.
+(= (get-lambda-variables $term)
+   (if (is-lambda $term)
+       (let ($h $t) (decons-atom $term)
+            (drop-last $t))
+       (empty)))
+
+;; Test get-lambda-variables
+!(test
+  (collapse (get-lambda-variables A))
+  ())
+!(test
+  (get-lambda-variables (λ $x $y))
+  ($x))
+!(test
+  (get-lambda-variables (λ $x1 $x2 $y))
+  ($x1 $x2))
+
+;; Get lambda body.  Prune if not a lambda term.
+(= (get-lambda-body $term)
+   (if (is-lambda $term)
+       (take-last $term)
+       (empty)))
+
+;; Test get-lambda-body
+!(test
+  (collapse (get-lambda-body A))
+  ())
+!(test
+  (get-lambda-body (λ $x A))
+  A)
+!(test
+  (get-lambda-body (λ $x1 $x2 A))
+  A)
+
+;; Get arrow premises.  Prune if not an arrow.
+(= (get-arrow-premises $term)
+   (if (is-arrow $term)
+       (let ($h $t) (decons-atom $term)
+            (drop-last $t))
+       (empty)))
+
+;; Test get-lambda-variables
+!(test
+  (collapse (get-arrow-premises A))
+  ())
+!(test
+  (get-arrow-premises (-> A B))
+  (A))
+!(test
+  (get-arrow-premises (-> A B C))
+  (A B))
+
+;; Get lambda body.  Prune if not a lambda term.
+(= (get-arrow-conclusion $term)
+   (if (is-arrow $term)
+       (take-last $term)
+       (empty)))
+
+;; Test get-lambda-body
+!(test
+  (collapse (get-arrow-conclusion A))
+  ())
+!(test
+  (get-arrow-conclusion (-> A B))
+  B)
+!(test
+  (get-arrow-conclusion (-> A B C))
+  C)
+
+;;;;;;;;;
+;; Zip ;;
+;;;;;;;;;
+
+;; Zip two tuples with a given function.  It is assumed that both $xs
+;; and $ys have the same length.
+(= (zip-with $f $xs $ys)
+   (if (== $xs ())
+       ()
+       (let* ((($xh $xt) (decons-atom $xs))
+              (($yh $yt) (decons-atom $ys))
+              ($zh ($f $xh $yh))
+              ($zt (zip-with $f $xt $yt)))
+         (cons-atom $zh $zt))))
+
+;; Test zip-with
+!(test
+  (zip-with : () ())
+  ())
+!(test
+  (zip-with : (x) (a))
+  ((: x a)))
+!(test
+  (zip-with : (x y) (a b))
+  ((: x a) (: y b)))
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Match over tuple ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; Match pattern over a tuple of elements
+(= (match' $tuple $ptrn $tmpl) (let $ptrn (superpose $tuple) $tmpl))
+
+;; Test match' on empty tuple
+!(test
+  (collapse (match' () ($x $y) ($y $x)))
   ())
 
 ;; Test match' on singleton
 !(test
-  (collapse (match' (Cons (A B) Nil) ($x $y) ($y $x)))
+  (collapse (match' ((A B)) ($x $y) ($y $x)))
   ((B A)))
 
 ;; Test match' on pair
 !(test
-  (collapse (match' (Cons (A B) (Cons (C D) Nil)) ($x $y) ($y $x)))
+  (collapse (match' ((A B) (C D)) ($x $y) ($y $x)))
   ((B A)
    (D C)))
+
+;;;;;;;;;
+;; Get ;;
+;;;;;;;;;
+
+;; Specialized match where the pattern is equal to the template
+(= (get $spc $ptrn) (match $spc $ptrn $ptrn))
+
+;; Specialized match' where the pattern is equal to the template
+(= (get' $spc $ptrn) (match' $spc $ptrn $ptrn))
 
 ;;;;;;;;;;
 ;; Fold ;;
@@ -243,8 +469,7 @@
 (= (foldr $f $i $xs)
    (if (== $xs ())
        $i
-       (let* (($h (car-atom $xs))
-              ($t (cdr-atom $xs))
+       (let* ((($h $t) (decons-atom $xs))
               ($ft (foldr $f $i $t)))
          ($f $h $ft))))
 
@@ -258,20 +483,19 @@
 ;;;;;;;;;;;;;;;
 
 ;; Increment a number by 1
-(: succ (-> Number Number))
+;; (: succ (-> Number Number))
 (= (succ $n) (+ 1 $n))
 
 ;;;;;;;;;
 ;; Map ;;
 ;;;;;;;;;
 
-(: map (-> (-> $a $b) $c $d))
+;; (: map (-> (-> $a $b) $c $d))
 (= (map $f $xs) (case $xs
                   (;; Empty expression
                    (() ())
                    ;; Non-empty expression
-                   ($xs (let* (($h (car-atom $xs))
-                               ($t (cdr-atom $xs))
+                   ($xs (let* ((($h $t) (decons-atom $xs))
                                ($fh ($f $h))
                                ($ft (map $f $t)))
                           (cons-atom $fh $ft))))))
@@ -286,7 +510,7 @@
 ;;;;;;;;;;;;;;;;;
 
 ;; Given a tuple of numbers, return the maximum, or 0 if empty.
-(: max-element (-> $a Number))
+;; (: max-element (-> $a Number))
 (= (max-element $expr) (foldr max 0 $expr))
 
 ;; Test max-element
@@ -299,7 +523,7 @@
 ;;;;;;;;;;;;;;;
 
 ;; Extract the maximum index of a corpus in a given space
-(: max-index (-> $a Number))
+;; (: max-index (-> $a Number))
 (= (max-index $spc)
    (max-element (collapse (match $spc (MkIndexed $idx $asrt) $idx))))
 
@@ -311,10 +535,10 @@
 ;; function till some condition is reached.  You may want to make sure
 ;; that the predicate and the next function are deterministic,
 ;; otherwise the behavior of until might be a bit unpredictable.
-(: until (-> (-> $a Bool)               ; Predicate
-             (-> $a $a)                 ; Next
-             $a                         ; Initial value
-             $a))                       ; Final value
+;; (: until (-> (-> $a Bool)               ; Predicate
+;;              (-> $a $a)                 ; Next
+;;              $a                         ; Initial value
+;;              $a))                       ; Final value
 (= (until $p $f $x)
    (if ($p $x) $x (until $p $f ($f $x))))
 
@@ -331,7 +555,7 @@
 
 ;; Return the depth of a term.  If the term is a symbol then the depth
 ;; is 0.  Likewise the depth of (R A B) is 1, etc.
-(: term-depth (-> $a Number))
+;; (: term-depth (-> $a Number))
 (= (term-depth $term)
    (case (get-metatype $term)
      (;; Symbol
@@ -351,12 +575,41 @@
   (term-depth (R A (S B C)))
   2)
 
+;;;;;;;;;;;;;;;
+;; Term size ;;
+;;;;;;;;;;;;;;;
+
+;; Return the size of a term, which correspond to the number symbols,
+;; variables and grounded subterms in the given term.
+(= (term-size $x)
+   (if (is-expression $x)
+       (if (== $x ())
+           0
+           (let ($head $tail) (decons-atom $x)
+                (+ (term-size $head) (term-size $tail))))
+       1))
+
+;; Test term-size
+!(test
+  (term-size A)
+  1)
+!(test
+  (term-size ((R A) $x))
+  3)
+!(test
+  (term-size (R A (S B C)))
+  5)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Replace body of lambda by variable ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; Take a term representing a proof and replace its body by a variable
 ;; (as to be able to rediscover it).  If it is a lambda abstraction,
 ;; then replace the lambda term body by a variable, other replace the
 ;; whole term by a variable.
-;; (: remove-body (-> $a $a))
-(= (remove-body $prf)
+;; (: replace-body-by-variable (-> $a $a))
+(= (replace-body-by-variable $prf)
    (case (get-metatype $prf)
      ((Symbol $y)
       (Grounded $y)
@@ -398,12 +651,12 @@
               ;; Otherwise
               ($else $y))))))))
 
-;; Test remove-body
+;; Test replace-body-by-variable
 !(test
-  (remove-body (λ mpi.2 mpi.1 (mpd mpi.2 (a1i mpi.1))))
+  (replace-body-by-variable (λ mpi.2 mpi.1 (mpd mpi.2 (a1i mpi.1))))
   (λ mpi.2 mpi.1 $bdy))
 !(test
-  (remove-body (mpd ax-1 ax-1))
+  (replace-body-by-variable (mpd ax-1 ax-1))
   $bdy)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -411,9 +664,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Replace a given symbol by a variable in a term.
-(: replace-symbol-by-variable (-> Symbol $a $a))
+;; (: replace-symbol-by-variable (-> Symbol $a $a))
 (= (replace-symbol-by-variable $sym $term) (_replace-symbol-by-variable $sym $x $term))
-(: _replace-symbol-by-variable (-> Symbol Variable $a $a))
+;; (: _replace-symbol-by-variable (-> Symbol Variable $a $a))
 (= (_replace-symbol-by-variable $sym $var $term)
    (case (get-metatype $term)
      ((Symbol (if (== $sym $term) $var $term))
@@ -421,10 +674,8 @@
       (Variable $term)
       (Expression (if (== $term ())
                       $term
-                      (let* (;; Get head of term
-                             ($head (car-atom $term))
-                             ;; Get tail of term
-                             ($tail (cdr-atom $term))
+                      (let* (;; Get head and tail of term
+                             (($head $tail) (decons-atom $term))
                              ;; Recurs on head
                              ($nhd (_replace-symbol-by-variable $sym $var $head))
                              ;; Recurs on tail
@@ -441,7 +692,7 @@
   (-> (→ $𝜑 (→ 𝜓 𝜒)) 𝜓 $𝜑 𝜒))
 
 ;; Replace all greek letters by variables
-(: replace-greeks-by-variables (-> $a $a))
+;; (: replace-greeks-by-variables (-> $a $a))
 (= (replace-greeks-by-variables $term)
    (foldr replace-symbol-by-variable $term (𝜑 𝜓 𝜒 𝜃 𝜏 𝜂 𝜁 𝜎 𝜌 𝜇 𝜆 𝜅)))
 
@@ -457,31 +708,34 @@
 ;; Reduction ;;
 ;;;;;;;;;;;;;;;
 
-;; Define space mapping proofs to label, with data of the form
+;; Define space mapping proof and theorem to label, with
+;; representation of the form:
 ;;
-;; (Label PROOF LABEL)
+;; (Label PROOF THEOREM LABEL)
 !(bind! &labels (new-space))
 
-;; Callback to be passed to the backward chainer.  It is called over
-;; every result, intermediary included, that the backward chainer
-;; finds.  For now it used as a reduction pruner, meaning is the
-;; result is recognized as reducible, then it is pruned.  For now only
-;; reducing proof to its label is supported.  Meaning that only a
-;; proof not associated to an existing label is allowed.
-(: callback (-> $a $a))
-(= (callback (: $x $a)) ; (: $x $a))
+;; Reduce by pruning.  That is only the candidates in reduced form are
+;; kept, the others are pruned.  For now only reducing proof to its
+;; label is supported.  Meaning that only a proof of a given theorem
+;; not associated to an existing label is allowed.  In other words,
+;; instead of rediscovering the proof, it should re-use this label.
+;; Note that the theorem must match as well as the proof, to make sure
+;; that the corresponding label does not correspond to an overly
+;; specialized theorem, otherwise the final proof checking will fail
+;; to unify.
+(= (prune-reduce (: $x $a))
    (progn
-    ;; (logger-tracef "Call: (callback %w)" ((: $x $a)))
-    (if (prune-reduct)
-        (case (once (match &labels (Label $x $y) $y))
-          (($y (empty))
-           (Empty (: $x $a))))
-        (: $x $a))))
+    ;; (logger-tracef "Call: (prune-reduce %w)" ((: $x $a)))
+    (case (once (match &labels (Label $x $a $l) $l))
+      (($l (progn
+            ;; (logger-tracef "%w is not in normal form, prune" ((: $x $a)))
+            (empty)))
+       (Empty (progn
+               ;; (logger-tracef "%w is in normal form, do not prune" ((: $x $a)))
+               (: $x $a)))))))
 
-
-;; The code below is only kept for documentation or potential future
-;; use as the reduction based prunning is handled by the callback
-;; instead.
+;; The code below, regular not pruning-based reduction, is only kept
+;; for documentation or potential future use.
 
 ;; Reduce a proof to its label if any, or nothing otherwise.
 ;; (: reduce-to-label (-> $a (Maybe $a)))
@@ -582,6 +836,22 @@
 ;;   (reduce-proof (3bitr2i bicom (bibi2i notnotb) notbi))
 ;;   con2bi)
 
+;;;;;;;;;;;;;;
+;; Callback ;;
+;;;;;;;;;;;;;;
+
+;; Callback to be passed to the backward chainer.  It is called over
+;; every result, intermediary included, that the backward chainer
+;; finds.  For now it used as a reduction pruner, meaning that if the
+;; result is recognized as reducible, then it is pruned.
+;; (: callback (-> $a $a))
+(= (callback (: $x $a)) ; (: $x $a))
+   (progn
+    ;; (logger-tracef "Call: (callback %w)" ((: $x $a)))
+    (if (prune-reduct)
+        (prune-reduce (: $x $a))
+        (: $x $a))))
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Backward chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -618,211 +888,119 @@
 ;; a superposition.
 
 ;; Entry point
-(: bc (-> $a                            ; Rule base space
-          $b                            ; Axiom base space
-          (-> $c $c)                    ; Callback
-          Nat                           ; Maximum depth
-          $c                            ; Query
-          $c))                          ; Result
+;; (: bc (-> $a                            ; Rule base space
+;;           $b                            ; Axiom base space
+;;           (-> $c $c)                    ; Callback
+;;           Nat                           ; Maximum depth
+;;           $c                            ; Query
+;;           $c))                          ; Result
 (= (bc $rb $ab $cb $depth (: $prf $thrm))
    (progn
     (logger-tracef "Call (lambda): (bc %w %w %w %w (: %w %w))"
                    ($rb $ab $cb $depth $prf $thrm))
     (case $depth
       (;; Depth 0
-       (Z (_bc $rb $ab $cb Nil Z (: $prf $thrm)))
+       (Z (_bc $rb $ab $cb () Z (: $prf $thrm)))
        ;; Depth greater than 0 (consider lambda abstraction)
        ((S $k)
-        (case (get-metatype $prf)
-          ((Symbol (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm)))
-           (Grounded (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm)))
-           (Variable (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm)))
-           (Expression
+        (if (is-expression $prf)
+            ;; Proof is an expression, check whether it is a lambda term
             (if (== () $prf)
-                (_bc $rb $ab $cb Nil (S $k) (: $prf $thrm))
-                (case (: $prf $thrm)
-                  (;; Unary lambda abstraction
-                   ((: (λ $x $y) (-> $a $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x $a) Nil)
-                           $k
-                           (: $y $b))
-                      (: (λ $x $y) (-> $a $b))))
-                   ;; Binary lambda abstraction
-                   ((: (λ $x1 $x2 $y) (-> $a1 $a2 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1) (Cons (: $x2 $a2) Nil))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $y) (-> $a1 $a2 $b))))
-                   ;; Ternary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             Nil)))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $y) (-> $a1 $a2 $a3 $b))))
-                   ;; Quaternary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   Nil))))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $y) (-> $a1 $a2 $a3 $a4 $b))))
-                   ;; Quintenary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         Nil)))))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $y) (-> $a1 $a2 $a3 $a4 $a5 $b))))
-                   ;; Senary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               Nil))))))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
-                   ;; Septenary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     Nil)))))))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $y) (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
-                   ;; Octonary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
-                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     (Cons (: $x8 $a8)
-                                                                           Nil))))))))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $y)
-                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
-                   ;; Nonary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
-                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     (Cons (: $x8 $a8)
-                                                                           (Cons (: $x9 $a9)
-                                                                                 Nil)))))))))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $y)
-                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
-                   ;; Denary lambda abstraction
-                   ((: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
-                       (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
-                    (let (: $y $b)
-                      (_bc $rb $ab $cb
-                           (Cons (: $x1 $a1)
-                                 (Cons (: $x2 $a2)
-                                       (Cons (: $x3 $a3)
-                                             (Cons (: $x4 $a4)
-                                                   (Cons (: $x5 $a5)
-                                                         (Cons (: $x6 $a6)
-                                                               (Cons (: $x7 $a7)
-                                                                     (Cons (: $x8 $a8)
-                                                                           (Cons (: $x9 $a9)
-                                                                                 (Cons (: $x10 $a10)
-                                                                                       Nil))))))))))
-                           $k
-                           (: $y $b))
-                      (: (λ $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10 $y)
-                         (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
-                   ;; Otherwise
-                   ($else (_bc $rb $ab $cb $cb Nil (S $k) (: $prf $thrm))))))))))))))
+                ;; Proof is empty and already fully defined
+                (: $prf $thrm)
+                ;; Proof is not empty
+                (if (is-lambda $prf)
+                    ;; Proof is a lambda term
+                    (let* (;; Get variables, body, premises and conclusion
+                           ($xs (get-lambda-variables $prf))
+                           ($as (get-arrow-premises $thrm))
+                           ($y (get-lambda-body $prf))
+                           ($b (get-arrow-conclusion $thrm))
+                           ;; Build environment
+                           ($env (zip-with : $xs $as))
+                           ;; Call _bc to proof conclusion given environment
+                           ((: $y $b) (_bc $rb $ab $cb $env $k (: $y $b)))
+                           ;; Reconstruct lambda term
+                           ($prf (cons-atom λ (concat-atom $xs ($y))))
+                           ;; Reconstruct arrow
+                           ($thrm (cons-atom -> (concat-atom $as ($b)))))
+                      ;; Output
+                      (: $prf $thrm))
+                    ;; Not a lambda term, merely call _bc
+                    (_bc $rb $ab $cb () (S $k) (: $prf $thrm))))
+            ;; Proof is not an expression, merely call _bc
+            (_bc $rb $ab $cb () (S $k) (: $prf $thrm))))))))
 
 ;; Recursive search.  No support for lambda abstraction, but support
-;; for environment, which is a list of typing relationships such as
+;; for environment, which is a tuple of typing relationships such as
 ;;
-;;   (Cons (: x 𝐁𝐨𝐨𝐥) (Cons (: y 𝐁𝐨𝐨𝐥) Nil))
+;;   ((: x 𝐁𝐨𝐨𝐥) (: y 𝐁𝐨𝐨𝐥))
 ;;
 ;; Also, the proof abstraction is only searched shallowly, at depth 0,
 ;; because they are no higher order inference rules anyway.
 ;; NEXT: re-enable when fixed
 ;; (: _bc (-> $a                            ; Rule base space
 ;;            $b                            ; Axiom base space
-;;            (-> $c $c)                    ; Callback
-;;            (List $b)                     ; Environment
+;;            (-> $d $d)                    ; Callback
+;;            $c                            ; Environment
 ;;            Nat                           ; Maximum depth
-;;            $c                            ; Query
-;;            $c))                          ; Result
+;;            $d                            ; Query
+;;            $d))                          ; Result
+
 ;; Base cases
+
 ;; Match the axiom base
 (= (_bc $rb $ab $cb $env $k (: $x $a))
    (progn
-    ;; (logger-tracef "Call (ab): (_bc %w %w %w %w (: %w %w))"
+    ;; (logger-tracef "Call (ab): (_bc %w %w %w %w %w (: %w %w))"
     ;;                ($rb $ab $cb $env $k $x $a))
-    ($cb (match $ab (: $x $a) (: $x $a)))))
+    ($cb (get $ab (: $x $a)))))
+
 ;; Match the environment
 (= (_bc $rb $ab $cb $env $k (: $x $a))
    (progn
-    ;; (logger-tracef "Call (env): (_bc %w %w %w %w (: %w %w))"
+    ;; (logger-tracef "Call (env): (_bc %w %w %w %w %w (: %w %w))"
     ;;                ($rb $ab $cb $env $k $x $a))
-    ($cb (match' $env (: $x $a) (: $x $a)))))
+    ($cb (get' $env (: $x $a)))))
 
 ;; Recursive steps
+
+;; Product.  It is used internally by proof application to iterate
+;; over premises.  Due to being only used internally, we do not
+;; account for its depth.  The product is associative but is assumed
+;; here to only take right associative forms like (, x (, y z)).
+;;
+;; WARNING: decomposing multi-premise recursion using product makes a
+;; more elegant code but it is also significantly, like 10x, slower.
+(= (_bc_prod $rb $ab $cb $env $k (: (, $x $y) (, $a $b)))
+   (progn
+    ;; (logger-tracef "Call (prod): (_bc_prod %w %w %w %w %w %w)"
+    ;;                ($rb $ab $cb $env $k (: (, $x $y) (, $a $b))))
+    (let* (;; Recurse on first component
+           ((: $x $a) (_bc $rb $ab $cb $env $k (: $x $a)))
+           ;; Recurse on second component
+           ((: $y $b) (if (is-product $y)
+                          (_bc_prod $rb $ab $cb $env $k (: $y $b))
+                          (_bc $rb $ab $cb $env $k (: $y $b)))))
+      (: (, $x $y) (, $a $b)))))
+
+;; The following functions enumerates proof application patterns by
+;; arity.  The duplication up to arity is necessary to obtain search
+;; branches from the non-determinism.  Maybe it can be simplified
+;; further but this would require to implement a macro that would
+;; generate them.
+
 ;; Unary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x) $b))
    (progn
     ;; (logger-tracef "Call (app-1): (_bc %w %w %w %w %w %w)"
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x) $b)))
     (let* (;; Query unary rule
-           ((: $f (-> $a $b))
-            (match $rb (: $f (-> $a $b)) (: $f (-> $a $b))))
+           ((: $f (-> $a $b)) (get $rb (: $f (-> $a $b))))
            ;; Recurse on premise
            ((: $x $a) (_bc $rb $ab $cb $env $k (: $x $a))))
       ($cb (: ($f $x) $b)))))
+
 ;; Binary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2) $b))
    (progn
@@ -830,13 +1008,12 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2) $b)))
     (let* (;; Query binary rule
            ((: $f (-> $a1 $a2 $b))
-            (match $rb (: $f (-> $a1 $a2 $b))
-                   (: $f (-> $a1 $a2 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2))))
+            (get $rb (: $f (-> $a1 $a2 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 $x2) (, $a1 $a2))
+            (_bc_prod $rb $ab $cb $env $k (: (, $x1 $x2) (, $a1 $a2)))))
       ($cb (: ($f $x1 $x2) $b)))))
+
 ;; Ternary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3) $b))
    (progn
@@ -844,15 +1021,13 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3) $b)))
     (let* (;; Query ternary rule
            ((: $f (-> $a1 $a2 $a3 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $b))
-                   (: $f (-> $a1 $a2 $a3 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 $x3)) (, $a1 (, $a2 $a3)))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 $x3)) (, $a1 (, $a2 $a3))))))
       ($cb (: ($f $x1 $x2 $x3) $b)))))
+
 ;; Quaternary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4) $b))
    (progn
@@ -860,17 +1035,15 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4) $b)))
     (let* (;; Query quaternary rule
            ((: $f (-> $a1 $a2 $a3 $a4 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $a4 $b))
-                   (: $f (-> $a1 $a2 $a3 $a4 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $a4 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 $x4)))
+               (, $a1 (, $a2 (, $a3 $a4))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 $x4)))
+                         (, $a1 (, $a2 (, $a3 $a4)))))))
       ($cb (: ($f $x1 $x2 $x3 $x4) $b)))))
+
 ;; Quintenary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5) $b))
    (progn
@@ -878,19 +1051,15 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5) $b)))
     (let* (;; Query quintenary rule
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
-                   (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 $x5))))
+               (, $a1 (, $a2 (, $a3 (, $a4 $a5)))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 $x5))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 $a5))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5) $b)))))
+
 ;; Senary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))
    (progn
@@ -898,21 +1067,15 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))
     (let* (;; Query senary rule
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
-                   (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 $x6)))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 $a6))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 $x6)))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 $a6)))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))))
+
 ;; Septenary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))
    (progn
@@ -920,23 +1083,15 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))
     (let* (;; Query septenary rule
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
-                   (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 $x7))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 $a7)))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 $x7))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 $a7))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))))
+
 ;; Octonary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))
    (progn
@@ -944,25 +1099,15 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))
     (let* (;; Query octonary rule
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
-                   (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7)))
-           ;; Recurse on premise 8
-           ((: $x8 $a8) (_bc $rb $ab $cb $env $k (: $x8 $a8))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 $x8)))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 $a8))))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 $x8)))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 $a8)))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))))
+
 ;; Nonary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))
    (progn
@@ -970,57 +1115,317 @@
     ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))
     (let* (;; Query nonary rule
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
-                   (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7)))
-           ;; Recurse on premise 8
-           ((: $x8 $a8) (_bc $rb $ab $cb $env $k (: $x8 $a8)))
-           ;; Recurse on premise 9
-           ((: $x9 $a9) (_bc $rb $ab $cb $env $k (: $x9 $a9))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9)))))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9))))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))))
+
 ;; Denary proof application
 (= (_bc $rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))
    (progn
     ;; (logger-tracef "Call (app-10): (_bc %w %w %w %w %w %w)"
-    ;;                ( $kb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))
+    ;;                ($rb $ab $cb $env (S $k) (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))
     (let* (;; Query denary rule
            ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
-            (match $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
-                   (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
-           ;; Recurse on premise 1
-           ((: $x1 $a1) (_bc $rb $ab $cb $env $k (: $x1 $a1)))
-           ;; Recurse on premise 2
-           ((: $x2 $a2) (_bc $rb $ab $cb $env $k (: $x2 $a2)))
-           ;; Recurse on premise 3
-           ((: $x3 $a3) (_bc $rb $ab $cb $env $k (: $x3 $a3)))
-           ;; Recurse on premise 4
-           ((: $x4 $a4) (_bc $rb $ab $cb $env $k (: $x4 $a4)))
-           ;; Recurse on premise 5
-           ((: $x5 $a5) (_bc $rb $ab $cb $env $k (: $x5 $a5)))
-           ;; Recurse on premise 6
-           ((: $x6 $a6) (_bc $rb $ab $cb $env $k (: $x6 $a6)))
-           ;; Recurse on premise 7
-           ((: $x7 $a7) (_bc $rb $ab $cb $env $k (: $x7 $a7)))
-           ;; Recurse on premise 8
-           ((: $x8 $a8) (_bc $rb $ab $cb $env $k (: $x8 $a8)))
-           ;; Recurse on premise 9
-           ((: $x9 $a9) (_bc $rb $ab $cb $env $k (: $x9 $a9)))
-           ;; Recurse on premise 10
-           ((: $x10 $a10) (_bc $rb $ab $cb $env $k (: $x10 $a10))))
+            (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
+           ;; Recurse on premises
+           ((: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+               (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9)))))))))
+            (_bc_prod $rb $ab $cb $env $k
+                      (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 (, $x9 $x10)))))))))
+                         (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 (, $a9 $a10)))))))))))))
       ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Optimized Backward chainer ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Like bc but uses proof size instead of depth.  Maybe "optimized" is
+;; a misnomer but it has been observed to be much faster this way.
+
+;; ;; Entry point
+;; (: obc (-> $a                            ; Rule base space
+;;            $b                            ; Axiom base space
+;;            (-> $c $c)                    ; Callback
+;;            Number                        ; Maximum proof size
+;;            $c                            ; Query
+;;            $c))                          ; Result
+(= (obc $rb $ab $cb $mps (: $prf $thrm))
+   (progn
+    (logger-tracef "Call (lambda): (obc %w %w %w %w (: %w %w))"
+                   ($rb $ab $cb $mps $prf $thrm))
+    (if (< 0 $mps)
+        (if (is-expression $prf)
+            ;; Proof is an expression, check whether it is a lambda term
+            (if (== () $prf)
+                ;; Proof is empty and already fully defined
+                (: $prf $thrm)
+                ;; Proof is not empty
+                (if (is-lambda $prf)
+                    ;; Proof is a lambda term
+                    (let* (;; Get variables, body, premises and conclusion
+                           ($xs (get-lambda-variables $prf))
+                           ($as (get-arrow-premises $thrm))
+                           ($y (get-lambda-body $prf))
+                           ($b (get-arrow-conclusion $thrm))
+                           ;; Build environment
+                           ($env (zip-with : $xs $as))
+                           ;; Calculate maximum body size (decount λ
+                           ;; and variables)
+                           ($mbs (- $mps (+ (length $xs) 1)))
+                           ;; Call _obc to proof conclusion given environment
+                           ((MkSized $bdysize (: $y $b))
+                            (_obc $rb $ab $cb $env $mbs (: $y $b)))
+                           ;; Reconstruct lambda term
+                           ($prf (cons-atom λ (concat-atom $xs ($y))))
+                           ;; Reconstruct arrow
+                           ($thrm (cons-atom -> (concat-atom $as ($b)))))
+                      ;; Output
+                      (: $prf $thrm))
+                    ;; Not a lambda term, merely call _obc
+                    (Sized.object (_obc $rb $ab $cb () $mps (: $prf $thrm)))))
+            ;; Proof is not an expression, merely call _obc
+            (Sized.object (_obc $rb $ab $cb () $mps (: $prf $thrm))))
+        ;; If maximum proof size is 0, then no proof can possibly be found
+        (empty))))
+
+;; Like _bc but uses proof size instead of depth, and outputs a sized
+;; (: PROOF THEOREM) result.
+;;
+;; NEXT: re-enable when fixed
+;; (: _obc (-> $a                            ; Rule base space
+;;             $b                            ; Axiom base space
+;;             (-> $c $c)                    ; Callback
+;;             (List $b)                     ; Environment
+;;             Number                        ; Maximum proof size
+;;             $c                            ; Query
+;;             (Sized $c)))                  ; Result
+
+;; Base cases
+
+;; Match the axiom base
+(= (_obc $rb $ab $cb $env $mps (: $x $a))
+   (if (< 0 $mps)
+       (progn
+        ;; (logger-tracef "Call (ab): (_obc %w %w %w %w %w (: %w %w))"
+        ;;                ($rb $ab $cb $env $mps $x $a))
+        (MkSized 1 ($cb (get $ab (: $x $a)))))
+       (empty)))
+
+;; Match the environment
+(= (_obc $rb $ab $cb $env $mps (: $x $a))
+   (if (< 0 $mps)
+       (progn
+        ;; (logger-tracef "Call (env): (_obc %w %w %w %w %w (: %w %w))"
+        ;;                ($rb $ab $cb $env $mps $x $a))
+        (MkSized 1 ($cb (get' $env (: $x $a)))))
+       (empty)))
+
+;; Recursive steps
+
+;; Product.  It is used internally by proof application to iterate
+;; over premises.  Due to being only used internally, we do not
+;; account for the size of the product itself `,`.  The product is
+;; associative but is assumed here to only take right associative
+;; forms like (, x (, y z)).
+(= (_obc_prod $rb $ab $cb $env $mps (: (, $x $y) (, $a $b)))
+   (progn
+    ;; (logger-tracef "Call (prod): (_obc_prod %w %w %w %w %w %w)"
+    ;;                ($rb $ab $cb $env $mps (: (, $x $y) (, $a $b))))
+    (let* (;; Recurse on first component
+           ((MkSized $xps (: $x $a)) (_obc $rb $ab $cb $env $mps (: $x $a)))
+           ;; Calculate remaining maximum size
+           ($rms (- $mps $xps))
+           ;; Recurse on second component
+           ((MkSized $yps (: $y $b))
+            (if (is-product $y)
+                (_obc_prod $rb $ab $cb $env $rms (: $y $b))
+                (_obc $rb $ab $cb $env $rms (: $y $b)))))
+      ;; Output sized proof (sum up sizes of all subproofs)
+      (MkSized (+ $xps $yps) (: (, $x $y) (, $a $b))))))
+
+;; Unary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x) $b))
+   (if (< 1 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-1): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x) $b)))
+        (let* (;; Query unary rule
+               ((: $f (-> $a $b)) (get $rb (: $f (-> $a $b))))
+               ;; Recurse on premise
+               ((MkSized $xps (: $x $a))
+                (_obc $rb $ab $cb $env (- $mps 1) (: $x $a))))
+          ;; Output sized proof (size of proof of premise + rule)
+          (MkSized (+ $xps 1) ($cb (: ($f $x) $b)))))
+       (empty)))
+
+;; Binary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2) $b))
+   (if (< 2 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-2): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2) $b)))
+        (let* (;; Query binary rule
+               ((: $f (-> $a1 $a2 $b)) (get $rb (: $f (-> $a1 $a2 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 $x2) (, $a1 $a2)))
+                (_obc_prod $rb $ab $cb $env (- $mps 1) (: (, $x1 $x2) (, $a1 $a2)))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2) $b)))))
+       (empty)))
+
+;; Ternary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3) $b))
+   (if (< 3 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-3): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3) $b)))
+        (let* (;; Query ternary rule
+               ((: $f (-> $a1 $a2 $a3 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 $x3)) (, $a1 (, $a2 $a3))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 $x3)) (, $a1 (, $a2 $a3))))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3) $b)))))
+       (empty)))
+
+;; Quaternary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4) $b))
+   (if (< 4 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-4): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4) $b)))
+        (let* (;; Query quaternary rule
+               ((: $f (-> $a1 $a2 $a3 $a4 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $a4 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 (, $x3 $x4)))
+                                 (, $a1 (, $a2 (, $a3 $a4)))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 (, $x3 $x4)))
+                              (, $a1 (, $a2 (, $a3 $a4)))))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3 $x4) $b)))))
+       (empty)))
+
+;; Quintenary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5) $b))
+   (if (< 5 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-5): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5) $b)))
+        (let* (;; Query quintenary rule
+               ((: $f (-> $a1 $a2 $a3 $a4 $a5 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 (, $x3 (, $x4 $x5))))
+                                 (, $a1 (, $a2 (, $a3 (, $a4 $a5))))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 (, $x3 (, $x4 $x5))))
+                              (, $a1 (, $a2 (, $a3 (, $a4 $a5))))))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3 $x4 $x5) $b)))))
+       (empty)))
+
+;; Senary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b))
+   (if (< 6 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-6): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))
+        (let* (;; Query senary rule
+               ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 $x6)))))
+                                 (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 $a6)))))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 $x6)))))
+                              (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 $a6)))))))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6) $b)))))
+       (empty)))
+
+;; Septenary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b))
+   (if (< 7 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-7): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))
+        (let* (;; Query septenary rule
+               ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 $x7))))))
+                                 (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 $a7))))))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 $x7))))))
+                              (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 $a7))))))))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7) $b)))))
+       (empty)))
+
+;; Octonary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b))
+   (if (< 8 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-8): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))
+        (let* (;; Query octonary rule
+               ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 $x8)))))))
+                                 (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 $a8)))))))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 $x8)))))))
+                              (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 $a8)))))))))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8) $b)))))
+       (empty)))
+
+;; Nonary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b))
+   (if (< 9 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-9): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))
+        (let* (;; Query nonary rule
+               ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+                                 (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9))))))))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+                              (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9))))))))))))
+          ;; Output sized proof (size of proof of premises + rule)
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9) $b)))))
+       (empty)))
+
+;; Denary proof application
+(= (_obc $rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b))
+   (if (< 10 $mps)
+       (progn
+        ;; (logger-tracef "Call (app-10): (_obc %w %w %w %w %w %w)"
+        ;;                ($rb $ab $cb $env $mps (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))
+        (let* (;; Query denary rule
+               ((: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))
+                (get $rb (: $f (-> $a1 $a2 $a3 $a4 $a5 $a6 $a7 $a8 $a9 $a10 $b))))
+               ;; Recurse on premises
+               ((MkSized $pps (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 $x9))))))))
+                                 (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 $a9))))))))))
+                (_obc_prod $rb $ab $cb $env (- $mps 1)
+                           (: (, $x1 (, $x2 (, $x3 (, $x4 (, $x5 (, $x6 (, $x7 (, $x8 (, $x9 $x10)))))))))
+                              (, $a1 (, $a2 (, $a3 (, $a4 (, $a5 (, $a6 (, $a7 (, $a8 (, $a9 $a10)))))))))))))
+          (MkSized (+ $pps 1) ($cb (: ($f $x1 $x2 $x3 $x4 $x5 $x6 $x7 $x8 $x9 $x10) $b)))))
+       (empty)))
 
 ;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;; ;;
@@ -1037,7 +1442,7 @@
 ;; corpus.  If the input number is nothing, then return True as well
 ;; because it means that a verification has failed and thus the
 ;; experiment should be aborted.
-(: equal-to-upidx-or-nothing (-> (Maybe Number) Bool))
+;; (: equal-to-upidx-or-nothing (-> (Maybe Number) Bool))
 (= (equal-to-upidx-or-nothing $idxm)
    (case $idxm
      (((Just $idx) (== (up-to-idx) $idx))
@@ -1067,13 +1472,16 @@
 (= (add-to-kbs $label $stmt)
    (let $stmt-with-vars (replace-greeks-by-variables $stmt)
      ;; Add to rule base or axiom base
-     (if (is-arrow-type $stmt)
+     (if (is-arrow $stmt)
          (add-atom &pc-rb (: $label $stmt-with-vars))
          (add-atom &pc-ab (: $label $stmt-with-vars)))))
 
-;; Add proof to label mapping to labels space
-(= (add-to-labels $proof $label)
-   (add-atom &labels (Label $proof $label)))
+;; Add proof and theorem to label mapping to labels space
+(= (add-to-labels $proof $theorem $label)
+   (progn
+    ;; (logger-tracef "Call: (add-to-labels %w %w %w)" ($proof $theorem $label))
+    (let $theorem-with-vars (replace-greeks-by-variables $theorem)
+      (add-atom &labels (Label $proof $theorem-with-vars $label)))))
 
 ;; Process the axiom of given index, that is insert the axiom into
 ;; pc-ab and return the next index.
@@ -1090,34 +1498,40 @@
 ;; knowledge bases and return the next idx, or Nothing if it fails.
 ;; NEXT: re-enable when fixed (: process-theorem-check (-> Number
 ;; Number Assertion (Maybe Number)))
-(= (process-theorem-check $idx $depth (MkTheorem $label $proof $thrm))
+(= (process-theorem-check $idx $bound (MkTheorem $label $proof $thrm))
    (progn
-    (logger-infof "Iteration %w: verify proof of %w up to depth %w"
-                  ($idx $label $depth))
+    (if (bound-search-by-proof-size)
+        (logger-infof "Iteration %w: verify proof of %w up to size %w"
+                      ($idx $label $bound))
+        (logger-infof "Iteration %w: verify proof of %w up to depth %w"
+                      ($idx $label $bound)))
     (let (: $proof $thrm)
-      (bc &pc-rb &pc-ab callback (fromNumber $depth) (: $proof $thrm))
+      (if (bound-search-by-proof-size)
+          (obc &pc-rb &pc-ab callback $bound (: $proof $thrm))
+          (bc &pc-rb &pc-ab callback (fromNumber $bound) (: $proof $thrm)))
       (case (: $proof $thrm)
         (;; Verified
-         ((: $proof $thrm)
-          (progn (add-to-kbs $label $thrm)
-                 (Maybe.return (+ $idx 1))))
-           ;; Not verified
-           (Empty Nothing))))))
+         ((: $proof $thrm) (progn (add-to-kbs $label $thrm)
+                                  (Maybe.return (+ $idx 1))))
+         ;; Not verified
+         (Empty Nothing))))))
 
 ;; Rediscover proof(s) of a theorem.  The results are returned as an
 ;; expression, a tuple of solutions, instead of a superposition to
 ;; avoid nondeterminism.
-(= (rediscover-proofs $depth $proof $thrm)
-   (let ;;Replace proof body by variable
-       $proof-wo-bdy
-       (remove-body $proof)
+(= (rediscover-proofs $bound $proof $thrm)
+   (let ;; Replace proof body by variable
+       $proof-wo-bdy (replace-body-by-variable $proof)
      ;; Call backward chainer to rediscover the proof
      (collapse
-      (if (search-all-proofs)
-          (bc &pc-rb &pc-ab callback (fromNumber $depth)
-              (: $proof-wo-bdy $thrm))
-          (once (bc &pc-rb &pc-ab callback (fromNumber $depth)
-                    (: $proof-wo-bdy $thrm)))))))
+      (if (bound-search-by-proof-size)
+          (if (search-all-proofs)
+              (obc &pc-rb &pc-ab callback $bound (: $proof-wo-bdy $thrm))
+              (once (obc &pc-rb &pc-ab callback $bound (: $proof-wo-bdy $thrm))))
+          (let $pdepth (fromNumber $depth)
+            (if (search-all-proofs)
+                (bc &pc-rb &pc-ab callback $pdepth (: $proof-wo-bdy $thrm))
+                (once (bc &pc-rb &pc-ab callback $pdepth (: $proof-wo-bdy $thrm)))))))))
 
 ;; Process the theorem of a given index by rediscovering its proof, if
 ;; it succeeds then insert its alongside its proof(s) into the
@@ -1126,12 +1540,14 @@
 ;;
 ;; NEXT: re-enable when fixed
 ;; (: process-theorem-search (-> Number Number Assertion (Maybe Number)))
-(= (process-theorem-search $idx $depth (MkTheorem $label $proof $thrm))
+(= (process-theorem-search $idx $bound (MkTheorem $label $proof $thrm))
    (progn
-    (logger-infof "Iteration %w: search proof of %w up to depth %w"
-                  ($idx $label $depth))
-    (let $prfs-thrms
-        (rediscover-proofs $depth $proof $thrm)
+    (if (bound-search-by-proof-size)
+        (logger-infof "Iteration %w: search proof of %w up to size %w"
+                      ($idx $label $bound))
+        (logger-infof "Iteration %w: search proof of %w up to depth %w"
+                      ($idx $label $bound)))
+    (let $prfs-thrms (rediscover-proofs $bound $proof $thrm)
       (if (== $prfs-thrms ())
           ;; No proof
           (progn (logger-info "No proof found")
@@ -1143,7 +1559,7 @@
             (let (: $p $t) (superpose $prfs-thrms)
                  (progn
                   (logger-infof "Found proof%w %w" (: $p))
-                  (add-to-labels $p $label))))
+                  (add-to-labels $p $t $label))))
            ;; Add proved theorem as lemma in kbs
            (add-to-kbs $label $thrm)
            ;; Output next index
@@ -1156,13 +1572,15 @@
 ;; NEXT: re-enable when fixed
 ;; (: process-theorem (-> Number Assertion (Maybe Number)))
 (= (process-theorem $idx (MkTheorem $label $proof $thrm))
-   (let $depth (term-depth $proof)     ; Calculate proof depth
+   (let $bound (if (bound-search-by-proof-size)
+                   (term-size $proof)   ; Calculate proof size
+                   (term-depth $proof)) ; Calculate proof depth
      (if (search-proof)
          (process-theorem-search $idx
-                                 $depth
+                                 $bound
                                  (MkTheorem $label $proof $thrm))
          (process-theorem-check $idx
-                                $depth
+                                $bound
                                 (MkTheorem $label $proof $thrm)))))
 
 ;; Process the assertion corresponding to the given index and return
@@ -1172,7 +1590,7 @@
 ;; insert it in the knowledge base as if it were an axiom.  If it
 ;; fails to verify or proof then return Nothing instead of the next
 ;; index.
-(: process-assertion (-> Number (Maybe Number)))
+;; (: process-assertion (-> Number (Maybe Number)))
 (= (process-assertion $idx)
    (progn
     (logger-tracef "Call: (process-assertion %w)" ($idx))
@@ -1183,7 +1601,7 @@
 
 ;; Like process-assertion but wrapped in Maybe.bind to accept maybe a
 ;; number, which the until construct needs.
-(: process-assertion-m (-> (Maybe Number) (Maybe Number)))
+;; (: process-assertion-m (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-m $midx) (Maybe.bind $midx process-assertion))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
