@@ -8,71 +8,89 @@
 ;; Main ;;
 ;;;;;;;;;;
 
+;; Load fromNumber in the space.  Make sure that gen-fromNumber.mm2
+;; has been previously executed.
+(exec (0) (I (ACT fromNumber (= (fromNumber $x) $k))) (, (= (fromNumber $x) $k)))
+
 ;; Load lte in the space.  Make sure that gen-lte.mm2 has been
-;; previous executed.
+;; previously executed.
 (exec (0) (I (ACT lte (lte $x $y))) (, (lte $x $y)))
 
-;; ;; Define target query
-;; ;; id (size=5)
-;; (target (: $x (→ 𝜑 𝜑)))
+;; Define target query, of the form
+;;
+;; (target MAX_PROOF_SIZE QUERY)
 
-;; pm2.43 (size=7, time=0.341s)
-(target (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
+;; ;; id (time=0.007s)
+;; (target 5 (: $x (→ 𝜑 𝜑)))
 
-;; ;; jarr (size=13, time>=3h)
-;; (target (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; ;; pm2.43 (time=0.067s)
+;; (target 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
+
+;; jarr (time=?)
+(target 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; ;; imim1
-;; (target (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
+;; (target 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
 
 ;; ;; loowoz
-;; (target (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+;; (target 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
 
-;; Turn target into source
+;; ;; pm2.83
+;; !(target 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
+
+;; ;; loolin
+;; !(target 26 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑))))
+
+;; Turn target into source.  Solutions are represented as follows
+;;
+;; (sol DEPTH HYPOTHESES_COUNT SOURCE)
 (exec (1)
-      (, (target (: $x $a)))
+      (, (target $mps (: $x $a)))
       (, (sol Z (S Z) (: I (-> $a $a)))))
 
 ;; Define current depth
 (current-depth Z)
 
-;; Expand one step forward from current depth
-;; NEXT: replace max depth here by proper initialization, maybe using fromNumber
-(exec (2 (S (S (S (S (S (S (S Z))))))))
-      (, (current-depth $depth)
-         ;; Capture self
-         (exec (2 (S $k)) $pat $tmp))
-      (, ;; Apply current proof to axiom-1
-         (exec (3 0)
-               (, (sol $depth (S $hypcnt) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
-                  (lte $hypcnt $k))
-               (, (sol (S $depth) $hypcnt (: ($f ax₁) $b))))
-         ;; Apply current proof to axiom-2
-         (exec (4 0)
-               (, (sol $depth (S $$hypcnt) (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
-                  (lte $hypcnt $k))
-               (, (sol (S $depth) $hypcnt (: ($f ax₂) $b))))
-         ;; Apply current proof to axiom-3
-         (exec (5 0)
-               (, (sol $depth (S $hypcnt) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
-                  (lte $hypcnt $k))
-               (, (sol (S $depth) $hypcnt (: ($f ax₃) $b))))
-         ;; Apply mpⁱ to current proof
-         (exec (6 0)
-               (, (sol $depth $hypcnt (: $f (-> $b $c)))
-                  (lte $hypcnt $k))
-               (, (sol (S $depth) (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
-         ;; Increment current depth
-         (exec (7 0)
-               (, (current-depth $depth))
-               (O (+ (current-depth (S $depth)))
-                  (- (current-depth $depth))))
-         ;; Respawn self
-         (exec (8 0) (,)
-               (, (exec (2 $k) $pat $tmp)))))
+;; Turn target into forward chaining loop
+(exec (2)
+      (, (target $mps $query)
+         (= (fromNumber $mps) $mps_n))
+      (, ;; Expand one step forward from current depth
+         (exec (2 $mps_n)
+               (, (current-depth $depth)
+                  ;; Capture self
+                  (exec (2 (S $k)) $ptrn $tplt))
+               (, ;; Apply current proof to axiom-1
+                  (exec (3 0)
+                        (, (sol $depth (S $hypcnt) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+                           (lte $hypcnt $k))
+                        (, (sol (S $depth) $hypcnt (: ($f ax₁) $b))))
+                  ;; Apply current proof to axiom-2
+                  (exec (4 0)
+                        (, (sol $depth (S $$hypcnt) (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+                           (lte $hypcnt $k))
+                        (, (sol (S $depth) $hypcnt (: ($f ax₂) $b))))
+                  ;; Apply current proof to axiom-3
+                  (exec (5 0)
+                        (, (sol $depth (S $hypcnt) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+                           (lte $hypcnt $k))
+                        (, (sol (S $depth) $hypcnt (: ($f ax₃) $b))))
+                  ;; Apply mpⁱ to current proof
+                  (exec (6 0)
+                        (, (sol $depth $hypcnt (: $f (-> $b $c)))
+                           (lte $hypcnt $k))
+                        (, (sol (S $depth) (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
+                  ;; Increment current depth
+                  (exec (7 0)
+                        (, (current-depth $depth))
+                        (O (+ (current-depth (S $depth)))
+                           (- (current-depth $depth))))
+                  ;; Respawn self
+                  (exec (8 0) (,)
+                        (, (exec (2 $k) $ptrn $tplt)))))))
 
 ;; Unify solution with target when hypotheses count falls to Z.
 (exec (3 0 0)
-      (, (target (: $x $a))
+      (, (target $mps (: $x $a))
          (sol $depth Z (: $x $a)))
       (, (final $depth Z (: $x $a))))
