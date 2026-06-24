@@ -10,14 +10,6 @@
 ;; Main ;;
 ;;;;;;;;;;
 
-;; Load fromNumber in the space.  Make sure that gen-fromNumber.mm2
-;; has been previously executed.
-(exec (0) (I (ACT fromNumber (= (fromNumber $x) $k))) (, (= (fromNumber $x) $k)))
-
-;; Load lte in the space.  Make sure that gen-lte.mm2 has been
-;; previously executed.
-(exec (0) (I (ACT lte (lte $x $y))) (, (lte $x $y)))
-
 ;; Define target query, of the form
 ;;
 ;; (target MAX_PROOF_SIZE QUERY)
@@ -29,43 +21,37 @@
 ;; ;; pm2.43 (size=7, time=0.018s)
 ;; (target 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
 
-;; jarr (time=36.016s)
-(target 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; ;; jarr (size=13, time=36.016s)
+;; (target 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
-;; ;; imim1
+;; ;; imim1 (size=15, time=20m24.386s)
 ;; (target 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
 
-;; ;; loowoz
-;; (target 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+;; loowoz (size=19, time=?)
+(target 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
 
-;; ;; pm2.83
+;; ;; pm2.83 (size=25, time=?)
 ;; !(target 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
 
-;; ;; loolin
+;; ;; loolin (size=26, time=?)
 ;; !(target 26 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑))))
 
-;; Turn target into source.  Solutions are represented as follows
-;;
-;; (sol MAXDEPTH HYPOTHESES_COUNT SOURCE)
-;; NEXT: simplify sol if possible
-;;
-;; NEXT: move this to the (exec (2) ...)
-(exec (1)
-      (, (target $mps (: $x $a))
-         (= (fromNumber $mps) $mps_n))
-      (, (sol $mps_n (S Z) (: I (-> $a $a)))))
+;; Load fromNumber.  Make sure that gen-fromNumber.mm2 has been
+;; previously executed.
+(exec (0) (I (ACT fromNumber (= (fromNumber $x) $k))) (, (= (fromNumber $x) $k)))
 
-;; Define current iteration
-(current-iteration Z)
+;; Load lte.  Make sure that gen-lte.mm2 has been previously executed.
+(exec (1) (I (ACT lte (lte $x $y))) (, (lte $x $y)))
 
-;; Turn target into forward chaining loop
+;; Turn target into initial source and forward chaining loop
 (exec (2)
-      (, (target $mps $query)
+      (, (target $mps (: $tx $ta))
          (= (fromNumber $mps) $mps_n))
-      (, ;; Expand one step forward from current iteration
+      (, ;; Initialize source
+         (sol $mps_n (S Z) (: I (-> $ta $ta)))
+         ;; Expand one step forward
          (exec (2 $mps_n)
-               (, (current-iteration $iter)
-                  ;; Capture inner self
+               (, ;; Capture inner self
                   (exec (2 (S $k)) $ptrn $tplt))
                (, ;; Apply current proof to axiom-1
                   (exec (3 0)
@@ -87,17 +73,13 @@
                         (, (sol (S $k) $hypcnt (: $f (-> $b $c)))
                            (lte $hypcnt $k))
                         (, (sol $k (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
-                  ;; Increment current iteration
-                  (exec (7 0)
-                        (, (current-iteration $iter))
-                        (O (+ (current-iteration (S $iter)))
-                           (- (current-iteration $iter))))
                   ;; Respawn inner self
-                  (exec (8 0) (,)
+                  (exec (7 0) (,)
                         (, (exec (2 $k) $ptrn $tplt)))))))
 
-;; Unify solution with target when hypotheses count falls to Z.
+;; Unify solution with target when maximum depth and hypotheses count
+;; falls to Z.
 (exec (3 0 0)
-      (, (target $mps (: $x $a))
-         (sol Z Z (: $x $a)))
-      (, (final Z Z (: $x $a))))
+      (, (target $mps (: $tx $ta))
+         (sol Z Z (: $tx $ta)))
+      (, (final Z Z (: $tx $ta))))
