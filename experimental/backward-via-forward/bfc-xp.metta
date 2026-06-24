@@ -567,19 +567,20 @@
        ;; Base case
        (let (: $x $a) $tgt (: $x $a))));)
 
-;; Recursive steps (note that depth and hypcnt have already been decremented)
-;; Specialized application given abstraction
-(= (ofc-rec $depth $hypcnt $tgt (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
-   (ofc $depth $hypcnt $tgt (: ($f ax-1) $b)))
-(= (ofc-rec $depth $hypcnt $tgt
-                (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
-   (ofc $depth $hypcnt $tgt (: ($f ax-2) $b)))
-(= (ofc-rec $depth $hypcnt $tgt
-                (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
-   (ofc $depth $hypcnt $tgt (: ($f ax-3) $b)))
+;; Recursive steps (note that depth and hypcnt have already been
+;; decremented) Specialized application given abstraction
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt
+            (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+   (ofc $depth_dec $hypcnt_dec $tgt (: ($f ax-1) $b)))
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt
+            (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+   (ofc $depth_dec $hypcnt_dec $tgt (: ($f ax-2) $b)))
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt
+            (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+   (ofc $depth_dec $hypcnt_dec $tgt (: ($f ax-3) $b)))
 ;; Specialized application given argument of mpⁱ
-(= (ofc-rec $depth $hypcnt $tgt (: $f (-> $b $c)))
-   (ofc $depth (+ $hypcnt 2) $tgt (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c)))))
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt (: $f (-> $b $c)))
+   (ofc $depth_dec (+ $hypcnt_dec 2) $tgt (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Optimized backward chainer via forward chaining ;;
