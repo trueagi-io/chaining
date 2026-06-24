@@ -1,5 +1,7 @@
 ;; Port of ofc and obfc from bfc-xp.metta to MM2.
 
+;; NEXT: replace peano numbers by integers in sol.
+
 ;;;;;;;;;;;;;;;
 ;; Functions ;;
 ;;;;;;;;;;;;;;;
@@ -20,13 +22,14 @@
 ;;
 ;; (target MAX_PROOF_SIZE QUERY)
 
-;; ;; id (time=0.007s)
+;; ;; id (size=5, time=0.011s)
+;; ;; Find out about hypotheses count discrepencies
 ;; (target 5 (: $x (→ 𝜑 𝜑)))
 
-;; ;; pm2.43 (time=0.067s)
+;; ;; pm2.43 (size=7, time=0.018s)
 ;; (target 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
 
-;; jarr (time=113m51.636s)
+;; jarr (time=36.016s)
 (target 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; ;; imim1
@@ -43,54 +46,58 @@
 
 ;; Turn target into source.  Solutions are represented as follows
 ;;
-;; (sol DEPTH HYPOTHESES_COUNT SOURCE)
+;; (sol ITERATION MAXDEPTH HYPOTHESES_COUNT SOURCE)
+;; NEXT: simplify sol if possible
+;;
+;; NEXT: move this to the (exec (2) ...)
 (exec (1)
-      (, (target $mps (: $x $a)))
-      (, (sol Z (S Z) (: I (-> $a $a)))))
+      (, (target $mps (: $x $a))
+         (= (fromNumber $mps) $mps_n))
+      (, (sol Z $mps_n (S Z) (: I (-> $a $a)))))
 
-;; Define current depth
-(current-depth Z)
+;; Define current iteration
+(current-iteration Z)
 
 ;; Turn target into forward chaining loop
 (exec (2)
       (, (target $mps $query)
          (= (fromNumber $mps) $mps_n))
-      (, ;; Expand one step forward from current depth
+      (, ;; Expand one step forward from current iteration
          (exec (2 $mps_n)
-               (, (current-depth $depth)
-                  ;; Capture self
+               (, (current-iteration $iter)
+                  ;; Capture inner self
                   (exec (2 (S $k)) $ptrn $tplt))
                (, ;; Apply current proof to axiom-1
                   (exec (3 0)
-                        (, (sol $depth (S $hypcnt) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+                        (, (sol $iter (S $k) (S $hypcnt) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
                            (lte $hypcnt $k))
-                        (, (sol (S $depth) $hypcnt (: ($f ax₁) $b))))
+                        (, (sol (S $iter) $k $hypcnt (: ($f ax₁) $b))))
                   ;; Apply current proof to axiom-2
                   (exec (4 0)
-                        (, (sol $depth (S $$hypcnt) (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+                        (, (sol $iter (S $k) (S $hypcnt) (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
                            (lte $hypcnt $k))
-                        (, (sol (S $depth) $hypcnt (: ($f ax₂) $b))))
+                        (, (sol (S $iter) $k $hypcnt (: ($f ax₂) $b))))
                   ;; Apply current proof to axiom-3
                   (exec (5 0)
-                        (, (sol $depth (S $hypcnt) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+                        (, (sol $iter (S $k) (S $hypcnt) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
                            (lte $hypcnt $k))
-                        (, (sol (S $depth) $hypcnt (: ($f ax₃) $b))))
+                        (, (sol (S $iter) $k $hypcnt (: ($f ax₃) $b))))
                   ;; Apply mpⁱ to current proof
                   (exec (6 0)
-                        (, (sol $depth $hypcnt (: $f (-> $b $c)))
+                        (, (sol $iter (S $k) $hypcnt (: $f (-> $b $c)))
                            (lte $hypcnt $k))
-                        (, (sol (S $depth) (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
-                  ;; Increment current depth
+                        (, (sol (S $iter) $k (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
+                  ;; Increment current iteration
                   (exec (7 0)
-                        (, (current-depth $depth))
-                        (O (+ (current-depth (S $depth)))
-                           (- (current-depth $depth))))
-                  ;; Respawn self
+                        (, (current-iteration $iter))
+                        (O (+ (current-iteration (S $iter)))
+                           (- (current-iteration $iter))))
+                  ;; Respawn inner self
                   (exec (8 0) (,)
                         (, (exec (2 $k) $ptrn $tplt)))))))
 
 ;; Unify solution with target when hypotheses count falls to Z.
 (exec (3 0 0)
       (, (target $mps (: $x $a))
-         (sol $depth Z (: $x $a)))
-      (, (final $depth Z (: $x $a))))
+         (sol $iter Z Z (: $x $a)))
+      (, (final $iter Z Z (: $x $a))))
