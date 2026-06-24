@@ -46,14 +46,14 @@
 
 ;; Turn target into source.  Solutions are represented as follows
 ;;
-;; (sol ITERATION MAXDEPTH HYPOTHESES_COUNT SOURCE)
+;; (sol MAXDEPTH HYPOTHESES_COUNT SOURCE)
 ;; NEXT: simplify sol if possible
 ;;
 ;; NEXT: move this to the (exec (2) ...)
 (exec (1)
       (, (target $mps (: $x $a))
          (= (fromNumber $mps) $mps_n))
-      (, (sol Z $mps_n (S Z) (: I (-> $a $a)))))
+      (, (sol $mps_n (S Z) (: I (-> $a $a)))))
 
 ;; Define current iteration
 (current-iteration Z)
@@ -69,24 +69,24 @@
                   (exec (2 (S $k)) $ptrn $tplt))
                (, ;; Apply current proof to axiom-1
                   (exec (3 0)
-                        (, (sol $iter (S $k) (S $hypcnt) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+                        (, (sol (S $k) (S $hypcnt) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
                            (lte $hypcnt $k))
-                        (, (sol (S $iter) $k $hypcnt (: ($f ax₁) $b))))
+                        (, (sol $k $hypcnt (: ($f ax₁) $b))))
                   ;; Apply current proof to axiom-2
                   (exec (4 0)
-                        (, (sol $iter (S $k) (S $hypcnt) (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+                        (, (sol (S $k) (S $hypcnt) (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
                            (lte $hypcnt $k))
-                        (, (sol (S $iter) $k $hypcnt (: ($f ax₂) $b))))
+                        (, (sol $k $hypcnt (: ($f ax₂) $b))))
                   ;; Apply current proof to axiom-3
                   (exec (5 0)
-                        (, (sol $iter (S $k) (S $hypcnt) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+                        (, (sol (S $k) (S $hypcnt) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
                            (lte $hypcnt $k))
-                        (, (sol (S $iter) $k $hypcnt (: ($f ax₃) $b))))
+                        (, (sol $k $hypcnt (: ($f ax₃) $b))))
                   ;; Apply mpⁱ to current proof
                   (exec (6 0)
-                        (, (sol $iter (S $k) $hypcnt (: $f (-> $b $c)))
+                        (, (sol (S $k) $hypcnt (: $f (-> $b $c)))
                            (lte $hypcnt $k))
-                        (, (sol (S $iter) $k (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
+                        (, (sol $k (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
                   ;; Increment current iteration
                   (exec (7 0)
                         (, (current-iteration $iter))
@@ -99,5 +99,5 @@
 ;; Unify solution with target when hypotheses count falls to Z.
 (exec (3 0 0)
       (, (target $mps (: $x $a))
-         (sol $iter Z Z (: $x $a)))
-      (, (final $iter Z Z (: $x $a))))
+         (sol Z Z (: $x $a)))
+      (, (final Z Z (: $x $a))))
