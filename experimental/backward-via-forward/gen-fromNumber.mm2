@@ -46,5 +46,5 @@
                   ;; Respawn self
                   (+ (exec $l $ptrn $tplt))))))
 
-;; Finalize (write into fromNumber.act)
+;; Finalize, write into fromNumber.act
 (exec Final (, (= (fromNumber $x) $k)) (O (ACT fromNumber (= (fromNumber $x) $k))))

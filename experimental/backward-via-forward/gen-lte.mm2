@@ -55,5 +55,5 @@
                   (+ (exec (1 $k $l t) $pat $tmp))
                   (- (cf2 (lte $x $y)))))))
 
-;; Finalize (write into lte.act)
-(exec Final (, (lte $x $y)) (O (ACT lte (lte $x $y))))
+;; Finalize, write into lte.act
+(exec Final (, (lte $k $l)) (O (ACT lte (lte $k $l))))
