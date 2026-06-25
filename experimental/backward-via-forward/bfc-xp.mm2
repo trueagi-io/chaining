@@ -1,6 +1,6 @@
 ;; Port of ofc and obfc from bfc-xp.metta to MM2.
 
-;; NEXT: replace peano numbers by integers in sol.
+;; NEXT: optimize peano to integer management
 
 ;;;;;;;;;;;;;;;
 ;; Functions ;;
@@ -15,20 +15,19 @@
 ;; (target MAX_PROOF_SIZE QUERY)
 
 ;; ;; id (size=5, time=0.011s)
-;; ;; Find out about hypotheses count discrepencies
 ;; (target 5 (: $x (→ 𝜑 𝜑)))
 
 ;; ;; pm2.43 (size=7, time=0.018s)
 ;; (target 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
 
-;; ;; jarr (size=13, time=36.016s)
-;; (target 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; jarr (size=13, time=36.016s)
+(target 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; ;; imim1 (size=15, time=20m24.386s)
 ;; (target 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
 
-;; loowoz (size=19, time=?)
-(target 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+;; ;; loowoz (size=19, time=?)
+;; (target 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
 
 ;; ;; pm2.83 (size=25, time=?)
 ;; !(target 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
@@ -38,41 +37,60 @@
 
 ;; Load fromNumber.  Make sure that gen-fromNumber.mm2 has been
 ;; previously executed.
-(exec (0) (I (ACT fromNumber (= (fromNumber $x) $k))) (, (= (fromNumber $x) $k)))
+(exec (0)
+      (I (ACT fromNumber (= (fromNumber $x) $k)))
+      (, (= (fromNumber $x) $k)
+         (= (toNumber $k) $x)))
 
 ;; Load lte.  Make sure that gen-lte.mm2 has been previously executed.
-(exec (1) (I (ACT lte (lte $x $y))) (, (lte $x $y)))
+(exec (1)
+      (I (ACT lte (lte $k $l))
+         (BTM (= (toNumber $k) $x))
+         (BTM (= (toNumber $l) $y)))
+      (, (lte:Nat $k $l)
+         (lte:Int $x $y)))
 
 ;; Turn target into initial source and forward chaining loop
 (exec (2)
       (, (target $mps (: $tx $ta))
          (= (fromNumber $mps) $mps_n))
       (, ;; Initialize source
-         (sol $mps_n (S Z) (: I (-> $ta $ta)))
+         (sol $mps 1 (: I (-> $ta $ta)))
          ;; Expand one step forward
          (exec (2 $mps_n)
                (, ;; Capture inner self
-                  (exec (2 (S $k)) $ptrn $tplt))
+                  (exec (2 (S $k)) $ptrn $tplt)
+                  ;; Grab corresponding integers
+                  (= (toNumber (S $k)) $Sk:Int)
+                  (= (toNumber $k) $k:Int))
                (, ;; Apply current proof to axiom-1
                   (exec (3 0)
-                        (, (sol (S $k) (S $hypcnt) (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
-                           (lte $hypcnt $k))
-                        (, (sol $k $hypcnt (: ($f ax₁) $b))))
+                        (, (sol $Sk:Int $Shypcnt:Int (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+                           (= (fromNumber $Shypcnt:Int) (S $hypcnt))
+                           (= (toNumber $hypcnt) $hypcnt:Int)
+                           (lte:Int $hypcnt:Int $k:Int))
+                        (, (sol $k:Int $hypcnt:Int (: ($f ax₁) $b))))
                   ;; Apply current proof to axiom-2
                   (exec (4 0)
-                        (, (sol (S $k) (S $hypcnt) (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
-                           (lte $hypcnt $k))
-                        (, (sol $k $hypcnt (: ($f ax₂) $b))))
+                        (, (sol $Sk:Int $Shypcnt:Int (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+                           (= (fromNumber $Shypcnt:Int) (S $hypcnt))
+                           (= (toNumber $hypcnt) $hypcnt:Int)
+                           (lte:Int $hypcnt:Int $k:Int))
+                        (, (sol $k:Int $hypcnt:Int (: ($f ax₂) $b))))
                   ;; Apply current proof to axiom-3
                   (exec (5 0)
-                        (, (sol (S $k) (S $hypcnt) (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
-                           (lte $hypcnt $k))
-                        (, (sol $k $hypcnt (: ($f ax₃) $b))))
+                        (, (sol $Sk:Int $Shypcnt:Int (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+                           (= (fromNumber $Shypcnt:Int) (S $hypcnt))
+                           (= (toNumber $hypcnt) $hypcnt:Int)
+                           (lte:Int $hypcnt:Int $k:Int))
+                        (, (sol $k:Int $hypcnt:Int (: ($f ax₃) $b))))
                   ;; Apply mpⁱ to current proof
                   (exec (6 0)
-                        (, (sol (S $k) $hypcnt (: $f (-> $b $c)))
-                           (lte $hypcnt $k))
-                        (, (sol $k (S $hypcnt) (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
+                        (, (sol $Sk:Int $hypcnt:Int (: $f (-> $b $c)))
+                           (= (fromNumber $hypcnt:Int) $hypcnt)
+                           (= (toNumber (S $hypcnt)) $Shypcnt:Int)
+                           (lte:Int $hypcnt:Int $k:Int))
+                        (, (sol $k:Int $Shypcnt:Int (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
                   ;; Respawn inner self
                   (exec (7 0) (,)
                         (, (exec (2 $k) $ptrn $tplt)))))))
@@ -81,5 +99,5 @@
 ;; falls to Z.
 (exec (3 0 0)
       (, (target $mps (: $tx $ta))
-         (sol Z Z (: $tx $ta)))
-      (, (final Z Z (: $tx $ta))))
+         (sol 0 0 (: $tx $ta)))
+      (, (final 0 0 (: $tx $ta))))
