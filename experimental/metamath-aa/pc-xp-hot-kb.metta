@@ -64,6 +64,18 @@
 ;; Use proof reduction as pruning mechanism during search
 (= (prune-reduct) False)
 
+;; Use a hot-knowledge base for speedy proof search.  The hot-knowledge
+;; base is a sub-theory consisting of all axioms plus only the latest
+;; lemmas (controlled by hot-kb-size).  When enabled the proof search
+;; first tries the hot-KB and, only if no proof is found, falls back to
+;; the full knowledge bases.
+(= (use-hot-kb) True)
+
+;; Number of most recently proved lemmas to retain in the hot-knowledge
+;; base.  Older lemmas are evicted so that the search space does not
+;; grow unboundedly.  Original axioms are never evicted.
+(= (hot-kb-size) 30)
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logger Parameters ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1462,6 +1474,27 @@
 ;; (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))
 !(bind! &pc-ab (new-space))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Hot-Knowledge Bases ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Hot rule base: contains all original axiom rules (permanent) plus
+;; the latest lemma rules (evictable sliding window).
+!(bind! &pc-hot-rb (new-space))
+
+;; Hot axiom base: contains all original axioms (permanent) plus the
+;; latest lemma axioms (evictable sliding window).
+!(bind! &pc-hot-ab (new-space))
+
+;; Lemma tracking log for hot-KB eviction.  Each entry has the form
+;; (HotLemma INDEX LABEL STMT IS-RULE) so we can look up and remove
+;; the oldest lemma when the window slides.
+!(bind! &hot-lemma-log (new-space))
+
+;; Monotonically increasing lemma counter stored as (Count N).
+!(bind! &lemma-counter (new-space))
+!(add-atom &lemma-counter (Count 0))
+
 ;; Enable occurs check to detect cycles in unification (note that it
 ;; returns a variable, this is normal)
 !(translatePredicate (set_prolog_flag occurs_check True))
@@ -1483,6 +1516,67 @@
     (let $theorem-with-vars (replace-greeks-by-variables $theorem)
       (add-atom &labels (Label $proof $theorem-with-vars $label)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Hot-Knowledge Base Functions ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Return current lemma counter value
+(= (get-lemma-count) (match &lemma-counter (Count $n) $n))
+
+;; Increment lemma counter and return the new value
+(= (inc-lemma-count)
+   (let $old (get-lemma-count)
+     (let $new (+ $old 1)
+       (progn
+        (remove-atom &lemma-counter (Count $old))
+        (add-atom &lemma-counter (Count $new))
+        $new))))
+
+;; Evict the oldest lemma from the hot-KB if we exceed the window size.
+;; The lemma at index ($current - hot-kb-size) is removed from the
+;; appropriate hot space and from the tracking log.
+;; IMPORTANT: must never return (empty) as that kills progn chains.
+(= (evict-oldest-hot-lemma $current-idx)
+   (let $evict-idx (- $current-idx (hot-kb-size))
+     (if (> $evict-idx 0)
+         (case (once (match &hot-lemma-log
+                            (HotLemma $evict-idx $elabel $estmt $eis-rule)
+                            ($elabel $estmt $eis-rule)))
+           ((($elabel $estmt $eis-rule)
+             (progn
+              (if $eis-rule
+                  (remove-atom &pc-hot-rb (: $elabel $estmt))
+                  (remove-atom &pc-hot-ab (: $elabel $estmt)))
+              (remove-atom &hot-lemma-log
+                           (HotLemma $evict-idx $elabel $estmt $eis-rule))))
+            ($else ())))
+         ())))
+
+;; Add an axiom permanently to the hot-KB (axioms are never evicted).
+(= (add-axiom-to-hot-kbs $label $stmt)
+   (let $stmt-with-vars (replace-greeks-by-variables $stmt)
+     (if (is-arrow $stmt)
+         (add-atom &pc-hot-rb (: $label $stmt-with-vars))
+         (add-atom &pc-hot-ab (: $label $stmt-with-vars)))))
+
+;; Add a proved lemma to the hot-KB with sliding-window eviction.
+;; Each lemma is assigned a monotonically increasing index.  When the
+;; window exceeds hot-kb-size the oldest lemma is evicted.
+(= (add-lemma-to-hot-kbs $label $stmt)
+   (let* (($stmt-with-vars (replace-greeks-by-variables $stmt))
+          ($is-rule (is-arrow $stmt))
+          ($idx (inc-lemma-count)))
+     (progn
+      ;; Add to hot-KB space
+      (if $is-rule
+          (add-atom &pc-hot-rb (: $label $stmt-with-vars))
+          (add-atom &pc-hot-ab (: $label $stmt-with-vars)))
+      ;; Log for future eviction
+      (add-atom &hot-lemma-log
+                (HotLemma $idx $label $stmt-with-vars $is-rule))
+      ;; Evict oldest if over limit
+      (evict-oldest-hot-lemma $idx))))
+
 ;; Process the axiom of given index, that is insert the axiom into
 ;; pc-ab and return the next index.
 ;; NEXT: re-enable when fixed
@@ -1491,6 +1585,7 @@
    (progn
     (logger-infof "Iteration %w: add axiom %w" ($idx $label))
     (add-to-kbs $label $axiom)
+    (if (use-hot-kb) (add-axiom-to-hot-kbs $label $axiom) ())
     (Maybe.return (+ $idx 1))))
 
 ;; Process the theorem of a given index by checking its proof, if it
@@ -1498,6 +1593,14 @@
 ;; knowledge bases and return the next idx, or Nothing if it fails.
 ;; NEXT: re-enable when fixed (: process-theorem-check (-> Number
 ;; Number Assertion (Maybe Number)))
+;; Helper: attempt to check a proof against a given rule and axiom base.
+(= (_check-proof $rb $ab $bound $proof $thrm)
+   (let (: $proof $thrm)
+     (if (bound-search-by-proof-size)
+         (obc $rb $ab callback $bound (: $proof $thrm))
+         (bc $rb $ab callback (fromNumber $bound) (: $proof $thrm)))
+     (: $proof $thrm)))
+;;
 (= (process-theorem-check $idx $bound (MkTheorem $label $proof $thrm))
    (progn
     (if (bound-search-by-proof-size)
@@ -1505,33 +1608,58 @@
                       ($idx $label $bound))
         (logger-infof "Iteration %w: verify proof of %w up to depth %w"
                       ($idx $label $bound)))
-    (let (: $proof $thrm)
-      (if (bound-search-by-proof-size)
-          (obc &pc-rb &pc-ab callback $bound (: $proof $thrm))
-          (bc &pc-rb &pc-ab callback (fromNumber $bound) (: $proof $thrm)))
-      (case (: $proof $thrm)
+    (let $result
+        (if (use-hot-kb)
+            ;; Try hot-KB first, fall back to full KB
+            (case (_check-proof &pc-hot-rb &pc-hot-ab $bound $proof $thrm)
+              (((: $p $t) (: $p $t))
+               (Empty (_check-proof &pc-rb &pc-ab $bound $proof $thrm))))
+            ;; Hot-KB disabled, use full KB directly
+            (_check-proof &pc-rb &pc-ab $bound $proof $thrm))
+      (case $result
         (;; Verified
-         ((: $proof $thrm) (progn (add-to-kbs $label $thrm)
-                                  (Maybe.return (+ $idx 1))))
+         ((: $proof $thrm)
+          (progn (add-to-kbs $label $thrm)
+                 (if (use-hot-kb) (add-lemma-to-hot-kbs $label $thrm) ())
+                 (Maybe.return (+ $idx 1))))
          ;; Not verified
          (Empty Nothing))))))
 
 ;; Rediscover proof(s) of a theorem.  The results are returned as an
 ;; expression, a tuple of solutions, instead of a superposition to
 ;; avoid nondeterminism.
+;;
+;; Helper: run the backward chainer on a given rule and axiom base.
+(= (_rediscover-proofs $rb $ab $bound $proof-wo-bdy $thrm)
+   (collapse
+    (if (bound-search-by-proof-size)
+        (if (search-all-proofs)
+            (obc $rb $ab callback $bound (: $proof-wo-bdy $thrm))
+            (once (obc $rb $ab callback $bound (: $proof-wo-bdy $thrm))))
+        (let $pdepth (fromNumber $depth)
+          (if (search-all-proofs)
+              (bc $rb $ab callback $pdepth (: $proof-wo-bdy $thrm))
+              (once (bc $rb $ab callback $pdepth (: $proof-wo-bdy $thrm))))))))
+;;
+;; Entry point: if use-hot-kb is enabled, first try the hot-KB (all
+;; axioms + latest lemmas) for a speedy search.  If no proof is found
+;; in the hot-KB, fall back to the full knowledge bases.
 (= (rediscover-proofs $bound $proof $thrm)
    (let ;; Replace proof body by variable
        $proof-wo-bdy (replace-body-by-variable $proof)
-     ;; Call backward chainer to rediscover the proof
-     (collapse
-      (if (bound-search-by-proof-size)
-          (if (search-all-proofs)
-              (obc &pc-rb &pc-ab callback $bound (: $proof-wo-bdy $thrm))
-              (once (obc &pc-rb &pc-ab callback $bound (: $proof-wo-bdy $thrm))))
-          (let $pdepth (fromNumber $depth)
-            (if (search-all-proofs)
-                (bc &pc-rb &pc-ab callback $pdepth (: $proof-wo-bdy $thrm))
-                (once (bc &pc-rb &pc-ab callback $pdepth (: $proof-wo-bdy $thrm)))))))))
+     (if (use-hot-kb)
+         ;; Try hot-KB first
+         (let $hot-result
+             (_rediscover-proofs &pc-hot-rb &pc-hot-ab $bound $proof-wo-bdy $thrm)
+           (if (== $hot-result ())
+               ;; Hot-KB failed, fall back to full KB
+               (progn
+                (logger-info "Hot-KB: no proof found, falling back to full KB")
+                (_rediscover-proofs &pc-rb &pc-ab $bound $proof-wo-bdy $thrm))
+               ;; Hot-KB succeeded
+               $hot-result))
+         ;; Hot-KB disabled, use full KB directly
+         (_rediscover-proofs &pc-rb &pc-ab $bound $proof-wo-bdy $thrm))))
 
 ;; Process the theorem of a given index by rediscovering its proof, if
 ;; it succeeds then insert its alongside its proof(s) into the
@@ -1562,6 +1690,8 @@
                   (add-to-labels $p $t $label))))
            ;; Add proved theorem as lemma in kbs
            (add-to-kbs $label $thrm)
+           ;; Also add to hot-KB for speedy future searches
+           (if (use-hot-kb) (add-lemma-to-hot-kbs $label $thrm) ())
            ;; Output next index
            (Just (+ $idx 1)))))))
 
@@ -1614,3 +1744,11 @@
 ;; Log the content of pc-rb and pc-ab
 !(logger-debugf "pc-rb: %w" ((get-atoms &pc-rb)))
 !(logger-debugf "pc-ab: %w" ((get-atoms &pc-ab)))
+
+;; Log the content of hot-KBs
+!(when (use-hot-kb)
+       (progn
+        (logger-debugf "pc-hot-rb: %w" ((get-atoms &pc-hot-rb)))
+        (logger-debugf "pc-hot-ab: %w" ((get-atoms &pc-hot-ab)))))
+!(if (use-hot-kb) (logger-infof "Hot-KB lemma count: %w, window size: %w"
+                                ((get-lemma-count) (hot-kb-size))) ())
