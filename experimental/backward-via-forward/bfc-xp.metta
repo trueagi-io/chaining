@@ -967,11 +967,11 @@
 ;; ;; imim2 (82ms)
 ;; !(obfc 7 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
 
-;; jarr (100ms)
-!(obfc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
-;; Enable the following to display a trace.  This is convenient to
-;; compare with the MORK version.  For that you also need to enable
-;; (add-atom &ofc-sol ...) in ofc.
+;; ;; jarr (100ms)
+;; !(obfc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; ;; Enable the following to display a trace.  This is convenient to
+;; ;; compare with the MORK version.  For that you also need to enable
+;; ;; (add-atom &ofc-sol ...) in ofc.
 ;; !(get-atoms &ofc-sol)
 
 ;; ;; pm2.27
@@ -1076,8 +1076,8 @@
 ;; ;; imim2 (81ms)
 ;; !(obc 7 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
 
-;; ;; jarr (90ms)
-;; !(obc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; jarr (90ms)
+!(obc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; ;; pm2.27
 ;; !(obc 13 (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
