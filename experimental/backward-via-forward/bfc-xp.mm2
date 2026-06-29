@@ -1,5 +1,8 @@
 ;; Port of ofc and obfc from bfc-xp.metta to MM2.
 ;;
+;; Important: in order to run that code you must first run
+;; gen-fromNumber.mm2 and gen-lte.mm2, in that order.
+;;
 ;; Notes regarding optimization:
 ;;
 ;; 1. It was found that the converse of : is 20% faster, thus used and
