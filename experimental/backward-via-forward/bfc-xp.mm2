@@ -38,29 +38,28 @@
 ;; Load fromNumber.  Make sure that gen-fromNumber.mm2 has been
 ;; previously executed.
 (exec (0)
-      (I (ACT fromNumber (= (fromNumber $x) $k)))
-      (, (= (fromNumber $x) $k)
-         (= (toNumber $k) $x)))
+      (I (ACT fromNumber (fromNumberFn $x $k)))
+      (, (fromNumberFn $x $k)
+         (toNumberFn $k $x)))
 
 ;; Load lte.  Make sure that gen-lte.mm2 has been previously executed.
 (exec (1)
       (I (ACT lte (lte $k $l))
-         (BTM (= (toNumber $k) $x))
-         (BTM (= (toNumber $l) $y)))
-      (, (lte:Nat $k $l)
-         (lte:Int $x $y)))
+         (BTM (toNumberFn $k $x))
+         (BTM (toNumberFn $l $y)))
+      (, (lte $x $y)))
 
 ;; Precompute increment and decrement tables for integer.
 (exec (1)
-      (, (= (toNumber $x) $y)
-         (= (toNumber (S $x)) $sy))
-      (, (= (inc:Int $y) $sy)
-         (= (dec:Int $sy) $y)))
+      (, (toNumberFn $x $y)
+         (toNumberFn (S $x) $sy))
+      (, (incFn $y $sy)
+         (decFn $sy $y)))
 
 ;; Turn target into initial source and forward chaining loop
 (exec (2)
       (, (target $mps (: $tx $ta))
-         (= (fromNumber $mps) $mps_n))
+         (fromNumberFn $mps $mps_n))
       (, ;; Initialize source
          (sol $mps 1 (: I (-> $ta $ta)))
          ;; Expand one step forward
@@ -68,32 +67,32 @@
                (, ;; Capture inner self
                   (exec (2 (S $k)) $ptrn $tplt)
                   ;; Grab corresponding integers
-                  (= (toNumber (S $k)) $sk:Int)
-                  (= (toNumber $k) $k:Int))
+                  (toNumberFn (S $k) $ski)
+                  (toNumberFn $k $ki))
                (, ;; Apply current proof to axiom-1
                   (exec (3 0)
-                        (, (sol $sk:Int $sh:Int (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
-                           (= (dec:Int $sh:Int) $h:Int)
-                           (lte:Int $h:Int $k:Int))
-                        (, (sol $k:Int $h:Int (: ($f ax₁) $b))))
+                        (, (sol $ski $shi (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+                           (decFn $shi $hi)
+                           (lte $hi $ki))
+                        (, (sol $ki $hi (: ($f ax₁) $b))))
                   ;; Apply current proof to axiom-2
                   (exec (4 0)
-                        (, (sol $sk:Int $sh:Int (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
-                           (= (dec:Int $sh:Int) $h:Int)
-                           (lte:Int $h:Int $k:Int))
-                        (, (sol $k:Int $h:Int (: ($f ax₂) $b))))
+                        (, (sol $ski $shi (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+                           (decFn $shi $hi)
+                           (lte $hi $ki))
+                        (, (sol $ki $hi (: ($f ax₂) $b))))
                   ;; Apply current proof to axiom-3
                   (exec (5 0)
-                        (, (sol $sk:Int $sh:Int (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
-                           (= (dec:Int $sh:Int) $h:Int)
-                           (lte:Int $h:Int $k:Int))
-                        (, (sol $k:Int $h:Int (: ($f ax₃) $b))))
+                        (, (sol $ski $shi (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+                           (decFn $shi $hi)
+                           (lte $hi $ki))
+                        (, (sol $ki $hi (: ($f ax₃) $b))))
                   ;; Apply mpⁱ to current proof
                   (exec (6 0)
-                        (, (sol $sk:Int $h:Int (: $f (-> $b $c)))
-                           (lte:Int $h:Int $k:Int)
-                           (= (inc:Int $h:Int) $sh:Int))
-                        (, (sol $k:Int $sh:Int (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
+                        (, (sol $ski $hi (: $f (-> $b $c)))
+                           (lte $hi $ki)
+                           (incFn $hi $shi))
+                        (, (sol $ki $shi (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
                   ;; Respawn inner self
                   (exec (7 0) (,)
                         (, (exec (2 $k) $ptrn $tplt)))))))

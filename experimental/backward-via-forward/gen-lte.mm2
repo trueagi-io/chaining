@@ -3,7 +3,7 @@
 
 ;; Load fromNumber in the space.  Make sure that gen-fromNumber.mm2
 ;; has been previously executed.
-(exec Pre (I (ACT fromNumber (= (fromNumber $x) $k))) (, (= (fromNumber $x) $k)))
+(exec Pre (I (ACT fromNumber (fromNumberFn $x $k))) (, (fromNumberFn $x $k)))
 
 ;; Number representing a bound (here 26)
 (NumBound 26)
@@ -11,7 +11,7 @@
 ;; Initialize
 (exec Init
       (, (NumBound $n)
-         (= (fromNumber $n) $b))
+         (fromNumberFn $n $b))
       (, ;; Generate all numbers up to a certain bound
          (: Z BndNat)
          (exec (0 $b)
