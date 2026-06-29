@@ -1,6 +1,12 @@
 ;; Port of ofc and obfc from bfc-xp.metta to MM2.
-
-;; NEXT: optimize peano to integer management
+;;
+;; Notes regarding optimization:
+;;
+;; 1. It was found that the converse of : is 20% faster, thus used and
+;;    abbreviated to c: in spite of being less common.
+;;
+;; 2. Moving the hypotheses count at the end of sol showed no
+;;    improvement.
 
 ;;;;;;;;;;;;;;;
 ;; Functions ;;
@@ -15,25 +21,25 @@
 ;; (target MAX_PROOF_SIZE QUERY)
 
 ;; ;; id (size=5, time=0.011s)
-;; (target 5 (: (→ 𝜑 𝜑) $x))
+;; (target 5 (c: (→ 𝜑 𝜑) $x))
 
 ;; ;; pm2.43 (size=7, time=0.018s)
-;; (target 7 (: (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)) $x))
+;; (target 7 (c: (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)) $x))
 
 ;; jarr (size=13, time=36.016s)
-(target 13 (: (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)) $x))
+(target 13 (c: (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)) $x))
 
 ;; ;; imim1 (size=15, time=20m24.386s)
-;; (target 15 (: (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))) $x))
+;; (target 15 (c: (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))) $x))
 
 ;; ;; loowoz (size=19, time=?)
-;; (target 19 (: (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))) $x))
+;; (target 19 (c: (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))) $x))
 
 ;; ;; pm2.83 (size=25, time=?)
-;; !(target 25 (: (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))) $x))
+;; !(target 25 (c: (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))) $x))
 
 ;; ;; loolin (size=26, time=?)
-;; !(target 26 (: (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)) $x))
+;; !(target 26 (c: (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)) $x))
 
 ;; Load fromNumber.  Make sure that gen-fromNumber.mm2 has been
 ;; previously executed.
@@ -58,10 +64,10 @@
 
 ;; Turn target into initial source and forward chaining loop
 (exec (2)
-      (, (target $mps (: $ta $tx))
+      (, (target $mps (c: $ta $tx))
          (fromNumberFn $mps $mps_n))
       (, ;; Initialize source
-         (sol $mps (: (-> $ta $ta) I) 1)
+         (sol $mps 1 (c: (-> $ta $ta) I))
          ;; Expand one step forward
          (exec (2 $mps_n)
                (, ;; Capture inner self
@@ -71,28 +77,28 @@
                   (toNumberFn $k $ki))
                (, ;; Apply current proof to axiom-1
                   (exec (3 0)
-                        (, (sol $ski (: (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b) $f) $shi)
+                        (, (sol $ski $shi (c: (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b) $f))
                            (decFn $shi $hi)
                            (lte $hi $ki))
-                        (, (sol $ki (: $b ($f ax₁)) $hi)))
+                        (, (sol $ki $hi (c: $b ($f ax₁)))))
                   ;; Apply current proof to axiom-2
                   (exec (4 0)
-                        (, (sol $ski (: (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b) $f) $shi)
+                        (, (sol $ski $shi (c: (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b) $f))
                            (decFn $shi $hi)
                            (lte $hi $ki))
-                        (, (sol $ki (: $b ($f ax₂)) $hi)))
+                        (, (sol $ki $hi (c: $b ($f ax₂)))))
                   ;; Apply current proof to axiom-3
                   (exec (5 0)
-                        (, (sol $ski (: (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b) $f) $shi)
+                        (, (sol $ski $shi (c: (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b) $f))
                            (decFn $shi $hi)
                            (lte $hi $ki))
-                        (, (sol $ki (: $b ($f ax₃)) $hi)))
+                        (, (sol $ki $hi (c: $b ($f ax₃)))))
                   ;; Apply mpⁱ to current proof
                   (exec (6 0)
-                        (, (sol $ski (: (-> $b $c) $f) $hi)
+                        (, (sol $ski $hi (c: (-> $b $c) $f))
                            (lte $hi $ki)
                            (incFn $hi $shi))
-                        (, (sol $ki (: (-> (→ $a $b) (-> $a $c)) (mpⁱ $f)) $shi)))
+                        (, (sol $ki $shi (c: (-> (→ $a $b) (-> $a $c)) (mpⁱ $f)))))
                   ;; Respawn inner self
                   (exec (7 0) (,)
                         (, (exec (2 $k) $ptrn $tplt)))))))
@@ -100,6 +106,6 @@
 ;; Unify solution with target when maximum depth and hypotheses count
 ;; falls to Z.
 (exec (3 0 0)
-      (, (target $mps (: $ta $tx))
-         (sol 0 (: $ta $tx) 0))
-      (, (final 0 (: $ta $tx) 0)))
+      (, (target $mps (c: $ta $tx))
+         (sol 0 0 (c: $ta $tx)))
+      (, (final 0 0 (c: $ta $tx))))
