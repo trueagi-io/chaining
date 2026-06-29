@@ -15,25 +15,25 @@
 ;; (target MAX_PROOF_SIZE QUERY)
 
 ;; ;; id (size=5, time=0.011s)
-;; (target 5 (: $x (→ 𝜑 𝜑)))
+;; (target 5 (: (→ 𝜑 𝜑) $x))
 
 ;; ;; pm2.43 (size=7, time=0.018s)
-;; (target 7 (: $x (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓))))
+;; (target 7 (: (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)) $x))
 
 ;; jarr (size=13, time=36.016s)
-(target 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+(target 13 (: (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)) $x))
 
 ;; ;; imim1 (size=15, time=20m24.386s)
-;; (target 15 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒)))))
+;; (target 15 (: (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))) $x))
 
 ;; ;; loowoz (size=19, time=?)
-;; (target 19 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒)))))
+;; (target 19 (: (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))) $x))
 
 ;; ;; pm2.83 (size=25, time=?)
-;; !(target 25 (: $x (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃))))))
+;; !(target 25 (: (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))) $x))
 
 ;; ;; loolin (size=26, time=?)
-;; !(target 26 (: $x (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑))))
+;; !(target 26 (: (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)) $x))
 
 ;; Load fromNumber.  Make sure that gen-fromNumber.mm2 has been
 ;; previously executed.
@@ -58,10 +58,10 @@
 
 ;; Turn target into initial source and forward chaining loop
 (exec (2)
-      (, (target $mps (: $tx $ta))
+      (, (target $mps (: $ta $tx))
          (fromNumberFn $mps $mps_n))
       (, ;; Initialize source
-         (sol $mps 1 (: I (-> $ta $ta)))
+         (sol $mps (: (-> $ta $ta) I) 1)
          ;; Expand one step forward
          (exec (2 $mps_n)
                (, ;; Capture inner self
@@ -71,28 +71,28 @@
                   (toNumberFn $k $ki))
                (, ;; Apply current proof to axiom-1
                   (exec (3 0)
-                        (, (sol $ski $shi (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+                        (, (sol $ski (: (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b) $f) $shi)
                            (decFn $shi $hi)
                            (lte $hi $ki))
-                        (, (sol $ki $hi (: ($f ax₁) $b))))
+                        (, (sol $ki (: $b ($f ax₁)) $hi)))
                   ;; Apply current proof to axiom-2
                   (exec (4 0)
-                        (, (sol $ski $shi (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+                        (, (sol $ski (: (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b) $f) $shi)
                            (decFn $shi $hi)
                            (lte $hi $ki))
-                        (, (sol $ki $hi (: ($f ax₂) $b))))
+                        (, (sol $ki (: $b ($f ax₂)) $hi)))
                   ;; Apply current proof to axiom-3
                   (exec (5 0)
-                        (, (sol $ski $shi (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+                        (, (sol $ski (: (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b) $f) $shi)
                            (decFn $shi $hi)
                            (lte $hi $ki))
-                        (, (sol $ki $hi (: ($f ax₃) $b))))
+                        (, (sol $ki (: $b ($f ax₃)) $hi)))
                   ;; Apply mpⁱ to current proof
                   (exec (6 0)
-                        (, (sol $ski $hi (: $f (-> $b $c)))
+                        (, (sol $ski (: (-> $b $c) $f) $hi)
                            (lte $hi $ki)
                            (incFn $hi $shi))
-                        (, (sol $ki $shi (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c))))))
+                        (, (sol $ki (: (-> (→ $a $b) (-> $a $c)) (mpⁱ $f)) $shi)))
                   ;; Respawn inner self
                   (exec (7 0) (,)
                         (, (exec (2 $k) $ptrn $tplt)))))))
@@ -100,6 +100,6 @@
 ;; Unify solution with target when maximum depth and hypotheses count
 ;; falls to Z.
 (exec (3 0 0)
-      (, (target $mps (: $tx $ta))
-         (sol 0 0 (: $tx $ta)))
-      (, (final 0 0 (: $tx $ta))))
+      (, (target $mps (: $ta $tx))
+         (sol 0 (: $ta $tx) 0))
+      (, (final 0 (: $ta $tx) 0)))
