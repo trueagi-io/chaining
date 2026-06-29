@@ -1,0 +1,114 @@
+;; Port of ofc and obfc from bfc-xp.metta to MM2.
+;;
+;; Notes regarding optimization:
+;;
+;; 1. It was found that the converse of : is 20% faster, thus used and
+;;    abbreviated to c: in spite of being less common.
+;;
+;; 2. Moving the hypotheses count at the end of sol showed no
+;;    improvement.
+;;
+;; Times are obtained by running on an Intel(R) Xeon(R) E3-1535M v6
+;; (8) @ 4.20 GHz
+
+;;;;;;;;;;;;;;;
+;; Functions ;;
+;;;;;;;;;;;;;;;
+
+;;;;;;;;;;
+;; Main ;;
+;;;;;;;;;;
+
+;; Define target query, of the form
+;;
+;; (target MAX_PROOF_SIZE QUERY)
+
+;; ;; id (size=5, time=0.019s)
+;; (target 5 (c: (→ 𝜑 𝜑) $x))
+
+;; ;; pm2.43 (size=7, time=0.024s)
+;; (target 7 (c: (→ (→ 𝜑 (→ 𝜑 𝜓)) (→ 𝜑 𝜓)) $x))
+
+;; jarr (size=13, time=40.435s)
+(target 13 (c: (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒)) $x))
+
+;; ;; imim1 (size=15, time=25m5.188s)
+;; (target 15 (c: (→ (→ 𝜑 𝜓) (→ (→ 𝜓 𝜒) (→ 𝜑 𝜒))) $x))
+
+;; ;; loowoz (size=19, time=?)
+;; (target 19 (c: (→ (→ (→ 𝜑 𝜓) (→ 𝜑 𝜒)) (→ (→ 𝜓 𝜑) (→ 𝜓 𝜒))) $x))
+
+;; ;; pm2.83 (size=25, time=?)
+;; !(target 25 (c: (→ (→ 𝜑 (→ 𝜓 𝜒)) (→ (→ 𝜑 (→ 𝜒 𝜃)) (→ 𝜑 (→ 𝜓 𝜃)))) $x))
+
+;; ;; loolin (size=26, time=?)
+;; !(target 26 (c: (→ (→ (→ 𝜑 𝜓) (→ 𝜓 𝜑)) (→ 𝜓 𝜑)) $x))
+
+;; Load fromNumber.  Make sure that gen-fromNumber.mm2 has been
+;; previously executed.
+(exec (0)
+      (I (ACT fromNumber (fromNumberFn $x $k)))
+      (, (fromNumberFn $x $k)
+         (toNumberFn $k $x)))
+
+;; Load lte.  Make sure that gen-lte.mm2 has been previously executed.
+(exec (1)
+      (I (ACT lte (lte $k $l))
+         (BTM (toNumberFn $k $x))
+         (BTM (toNumberFn $l $y)))
+      (, (lte $x $y)))
+
+;; Precompute increment and decrement tables for integer.
+(exec (1)
+      (, (toNumberFn $x $y)
+         (toNumberFn (S $x) $sy))
+      (, (incFn $y $sy)
+         (decFn $sy $y)))
+
+;; Turn target into initial source and forward chaining loop
+(exec (2)
+      (, (target $mps (c: $ta $tx))
+         (fromNumberFn $mps $mps_n))
+      (, ;; Initialize source
+         (sol $mps 1 (c: (-> $ta $ta) I))
+         ;; Expand one step forward
+         (exec (2 $mps_n)
+               (, ;; Capture inner self
+                  (exec (2 (S $k)) $ptrn $tplt)
+                  ;; Grab corresponding integers
+                  (toNumberFn (S $k) $ski)
+                  (toNumberFn $k $ki))
+               (, ;; Apply current proof to axiom-1
+                  (exec (3 0)
+                        (, (sol $ski $shi (c: (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b) $f))
+                           (decFn $shi $hi)
+                           (lte $hi $ki))
+                        (, (sol $ki $hi (c: $b ($f ax₁)))))
+                  ;; Apply current proof to axiom-2
+                  (exec (4 0)
+                        (, (sol $ski $shi (c: (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b) $f))
+                           (decFn $shi $hi)
+                           (lte $hi $ki))
+                        (, (sol $ki $hi (c: $b ($f ax₂)))))
+                  ;; Apply current proof to axiom-3
+                  (exec (5 0)
+                        (, (sol $ski $shi (c: (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b) $f))
+                           (decFn $shi $hi)
+                           (lte $hi $ki))
+                        (, (sol $ki $hi (c: $b ($f ax₃)))))
+                  ;; Apply mpⁱ to current proof
+                  (exec (6 0)
+                        (, (sol $ski $hi (c: (-> $b $c) $f))
+                           (lte $hi $ki)
+                           (incFn $hi $shi))
+                        (, (sol $ki $shi (c: (-> (→ $a $b) (-> $a $c)) (mpⁱ $f)))))
+                  ;; Respawn inner self
+                  (exec (7 0) (,)
+                        (, (exec (2 $k) $ptrn $tplt)))))))
+
+;; Unify solution with target when maximum depth and hypotheses count
+;; falls to Z.
+(exec (3 0 0)
+      (, (target $mps (c: $ta $tx))
+         (sol 0 0 (c: $ta $tx)))
+      (, (final 0 0 (c: $ta $tx))))

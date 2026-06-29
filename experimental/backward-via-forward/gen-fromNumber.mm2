@@ -1,0 +1,50 @@
+;; Generate fromNumber for all numbers up to a certain bound.
+
+;; Natural representing a bound (here 26)
+(Bound (S
+        (S
+         (S
+          (S
+           (S
+            (S
+             (S
+              (S
+               (S
+                (S
+                 (S
+                  (S
+                   (S
+                    (S
+                     (S
+                      (S
+                       (S
+                        (S
+                         (S
+                          (S
+                           (S
+                            (S
+                             (S
+                              (S
+                               (S
+                                (S Z)))))))))))))))))))))))))))
+
+;; Base case of fromNumber
+(fromNumberFn 0 Z)
+
+;; Initialize
+(exec Init
+      (, (Bound $k))
+      (, ;; Recursive step of fromNumber
+         (exec $k
+               (, ;; Previous fromNumber
+                  (fromNumberFn $n $r)
+                  ;; Self
+                  (exec (S $l) $ptrn $tplt))
+               (O ;; Next fromNumber
+                  (pure (fromNumberFn $m (S $r)) $m
+                        (i8_to_string (sum_i8 (i8_from_string $n) (i8_from_string 1))))
+                  ;; Respawn self
+                  (+ (exec $l $ptrn $tplt))))))
+
+;; Finalize, write into fromNumber.act
+(exec Final (, (fromNumberFn $x $k)) (O (ACT fromNumber (fromNumberFn $x $k))))

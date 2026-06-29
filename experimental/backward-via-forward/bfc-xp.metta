@@ -466,14 +466,14 @@
 ;;         $a                            ; Query
 ;;         (Sized $b)))                  ; Sized result
 
-;; Base cases, axioms ax-1, ax-2, ax-3
+;; Base cases, axioms ax₁, ax₂, ax₃
 (= (sbc Z (: $x $a)) (empty))
-(= (sbc (S $k) (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (MkSized (S Z) (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
-(= (sbc (S $k) (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (MkSized (S Z) (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
-(= (sbc (S $k) (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (MkSized (S Z) (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
+(= (sbc (S $k) (: ax₁ (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkSized (S Z) (: ax₁ (→ $𝜑 (→ $𝜓 $𝜑)))))
+(= (sbc (S $k) (: ax₂ (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (MkSized (S Z) (: ax₂ (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
+(= (sbc (S $k) (: ax₃ (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (MkSized (S Z) (: ax₃ (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
 
 ;; Recursive step, inference rule mp
 (= (sbc (S (S (S $k))) (: (mp $f $x) $b))
@@ -486,12 +486,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Same as above but uses Number instead of Nat
-(= (obc-gtz $s (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
-   (MkSized 1 (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑)))))
-(= (obc-gtz $s (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
-   (MkSized 1 (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
-(= (obc-gtz $s (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
-   (MkSized 1 (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
+(= (obc-gtz $s (: ax₁ (→ $𝜑 (→ $𝜓 $𝜑))))
+   (MkSized 1 (: ax₁ (→ $𝜑 (→ $𝜓 $𝜑)))))
+(= (obc-gtz $s (: ax₂ (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+   (MkSized 1 (: ax₂ (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))))))
+(= (obc-gtz $s (: ax₃ (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+   (MkSized 1 (: ax₃ (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)))))
 (= (obc-gtz $s (: (mp $f $x) $b))
    (if (< 2 $s)
        (let* (((MkSized $fs (: $f (→ $a $b))) (obc (- $s 2) (: $f (→ $a $b))))
@@ -544,11 +544,13 @@
 ;;             $b)))
 (= (bfc $rb $depth (: $x $a))
    ;; (trace! (👁 bfc $rb $depth (: $x $a))
-           (fc $rb $depth (: $x $a) (: id (-> $a $a))));)
+           (fc $rb $depth (: $x $a) (: I (-> $a $a))));)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Optimized Forward Chainer ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+!(bind! &ofc-sol (new-space))
 
 ;; Like above but specialized for inversed propositional calculus, and
 ;; avoid placing mpⁱ as arguments.
@@ -558,28 +560,34 @@
 ;;            $b                        ; Source query
 ;;            $b))
 (= (ofc $depth $hypcnt $tgt (: $x $a))
-   ;; (trace! (👁 ofc $depth $hypcnt $tgt (: $x $a))
    (if (< 0 $hypcnt)
        ;; Recursive steps
        (if (and (< 0 $depth) (<= $hypcnt $depth))
-           (ofc-rec (- $depth 1) (- $hypcnt 1) $tgt (: $x $a))
+           (progn
+            ;; (add-atom &ofc-sol (sol $depth $hypcnt (: $x $a)))
+            (ofc-rec (- $depth 1) (- $hypcnt 1) $tgt (: $x $a)))
            (empty))
        ;; Base case
-       (let (: $x $a) $tgt (: $x $a))));)
+       ;; (: $x $a)))
+        (let (: $x $a) $tgt
+             (progn
+              ;; (add-atom &ofc-sol (sol $depth $hypcnt (: $x $a)))
+              (: $x $a)))))
 
-;; Recursive steps (note that depth and hypcnt have already been decremented)
-;; Specialized application given abstraction
-(= (ofc-rec $depth $hypcnt $tgt (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
-   (ofc $depth $hypcnt $tgt (: ($f ax-1) $b)))
-(= (ofc-rec $depth $hypcnt $tgt
-                (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
-   (ofc $depth $hypcnt $tgt (: ($f ax-2) $b)))
-(= (ofc-rec $depth $hypcnt $tgt
-                (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
-   (ofc $depth $hypcnt $tgt (: ($f ax-3) $b)))
+;; Recursive steps (note that depth and hypcnt have already been
+;; decremented) Specialized application given abstraction
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt
+            (: $f (-> (→ $𝜑 (→ $𝜓 $𝜑)) $b)))
+   (ofc $depth_dec $hypcnt_dec $tgt (: ($f ax₁) $b)))
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt
+            (: $f (-> (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒))) $b)))
+   (ofc $depth_dec $hypcnt_dec $tgt (: ($f ax₂) $b)))
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt
+            (: $f (-> (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑)) $b)))
+   (ofc $depth_dec $hypcnt_dec $tgt (: ($f ax₃) $b)))
 ;; Specialized application given argument of mpⁱ
-(= (ofc-rec $depth $hypcnt $tgt (: $f (-> $b $c)))
-   (ofc $depth (+ $hypcnt 2) $tgt (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c)))))
+(= (ofc-rec $depth_dec $hypcnt_dec $tgt (: $f (-> $b $c)))
+   (ofc $depth_dec (+ $hypcnt_dec 2) $tgt (: (mpⁱ $f) (-> (→ $a $b) (-> $a $c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Optimized backward chainer via forward chaining ;;
@@ -590,7 +598,7 @@
 ;;              $b                         ; Query
 ;;              $b)))
 (= (obfc $depth (: $x $a))
-   (ofc $depth 1 (: $x $a) (: id (-> $a $a))))
+   (ofc $depth 1 (: $x $a) (: I (-> $a $a))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;;;;;;;; ;;
@@ -631,13 +639,13 @@
                                 $b))))
 
 ;; Axiom of the principle of simplification
-!(add-atom &pc-kb (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+!(add-atom &pc-kb (: ax₁ (→ $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom of Frege
-!(add-atom &pc-kb (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+!(add-atom &pc-kb (: ax₂ (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 
 ;; Axiom of the principle of transposition
-!(add-atom &pc-kb (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+!(add-atom &pc-kb (: ax₃ (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;;;;;;;;;;;;;;;;
 ;; General KB ;;
@@ -692,13 +700,13 @@
 !(bind! &dfs-kb (new-space))
 
 ;; Axiom of the principle of simplification
-!(add-atom &dfs-kb (: ax-1 (→ $𝜑 (→ $𝜓 $𝜑))))
+!(add-atom &dfs-kb (: ax₁ (→ $𝜑 (→ $𝜓 $𝜑))))
 
 ;; Axiom of Frege
-!(add-atom &dfs-kb (: ax-2 (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
+!(add-atom &dfs-kb (: ax₂ (→ (→ $𝜑 (→ $𝜓 $𝜒)) (→ (→ $𝜑 $𝜓) (→ $𝜑 $𝜒)))))
 
 ;; Axiom of the principle of transposition
-!(add-atom &dfs-kb (: ax-3 (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
+!(add-atom &dfs-kb (: ax₃ (→ (→ (¬ $𝜑) (¬ $𝜓)) (→ $𝜓 $𝜑))))
 
 ;; Blackbird specialized for mp
 ;; mpⁱ = (λ z ((.: z) mp))
@@ -961,6 +969,10 @@
 
 ;; ;; jarr (100ms)
 ;; !(obfc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; ;; Enable the following to display a trace.  This is convenient to
+;; ;; compare with the MORK version.  For that you also need to enable
+;; ;; (add-atom &ofc-sol ...) in ofc.
+;; !(get-atoms &ofc-sol)
 
 ;; ;; pm2.27
 ;; !(obfc 13 (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))
@@ -1064,8 +1076,8 @@
 ;; ;; imim2 (81ms)
 ;; !(obc 7 (: $x (→ (→ 𝜑 𝜓) (→ (→ 𝜒 𝜑) (→ 𝜒 𝜓)))))
 
-;; ;; jarr (90ms)
-;; !(obc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
+;; jarr (90ms)
+!(obc 13 (: $x (→ (→ (→ 𝜑 𝜓) 𝜒) (→ 𝜓 𝜒))))
 
 ;; ;; pm2.27
 ;; !(obc 13 (: $x (→ 𝜑 (→ (→ 𝜑 𝜓) 𝜓))))

@@ -1,0 +1,59 @@
+;; Generate less than equal relationships between all natural numbers
+;; up to a certain bound.
+
+;; Load fromNumber in the space.  Make sure that gen-fromNumber.mm2
+;; has been previously executed.
+(exec Pre (I (ACT fromNumber (fromNumberFn $x $k))) (, (fromNumberFn $x $k)))
+
+;; Number representing a bound (here 26)
+(NumBound 26)
+
+;; Initialize
+(exec Init
+      (, (NumBound $n)
+         (fromNumberFn $n $b))
+      (, ;; Generate all numbers up to a certain bound
+         (: Z BndNat)
+         (exec (0 $b)
+               (, (: $k BndNat)
+                  (exec (0 (S $l)) $pat $tmp))
+               (, (: (S $k) BndNat)
+                  (exec (0 $l) $pat $tmp)))
+         ;; Generate all positive lte relationships between all
+         ;; numbers up to a certain bound.  We duplicate the
+         ;; computational front (cf1 and cf2) because each instance of
+         ;; (lte x y) is used twice, once to produce (lte (S l) (S r)),
+         ;; and another one to produce (lte l (S r)).  It is not
+         ;; pretty but it does the job.  Ideally, this should be
+         ;; decomposed into more exec commands, such that one
+         ;; intermediate exec command launches two exec when
+         ;; encountering (cf (lte x y)).
+         (cf1 (lte Z Z))
+         (cf2 (lte Z Z))
+         (lte Z Z)
+         ;; If (lte l r) then (lte (S l) (S r))
+         (exec (1 $b $b t)
+               (, (cf1 (lte $x $y))
+                  (: (S $x) BndNat)
+                  (: (S $y) BndNat)
+                  ;; Grab local self
+                  (exec (1 (S $k) (S $l) t) $pat $tmp))
+               (O (+ (lte (S $x) (S $y)))
+                  (+ (cf1 (lte (S $x) (S $y))))
+                  (+ (cf2 (lte (S $x) (S $y))))
+                  (+ (exec (1 $k $l t) $pat $tmp))
+                  (- (cf1 (lte $x $y)))))
+         ;; If (lte l r) then (lte l (S r))
+         (exec (1 $b $b t)
+               (, (cf2 (lte $x $y))
+                  (: $x BndNat)
+                  (: (S $y) BndNat)
+                  (exec (1 $k (S $l) t) $pat $tmp))
+               (O (+ (lte $x (S $y)))
+                  (+ (cf1 (lte $x (S $y))))
+                  (+ (cf2 (lte $x (S $y))))
+                  (+ (exec (1 $k $l t) $pat $tmp))
+                  (- (cf2 (lte $x $y)))))))
+
+;; Finalize, write into lte.act
+(exec Final (, (lte $k $l)) (O (ACT lte (lte $k $l))))
