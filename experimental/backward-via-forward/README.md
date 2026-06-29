@@ -132,8 +132,13 @@ especially for rewriting systems like MORK, which we will study next.
 For comparing regular MeTTa backward chaining with MORK forward
 chaining emulation, see [bfc-xp.mm2](bfc-xp.mm2).  Do not forget to
 run [gen-fromNumber.mm2](gen-fromNumber.mm2) and
-[gen-lte.mm2](gen-lte.mm2) (in this order) before, to generate tables
-used by [bfc-xp.mm2](bfc-xp.mm2).  So far the results are
-disappointingly slow but much work remains to optimize the MORK
-emulation, such as using integers instead of naturals, and likely much
-more.
+[gen-lte.mm2](gen-lte.mm2) in this order, to generate tables used by
+[bfc-xp.mm2](bfc-xp.mm2).
+
+So far the results are disappointing.  On jarr, the backward chaining
+emulation via forward chaining on MM2 is 290x slower than direct
+backward chaining on PeTTa (40.435s on MM2 vs 0.130s on PeTTa).  I
+have tried a few things like simplifying arthimetic operations and
+swapping arguments to speed up the MM2 implementation, but it is still
+too slow.  Maybe I could try to replace arthimetic tables by pure
+functions but I doubt it will make a substantial difference.
