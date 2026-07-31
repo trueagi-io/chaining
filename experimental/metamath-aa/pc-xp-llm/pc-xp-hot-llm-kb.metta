@@ -1,17 +1,28 @@
 ;; Experiment to verify or rediscover proofs of the propositional
 ;; calculus fragment of set theory of Metamath.
 ;;
-;; SPLIT-REGIME PROOF SEARCH (frontier push -- how far can the cascade go?):
-;;   theorems <= 179:  hot-KB -> full KB (LLM never consulted: all cheap to
-;;     prove without it, and 6-179 sit inside the predictor's training data).
-;;   theorems 180+:    LLM sub-theory FIRST (every theorem) -> hot-KB ->
-;;     full KB.  Training data covers 6-183, so 180-183 are answer-in-prompt
-;;     (deliberate: lets the LLM crack the pm2.61iii wall at 182, ~4.5h by
-;;     pure full-KB search, in seconds).  From 184 onward every prediction
-;;     is genuine out-of-training generalization -- the frontier.
-;;     No upper bound: the run continues until a theorem cannot be proved.
+;; TIMEOUT-RESCUE CASCADE (LLM as last resort, skip on LLM miss):
+;;   For EVERY theorem (from iteration 2, no index gating):
+;;     eval 1 -- hot-KB (30 most recent lemmas + axioms), wall-clock-capped
+;;               at (hot-timeout-seconds); a timeout counts as a hot miss.
+;;     eval 2 -- full KB, wall-clock-capped at (obc-timeout-seconds) = 10 min
+;;               via timed_obc_once (pc_xp_timed.pl).
+;;               * found     -> done
+;;               * not_found -> search space exhausted at this proof size;
+;;                              with skips accumulating this usually means a
+;;                              needed lemma was skipped earlier -> SKIP this
+;;                              theorem too and keep going.
+;;               * timeout   -> queue the LLM rescue.
+;;     eval 3 -- LLM-predicted sub-theory (training corpus: 6-183).
+;;               * found -> done
+;;               * miss  -> SKIP this theorem (it is NOT added to the KB)
+;;                          and move on to the next iteration.
+;;   No upper bound: the run continues to the corpus end, skipping the
+;;   theorems that neither a 10-min full-KB search nor the LLM can crack.
+;;   NOTE: a skipped theorem's lemma is unavailable to later proofs, so
+;;   downstream theorems that need it may themselves time out and skip.
 ;; EVERY tier runs in its own `until` iteration (exactly one obc call per
-;; evaluation), chained by the hot-retry-idx / full-retry-idx state flags:
+;; evaluation), chained by the full-retry-idx / llm-retry-idx state flags:
 ;; a tier miss queues the next tier and re-runs the same idx.  Multiple obc
 ;; calls per evaluation are NOT safe: a 3rd call spuriously found nothing
 ;; (iteration 83 com23), and even a 2nd call hard-failed silently and
@@ -45,10 +56,9 @@
 ;; When using proof size as search boundary, it is set to 182 because
 ;; the 182 theorem is very slow to proof.
 ;;
-;; Set to the maximum (1526): NO upper bound -- run until the first theorem
-;; the cascade cannot prove, and see how far it gets.  The known 182 wall
-;; (pm2.61iii, ~4.5h full-KB) is expected to fall to the LLM tier now that
-;; the training corpus covers its sub-theory (see llm-min-idx below).
+;; Set to the maximum (1526): NO upper bound -- with the skip-on-LLM-miss
+;; policy the run keeps going past theorems it cannot crack, so it stops
+;; only at the corpus end or on a genuine (fast) full-KB exhaustion.
 (= (up-to-idx) 1526)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -98,26 +108,27 @@
 ;; grow unboundedly.  Original axioms are never evicted.
 (= (hot-kb-size) 30)
 
-;; Use an LLM to predict a small relevant sub-theory as the SECOND tier,
-;; tried after a hot-KB miss and before the full-KB fallback.  An LLM is
-;; asked which labels (axioms + lemmas) are likely needed to prove the
-;; current goal; those labels are copied into small "llm" bases
-;; (&pc-llm-rb / &pc-llm-ab) and searched.  A too-small prediction never
-;; costs correctness -- the full-KB tier still runs on an LLM miss.
-;; over-prediction is fine, recall matters more than precision.)
+;; Use an LLM to predict a small relevant sub-theory as the RESCUE tier:
+;; it is consulted only when the timed full-KB search exceeds its wall-clock
+;; budget.  The LLM is asked which labels (axioms + lemmas) are likely
+;; needed to prove the current goal; those labels are copied into small
+;; "llm" bases (&pc-llm-rb / &pc-llm-ab) and searched.  If even the LLM
+;; misses, the theorem is SKIPPED (not added to the KB) and the run moves
+;; on.  Worked examples: pc-xp-llm-trace-obc-log-to-183-lean.metta (6-183),
+;; so LLM rescues at <= 183 are answer-in-prompt; 184+ are genuine.
 (= (use-llm-theory) True)
 
-;; Only invoke the LLM for iterations PAST this index.  Set to 179: the LLM
-;; kicks in from iteration 180.  The predictor's worked examples
-;; (pc-xp-llm-trace-obc-log-to-183-lean.metta) now cover iterations 6-183,
-;; so theorems <= 179 run hot-KB -> full-KB only (cheap, no API cost, all
-;; previously proved quickly).  Iterations 180-183 are DELIBERATELY inside
-;; the training range: the goal here is engineering speed, not measurement
-;; -- in particular 182 (pm2.61iii, ~4.5h by full-KB search) should be
-;; solved in seconds by predicting its known sub-theory
-;; (pm2.61ii expi pm2.61d2 impi).  Genuine out-of-training prediction is
-;; only measured from iteration 184 onward.
-(= (llm-min-idx) 263)
+;; Wall-clock budget (seconds) for the full-KB obc search (via
+;; timed_obc_once in pc_xp_timed.pl).  If the search exceeds this, it is
+;; aborted and the LLM rescue is queued.  10 minutes.
+(= (obc-timeout-seconds) 600)
+
+;; Wall-clock budget (seconds) for the HOT-KB search.  Hot searches are
+;; normally sub-second, but at large proof sizes even the 30-lemma space
+;; explodes (observed: pm2.61iii at size 13 ground for 43+ min in the hot
+;; tier -- discovered 2026-07-19).  A hot search over budget counts as a
+;; hot miss and falls through to the timed full-KB tier.
+(= (hot-timeout-seconds) 60)
 
 ;; LLM backend selector, consumed by the Python bridge (pc_xp_llm.py):
 ;; "claude"/"anthropic", "gemini"/"google", "minimax"/"snet", "openai"/"gpt",
@@ -1573,14 +1584,25 @@
 ;; process-assertion-m re-runs the SAME idx, and that retry evaluation makes
 ;; exactly one obc call.
 ;;
-;; hot-retry-idx:  LLM tier missed -> retry same idx against the hot-KB.
-;; full-retry-idx: hot-KB missed   -> retry same idx against the full KB.
-!(bind! hot-retry-idx (new-state ()))
+;; full-retry-idx: hot-KB missed          -> retry same idx, timed full KB.
+;; llm-retry-idx:  timed full KB TIMED OUT -> retry same idx, LLM rescue.
+;; skip-idx:       LLM rescue also missed  -> SKIP this idx (move to idx+1
+;;                 without adding the theorem to the KB).
 !(bind! full-retry-idx (new-state ()))
+!(bind! llm-retry-idx (new-state ()))
+!(bind! skip-idx (new-state ()))
 
 ;; Enable occurs check to detect cycles in unification (note that it
 ;; returns a variable, this is normal)
 !(translatePredicate (set_prolog_flag occurs_check True))
+
+;; Load the timed-obc Prolog helper (timed_obc_once/7): runs the full-KB
+;; obc under a wall-clock limit; returns (found (: P T)) | not_found |
+;; timeout.  Path is relative to the project root (where run.sh runs).
+!(translatePredicate (consult examples/pc_xp_timed.pl))
+;; Register it as a callable so the translator emits a direct Prolog call
+;; (must precede the (= (_rediscover-proofs-timed ...)) definition below).
+!(translatePredicate (register_fun timed_obc_once))
 
 ;; Add assertion to knowledge bases.  If it is an axiom then add it to
 ;; pc-ab.  If it is a rule then add it to pc-rb.  Additionally replace
@@ -1736,10 +1758,10 @@
    (let $atoms (collapse (get-atoms $spc))
      (collapse (let $a (superpose $atoms) (remove-atom $spc $a)))))
 
-;; Whether to invoke the LLM predictor for this idx: enabled and past the
-;; early-theorem threshold.
+;; Whether to invoke the LLM predictor for this idx: enabled AND this idx
+;; has a queued LLM rescue (i.e. its timed full-KB search just timed out).
 (= (use-llm-theory-now $idx)
-   (and (use-llm-theory) (> $idx (llm-min-idx))))
+   (and (use-llm-theory) (== (get-state llm-retry-idx) $idx)))
 
 ;; Build the small LLM bases for a goal: clear them, ask the bridge to
 ;; predict + cache a relevant label set, then copy every predicted label's
@@ -1752,8 +1774,10 @@
     ;; predict + cache (returns the number of predicted labels).  Pass the
     ;; proof size $bound as a budget: the count of directly-applied labels
     ;; in a proof is bounded by its term size, so the LLM is told to name
-    ;; up to $bound labels instead of chronically under-predicting.
-    (py-call (builtins._predictTheory (repr $thrm) (llm-model) (llm-timeout) $bound))
+    ;; up to $bound labels instead of chronically under-predicting.  The
+    ;; label is passed so the per-call reasoning log (pc-xp-llm-reasoning.log,
+    ;; written by the bridge) names the theorem each entry belongs to.
+    (py-call (builtins._predictTheory (repr $thrm) (llm-model) (llm-timeout) $bound (repr $label)))
     ;; copy predicted rules
     (collapse (match &pc-rb (: $l $t)
                 (if (== (py-call (builtins._inPredicted (repr $l))) 1)
@@ -1773,74 +1797,102 @@
       (logger-infof "Iteration %w: passing LLM sub-theory for %w to obc: %w"
                     ($idx $label $smallest)))))
 
-;; Search the hot-KB; on a miss (or if the hot-KB is disabled) queue the
-;; isolated full-KB retry (full-retry-idx) and return () so the until loop
-;; re-runs this same idx with the full KB as the ONLY obc call of that
-;; evaluation.
+;; Search the hot-KB under its own wall-clock budget (hot-timeout-seconds);
+;; on a miss OR a timeout (or if the hot-KB is disabled) queue the isolated
+;; full-KB retry (full-retry-idx) and return () so the until loop re-runs
+;; this same idx with the full KB as the ONLY obc call of that evaluation.
+;; The hot budget exists because at large proof sizes even the 30-lemma hot
+;; space explodes (pm2.61iii at size 13 ground 43+ min here, 2026-07-19).
 (= (hot-or-queue-full $idx $bound $proof-wo-bdy $thrm)
    (if (use-hot-kb)
        (let $hot-result
-           (_rediscover-proofs &pc-hot-rb &pc-hot-ab $bound $proof-wo-bdy $thrm)
-         (if (== $hot-result ())
+           (timed_obc_once &pc-hot-rb &pc-hot-ab callback $bound
+                           (: $proof-wo-bdy $thrm)
+                           (hot-timeout-seconds))
+         (case $hot-result
+           ((timeout
+             (progn
+              (logger-infof "Hot-KB search timed out after %ws; falling back to full KB"
+                            ((hot-timeout-seconds)))
+              (change-state! full-retry-idx $idx)
+              ()))
+            (not_found
              (progn
               (logger-info "Hot-KB: no proof found")
               (change-state! full-retry-idx $idx)
-              ())
-             ;; Hot-KB hit
-             $hot-result))
+              ()))
+            ((found (: $p $t)) (list (: $p $t))))))
        (progn
         (change-state! full-retry-idx $idx)
         ())))
 
-;; Entry point.  Split-regime cascade (clean claude measurement), with
-;; EXACTLY ONE obc call per evaluation -- every tier miss queues the next
-;; tier as a same-idx retry in a fresh until iteration (see the retry-flag
-;; comments above; the inline LLM->hot double call hard-failed silently at
-;; iteration 161):
+;; Timed full-KB tier: run obc over the full KB under the wall-clock budget
+;; (obc-timeout-seconds), via the Prolog helper timed_obc_once/7.
+;;   * found     -> singleton proof list (done)
+;;   * not_found -> () with no flag queued = genuine failure (loop stops)
+;;   * timeout   -> queue the LLM rescue (or, if the LLM is disabled, queue
+;;                  a skip) and return ()
+;; Only valid on the obc path (bound-search-by-proof-size = True).
+(= (_rediscover-proofs-timed $idx $bound $proof-wo-bdy $thrm)
+   (let $timed-result
+       (timed_obc_once &pc-rb &pc-ab callback $bound
+                       (: $proof-wo-bdy $thrm)
+                       (obc-timeout-seconds))
+     (case $timed-result
+       ((timeout
+         (progn
+          (logger-infof "Full-KB search timed out after %ws; queuing LLM rescue"
+                        ((obc-timeout-seconds)))
+          (if (use-llm-theory)
+              (change-state! llm-retry-idx $idx)
+              (change-state! skip-idx $idx))
+          ()))
+        ;; Search space exhausted within the budget: with skipped lemmas
+        ;; accumulating, this usually means the proof NEEDS a lemma we
+        ;; skipped earlier.  Skip this theorem too and keep going (the run
+        ;; should only end at the corpus end).
+        (not_found
+         (progn
+          (logger-info "Full-KB search exhausted (no proof at this size); skipping theorem")
+          (change-state! skip-idx $idx)
+          ()))
+        ((found (: $p $t)) (list (: $p $t)))))))
+
+;; Entry point.  Timeout-rescue cascade, EXACTLY ONE obc call per
+;; evaluation -- every tier miss queues the next tier as a same-idx retry
+;; in a fresh until iteration (see the retry-flag comments above):
 ;;
-;;   idx <= llm-min-idx (150, the LLM-contaminated training range):
-;;     eval 1 -- hot-KB; miss queues full-retry-idx.
-;;     eval 2 -- full KB.
-;;     The LLM is NEVER consulted: its worked examples contain these very
-;;     theorems (answer-in-prompt leakage) and each call costs API money.
-;;
-;;   idx > llm-min-idx (151+, out-of-training -- genuine prediction):
-;;     eval 1 -- LLM-predicted sub-theory; miss queues hot-retry-idx.
-;;     eval 2 -- hot-KB; miss queues full-retry-idx.
-;;     eval 3 -- full KB.
+;;   eval 1 -- hot-KB; miss queues full-retry-idx.
+;;   eval 2 -- full KB, wall-clock-capped; timeout queues llm-retry-idx;
+;;             an exhausted search (not_found) queues a skip directly.
+;;   eval 3 -- LLM-predicted sub-theory; miss queues skip-idx, and
+;;             process-assertion-m moves on to the NEXT theorem.
 (= (rediscover-proofs $idx $label $bound $proof $thrm)
    (let ;; Replace proof body by variable
        $proof-wo-bdy (replace-body-by-variable $proof)
-     (if (== (get-state full-retry-idx) $idx)
-         ;; --- Final tier (isolated retry evaluation): full KB only ---
+     (if (use-llm-theory-now $idx)
+         ;; --- LLM rescue evaluation (after a full-KB timeout) ---
          (progn
-          (change-state! full-retry-idx ())
-          (logger-info "Retry: searching full KB")
-          (_rediscover-proofs &pc-rb &pc-ab $bound $proof-wo-bdy $thrm))
-         (if (== (get-state hot-retry-idx) $idx)
-             ;; --- Hot tier (isolated retry evaluation after an LLM miss):
-             ;; hot-KB only; a miss queues the full-KB retry ---
+          (change-state! llm-retry-idx ())
+          (build-llm-theory $idx $label $thrm $bound)
+          (let $llm-result
+              (_rediscover-proofs &pc-llm-rb &pc-llm-ab $bound $proof-wo-bdy $thrm)
+            (if (== $llm-result ())
+                (progn
+                 (logger-info "LLM-theory: no proof in predicted sub-theory; skipping theorem")
+                 (change-state! skip-idx $idx)
+                 ())
+                (progn
+                 (logger-info "LLM-theory: proof found in predicted sub-theory")
+                 $llm-result))))
+         (if (== (get-state full-retry-idx) $idx)
+             ;; --- Timed full-KB evaluation (after a hot-KB miss) ---
              (progn
-              (change-state! hot-retry-idx ())
-              (logger-info "Retry: searching hot-KB")
-              (hot-or-queue-full $idx $bound $proof-wo-bdy $thrm))
-             (if (use-llm-theory-now $idx)
-                 ;; --- 151+ first evaluation: LLM sub-theory ONLY;
-                 ;; a miss queues the hot-KB retry (no inline 2nd obc call) ---
-                 (progn
-                  (build-llm-theory $idx $label $thrm $bound)
-                  (let $llm-result
-                      (_rediscover-proofs &pc-llm-rb &pc-llm-ab $bound $proof-wo-bdy $thrm)
-                    (if (== $llm-result ())
-                        (progn
-                         (logger-info "LLM-theory: no proof in predicted sub-theory; queuing hot-KB retry")
-                         (change-state! hot-retry-idx $idx)
-                         ())
-                        (progn
-                         (logger-info "LLM-theory: proof found in predicted sub-theory")
-                         $llm-result))))
-                 ;; --- <= 150 first evaluation: hot-KB; miss queues full KB ---
-                 (hot-or-queue-full $idx $bound $proof-wo-bdy $thrm))))))
+              (change-state! full-retry-idx ())
+              (logger-info "Retry: searching full KB (timed)")
+              (_rediscover-proofs-timed $idx $bound $proof-wo-bdy $thrm))
+             ;; --- First evaluation: hot-KB; miss queues the full-KB retry ---
+             (hot-or-queue-full $idx $bound $proof-wo-bdy $thrm)))))
 
 ;; Process the theorem of a given index by rediscovering its proof, if
 ;; it succeeds then insert its alongside its proof(s) into the
@@ -1858,16 +1910,17 @@
                       ($idx $label $bound)))
     (let $prfs-thrms (rediscover-proofs $idx $label $bound $proof $thrm)
       (if (== $prfs-thrms ())
-          ;; No proof this evaluation.  Distinguish a full-KB retry that
-          ;; rediscover-proofs has queued for the same idx (not a real
-          ;; failure -- the next until iteration searches the full KB) from
-          ;; a genuine miss, so the log does not claim defeat prematurely.
+          ;; No proof this evaluation.  Distinguish the queued follow-ups
+          ;; (full-KB retry / LLM rescue / skip) from a genuine miss, so
+          ;; the log does not claim defeat prematurely.
           (progn
-           (if (== (get-state hot-retry-idx) $idx)
-               (logger-info "Hot-KB retry queued")
-               (if (== (get-state full-retry-idx) $idx)
-                   (logger-info "Full-KB retry queued")
-                   (logger-info "No proof found")))
+           (if (== (get-state full-retry-idx) $idx)
+               (logger-info "Full-KB retry queued")
+               (if (== (get-state llm-retry-idx) $idx)
+                   (logger-info "LLM rescue queued (full-KB timeout)")
+                   (if (== (get-state skip-idx) $idx)
+                       (logger-infof "SKIPPING theorem %w (timeout + LLM miss); it will NOT be in the KB" ($label))
+                       (logger-info "No proof found"))))
            Nothing)
           ;; One or more proofs
           (progn
@@ -1919,13 +1972,16 @@
        ($else Nothing)))))
 
 ;; Like process-assertion but wrapped to accept maybe a number, which the
-;; until construct needs, and to drive the tier retries: when an evaluation
-;; of an idx queued a retry (hot-retry-idx or full-retry-idx == idx),
-;; process-assertion returns Nothing but we re-run the SAME idx so its next
-;; evaluation runs the queued tier as an isolated obc call (LLM miss ->
-;; hot retry; hot miss -> full retry).  A retry evaluation clears its own
-;; flag on entry, so Nothing with no flag set is a genuine failure and the
-;; until loop stops.
+;; until construct needs, and to drive the tier chain:
+;;
+;;   * full-retry-idx == idx -> re-run same idx (timed full-KB search).
+;;   * llm-retry-idx  == idx -> re-run same idx (LLM rescue).
+;;   * skip-idx       == idx -> clear the flag and return (Just idx+1):
+;;     the theorem is SKIPPED (not in the KB) and the run moves on.
+;;   * no flag -> genuine failure; the until loop stops.
+;;
+;; A retry evaluation clears its own flag on entry, so at most one flag is
+;; set at any time.
 ;; (: process-assertion-m (-> (Maybe Number) (Maybe Number)))
 (= (process-assertion-m $midx)
    (case $midx
@@ -1934,14 +1990,19 @@
          (case $result
            (((Just $n) (Just $n))
             (Nothing
-             (if (== (get-state hot-retry-idx) $idx)
-                 ;; LLM missed -> re-run same idx against the hot-KB
+             (if (== (get-state full-retry-idx) $idx)
+                 ;; hot-KB missed -> re-run same idx, timed full KB
                  (Just $idx)
-                 (if (== (get-state full-retry-idx) $idx)
-                     ;; hot-KB missed -> re-run same idx against the full KB
+                 (if (== (get-state llm-retry-idx) $idx)
+                     ;; full-KB timed out -> re-run same idx, LLM rescue
                      (Just $idx)
-                     ;; genuine failure
-                     Nothing)))))))
+                     (if (== (get-state skip-idx) $idx)
+                         ;; LLM rescue missed -> skip; continue with NEXT idx
+                         (progn
+                          (change-state! skip-idx ())
+                          (Just (+ $idx 1)))
+                         ;; genuine failure
+                         Nothing))))))))
       (Nothing Nothing))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1969,5 +2030,5 @@
         (logger-debugf "pc-llm-rb: %w" ((get-atoms &pc-llm-rb)))
         (logger-debugf "pc-llm-ab: %w" ((get-atoms &pc-llm-ab)))))
 !(if (use-llm-theory)
-     (logger-infof "Tiers: hot-KB(size %w) -> LLM(model %w, min-idx %w) -> full-KB"
-                   ((hot-kb-size) (llm-model) (llm-min-idx))) ())
+     (logger-infof "Tiers: hot-KB(size %w) -> full-KB(timed %ws) -> LLM(model %w) -> skip"
+                   ((hot-kb-size) (obc-timeout-seconds) (llm-model))) ())
