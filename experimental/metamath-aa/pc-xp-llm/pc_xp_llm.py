@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pc_xp_llm.py  -  LLM sub-theory predictor bridge for pc-xp.metta
+pc_xp_llm.py  -  LLM sub-theory predictor bridge for pc-xp-llm.metta
 ================================================================
 
 Given a GOALtheorem, predict a SMALL relevant sub-theory (a set of axiom/lemma labels) so
@@ -16,9 +16,6 @@ The MeTTa side talks to this module through three functions exposed on
     _predictTheory(goal_str, model, timeout) -> int   # predicts & caches a set
     _inPredicted(label) -> 1 | 0       # membership test used to build the bases
 
-So MeTTa never has to parse strings: it passes atom reprs in, gets ints back,
-and iterates its own spaces to copy the predicted labels.
-
 Backends (pick with the model arg or the LLM_BACKEND env var):
     "claude"/"anthropic"     -> Anthropic Messages API   (needs ANTHROPIC_API_KEY)
     "minimax"/"snet"         -> SingularityNet gateway    (minimax/minimax-m3,
@@ -28,9 +25,8 @@ Backends (pick with the model arg or the LLM_BACKEND env var):
                                 GEMINI_MODEL, default gemini-2.5-flash)
     "openai"/"gpt"           -> OpenAI Chat Completions   (needs OPENAI_API_KEY)
     "ollama:<model>"         -> local Ollama              (no key)
-The default is Anthropic ("the best llm for the task"); set LLM_BACKEND=ollama
-to stay fully local.
-
+The default is Anthropic; 
+set LLM_BACKEND=ollama to stay fully local.
 Only the Python standard library is required (urllib).
 """
 
@@ -55,8 +51,8 @@ _CORE_AXIOMS = ("ax-mp", "ax-1", "ax-2", "ax-3")
 # obc-found proofs.  The lean file deliberately contains only LABEL, SMALLEST
 # and THEOREM, so the prompt cannot leak the full available theory tuple or
 # the literal proof term.
-# Current default covers corpus iterations 6..183 (mined from the
-# result-hot-llm-full run, which includes the ~4.5h pm2.61iii proof at 182).
+# Current default covers corpus iterations 6..183, 
+# which includes the ~4.5h pm2.61iii proof at 182).
 # Any LLM evaluation on theorems <= 183 is contaminated (answer in prompt);
 # the clean out-of-training range starts at 184.
 # --------------------------------------------------------------------------- #
@@ -293,7 +289,18 @@ SNET_MODEL = os.environ.get("SNET_MODEL", "minimax/minimax-m3")
 ANTHROPIC_CACHE_TTL = os.environ.get("ANTHROPIC_CACHE_TTL", "1h")
 
 
+# Reasoning capture: on claude-fable-5 the raw chain of thought is never
+# returned by the API, but `thinking: {display: "summarized"}` returns a
+# readable SUMMARY of the model's reasoning as `thinking` content blocks.
+# _call_anthropic stashes it here; _predictTheory appends it (plus the goal,
+# prediction and raw answer) to LLM_REASONING_LOG after every call.
+# Note: thinking happens and is billed the same whether or not we ask for
+# the summary -- display only controls visibility.
+_LAST_THINKING = ""
+
+
 def _call_anthropic(system, static_prefix, dynamic, timeout):
+    global _LAST_THINKING
     key = os.environ["ANTHROPIC_API_KEY"]
     model = os.environ.get("ANTHROPIC_MODEL", "claude-fable-5")
     sys_blocks = [{"type": "text", "text": system}]
@@ -307,7 +314,11 @@ def _call_anthropic(system, static_prefix, dynamic, timeout):
         sys_blocks.append(block)
     out = _http_json(
         "https://api.anthropic.com/v1/messages",
-        {"model": model, "max_tokens": 512, "system": sys_blocks,
+        # max_tokens raised from 512: it caps thinking + answer together,
+        # and asking for the summarized reasoning needs the extra headroom.
+        {"model": model, "max_tokens": 4096,
+         "thinking": {"type": "adaptive", "display": "summarized"},
+         "system": sys_blocks,
          "messages": [{"role": "user", "content": dynamic}]},
         {"content-type": "application/json", "x-api-key": key,
          "anthropic-version": "2023-06-01"},
@@ -319,7 +330,11 @@ def _call_anthropic(system, static_prefix, dynamic, timeout):
         sys.stderr.write(
             f"[llm-theory] prompt cache: wrote {wrote}, read {read} tokens\n")
         sys.stderr.flush()
-    return "".join(b.get("text", "") for b in out.get("content", []))
+    content = out.get("content") or []
+    _LAST_THINKING = "\n".join(
+        b.get("thinking", "") for b in content
+        if b.get("type") == "thinking" and b.get("thinking"))
+    return "".join(b.get("text", "") for b in content if b.get("type") == "text")
 
 
 def _call_openai_compat(url, key, model, system, prompt, timeout):
@@ -350,8 +365,7 @@ def _call_minimax(system, prompt, timeout):
 
 # --- Google Gemini (OpenAI-compatible endpoint) ------------------------------ #
 # Uses Gemini's OpenAI-compatibility layer, so the request/response shape is
-# the same as OpenAI.  The API key is intentionally NOT defaulted in source:
-# set it via `export GEMINI_API_KEY=...`.  Model/URL are env-overridable.
+# the same as OpenAI.
 GEMINI_BASE_URL = os.environ.get(
     "GEMINI_BASE_URL",
     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
@@ -489,12 +503,48 @@ def _resolve(tokens):
 
 
 # --------------------------------------------------------------------------- #
+# Per-call reasoning log: one appended entry per LLM invocation, containing
+# the goal, the model's summarized reasoning (claude backend only), its raw
+# answer, and the final resolved prediction.  Kept in its own file because
+# stderr is not captured in pc-xp-llm.log.
+# --------------------------------------------------------------------------- #
+REASONING_LOG = os.environ.get("LLM_REASONING_LOG", "pc-xp-llm-reasoning.log")
+
+
+def _log_reasoning(label, goal, size, model, raw, labels, error=None):
+    try:
+        import datetime
+        with open(REASONING_LOG, "a", encoding="utf-8") as f:
+            f.write("=" * 70 + "\n")
+            f.write(f"[{datetime.datetime.now().isoformat(timespec='seconds')}] "
+                    f"theorem: {label or '?'}   (model {model}, budget {size})\n")
+            f.write(f"GOAL: {goal}\n")
+            if error is not None:
+                f.write(f"CALL FAILED: {error}\n\n")
+                return
+            if _LAST_THINKING:
+                f.write("--- reasoning (summarized by the API) ---\n")
+                f.write(_LAST_THINKING.strip() + "\n")
+            else:
+                f.write("--- reasoning: (none returned; non-claude backend "
+                        "or empty summary) ---\n")
+            f.write("--- raw answer ---\n")
+            f.write(raw.strip() + "\n")
+            f.write(f"--- resolved prediction ({len(labels)}) ---\n")
+            f.write(" ".join(labels) + "\n\n")
+    except Exception:
+        pass                                  # logging must never break prediction
+
+
+# --------------------------------------------------------------------------- #
 # Called from MeTTa: predict + cache the set for one goal
 # --------------------------------------------------------------------------- #
-def _predictTheory(goal, model="claude", timeout=60, size=0):
-    global _PREDICTED
+def _predictTheory(goal, model="claude", timeout=60, size=0, label=""):
+    global _PREDICTED, _LAST_THINKING
     goal = _clean_atom(goal)
     model = _clean_atom(model)
+    label = _clean_atom(label)
+    _LAST_THINKING = ""
     try:
         timeout = float(timeout)
     except Exception:
@@ -534,10 +584,12 @@ def _predictTheory(goal, model="claude", timeout=60, size=0):
                 f"[llm-theory] WARNING: no KB labels matched; obc will search "
                 f"core axioms only. raw answer: {raw.strip()[:200]!r}\n")
         sys.stderr.flush()
+        _log_reasoning(label, goal, size, model, raw, labels)
     except Exception as e:                   # any failure -> core only, MeTTa falls back
         _PREDICTED = {a for a in _CORE_AXIOMS if a in _KB}
         sys.stderr.write(f"[llm-theory] prediction failed ({e}); using core axioms\n")
         sys.stderr.flush()
+        _log_reasoning(label, goal, size, model, "", [], error=e)
     return len(_PREDICTED)
 
 
