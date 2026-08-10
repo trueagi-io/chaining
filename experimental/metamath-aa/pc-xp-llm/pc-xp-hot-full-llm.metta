@@ -1662,16 +1662,26 @@
 (= (evict-oldest-hot-lemma $current-idx)
    (let $evict-idx (- $current-idx (hot-kb-size))
      (if (> $evict-idx 0)
+         ;; The output template MUST be headed by a constructor (Lemma).  A
+         ;; bare ($elabel $estmt $eis-rule) compiles to reduce([...]), which
+         ;; evaluates the triple as a function application: for the theorem
+         ;; labelled `id' -- a PeTTa builtin of arity 1 -- that is an arity
+         ;; error, the match yields nothing, and the empty result silently
+         ;; kills the until loop 30 lemmas later, when `id' comes up for
+         ;; eviction.
          (case (once (match &hot-lemma-log
                             (HotLemma $evict-idx $elabel $estmt $eis-rule)
-                            ($elabel $estmt $eis-rule)))
-           ((($elabel $estmt $eis-rule)
+                            (Lemma $elabel $estmt $eis-rule)))
+           (((Lemma $elabel $estmt $eis-rule)
              (progn
               (if $eis-rule
                   (remove-atom &pc-hot-rb (: $elabel $estmt))
                   (remove-atom &pc-hot-ab (: $elabel $estmt)))
               (remove-atom &hot-lemma-log
                            (HotLemma $evict-idx $elabel $estmt $eis-rule))))
+            ;; Only an explicit Empty clause guards against a key expression
+            ;; with no solution; $else cannot -- it never gets evaluated.
+            (Empty ())
             ($else ())))
          ())))
 
