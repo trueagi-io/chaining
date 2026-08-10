@@ -156,10 +156,18 @@
 ;; ;;;;;;;;;;;;; ;;
 ;;;;;;;;;;;;;;;;;;;
 
-;; Import logger library
+;; Import logger library.
 !(import! &self (library lib_import))
-!(git-import! "https://github.com/ngeiswei/petta_lib_logger")
-!(import! &self (library lib_logger))
+!(progn (translatePredicate (working_dir $this-dir))
+        (translatePredicate (atomic_list_concat ($this-dir "/repos") $repos-dir))
+        (git-import! "https://github.com/ngeiswei/petta_lib_logger" "" $repos-dir))
+!(import_prolog_functions_from_file (library petta_lib_logger lib_logger.pl)
+                                    (logger-set-filepath
+                                     logger-set-level
+                                     logger-info
+                                     logger-infof
+                                     logger-debugf
+                                     logger-tracef))
 
 ;; Load the LLM sub-theory predictor bridge.  pc_xp_llm.py must be on the
 ;; PYTHONPATH; importing it registers _registerLabel / _predictTheory /
@@ -170,15 +178,17 @@
 ;; (MkIndexed INDEX (MkAxiom LABEL AXIOM))
 ;; (MkIndexed INDEX (MkTheorem LABEL PROOF THEOREM))
 !(if (reverse-arguments)
-     (import! &pc-idxd propositional-calculus-reversed-arguments)
-     (import! &pc-idxd propositional-calculus))
+     (import! &pc-idxd ../../metamath/propositional-calculus-reversed-arguments)
+     (import! &pc-idxd ../../metamath/propositional-calculus))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Configure Logger ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
 !(logger-set-level (log-level))
-!(logger-set-filepath (log-filepath))
+!(progn (translatePredicate (working_dir $this-dir))
+        (translatePredicate (atomic_list_concat ($this-dir "/" (log-filepath)) $log-path))
+        (logger-set-filepath $log-path))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ;;;;;;;;;;;;;;; ;;
@@ -1598,8 +1608,11 @@
 
 ;; Load the timed-obc Prolog helper (timed_obc_once/7): runs the full-KB
 ;; obc under a wall-clock limit; returns (found (: P T)) | not_found |
-;; timeout.  Path is relative to the project root (where run.sh runs).
-!(translatePredicate (consult examples/pc_xp_timed.pl))
+;; timeout.  The path is built from working_dir, the directory of this
+;; .metta file, so it resolves wherever run.sh is invoked from.
+!(progn (translatePredicate (working_dir $this-dir))
+        (translatePredicate (atomic_list_concat ($this-dir "/pc_xp_timed.pl") $timed-pl))
+        (translatePredicate (consult $timed-pl)))
 ;; Register it as a callable so the translator emits a direct Prolog call
 ;; (must precede the (= (_rediscover-proofs-timed ...)) definition below).
 !(translatePredicate (register_fun timed_obc_once))
